@@ -135,14 +135,6 @@ function stableAnonLabel(memberId: string): string {
   return `Anonymous ${w}`;
 }
 
-type DbParentRow = {
-  id: string;
-  track_id: string;
-  group_key: string;
-  root_id: string;
-  depth: number;
-};
-
 async function requireMemberId(): Promise<string | null> {
   const { userId } = await auth();
   if (!userId) return null;
@@ -162,6 +154,59 @@ async function requireCanPost(memberId: string): Promise<boolean> {
     ENTITLEMENTS.TIER_PATRON,
     ENTITLEMENTS.TIER_PARTNER,
   ]);
+}
+
+function assertInsertedRow(row: {
+  inserted_count: number;
+  id: string | null;
+  track_id: string | null;
+  group_key: string | null;
+  line_key: string | null;
+  root_id: string | null;
+  depth: number | null;
+  body_plain: string | null;
+  line_text_snapshot: string | null;
+  created_by_member_id: string | null;
+  status: "live" | "hidden" | "deleted" | null;
+  created_at: string | null;
+  edit_count: number | null;
+  vote_count: number | null;
+}): asserts row is typeof row & {
+  inserted_count: number;
+  id: string;
+  track_id: string;
+  group_key: string;
+  line_key: string;
+  root_id: string;
+  depth: number;
+  body_plain: string;
+  line_text_snapshot: string;
+  created_by_member_id: string;
+  status: "live" | "hidden" | "deleted";
+  created_at: string;
+  edit_count: number;
+  vote_count: number;
+} {
+  if (!row || row.inserted_count !== 1) {
+    throw new Error("assertInsertedRow: inserted_count != 1");
+  }
+  if (
+    !row.id ||
+    !row.track_id ||
+    !row.group_key ||
+    !row.line_key ||
+    !row.root_id ||
+    typeof row.depth !== "number" ||
+    !row.body_plain ||
+    !row.line_text_snapshot ||
+    !row.created_by_member_id ||
+    !row.status ||
+    !row.created_at ||
+    typeof row.edit_count !== "number" ||
+    typeof row.vote_count !== "number"
+  ) {
+    throw new Error("assertInsertedRow: missing required comment fields");
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -284,27 +329,31 @@ export async function POST(req: NextRequest) {
     // Atomic statement: ensure meta, block if locked, ensure identity, resolve parent/root/depth,
     // insert comment, bump meta + identity, return comment + meta + identity.
     const q = await sql<{
-      // comment
-      id: string;
-      track_id: string;
-      group_key: string;
-      line_key: string;
-      parent_id: string | null;
-      root_id: string;
-      depth: number;
-      body_rich: unknown;
-      body_plain: string;
-      t_ms: number | null;
-      line_text_snapshot: string;
-      lyrics_version: string | null;
-      created_by_member_id: string;
-      status: "live" | "hidden" | "deleted";
-      created_at: string;
-      edited_at: string | null;
-      edit_count: number;
-      vote_count: number;
+      // diagnostic
+      inserted_count: number;
+      guard_err: string | null;
 
-      // meta
+      // comment (nullable when insert suppressed)
+      id: string | null;
+      track_id: string | null;
+      group_key: string | null;
+      line_key: string | null;
+      parent_id: string | null;
+      root_id: string | null;
+      depth: number | null;
+      body_rich: unknown | null;
+      body_plain: string | null;
+      t_ms: number | null;
+      line_text_snapshot: string | null;
+      lyrics_version: string | null;
+      created_by_member_id: string | null;
+      status: "live" | "hidden" | "deleted" | null;
+      created_at: string | null;
+      edited_at: string | null;
+      edit_count: number | null;
+      vote_count: number | null;
+
+      // meta (always present)
       meta_track_id: string;
       meta_group_key: string;
       meta_pinned_comment_id: string | null;
@@ -314,15 +363,12 @@ export async function POST(req: NextRequest) {
       meta_created_at: string;
       meta_updated_at: string;
 
-      // identity
+      // identity (always present)
       ident_member_id: string;
       ident_anon_label: string;
       ident_public_name: string | null;
       ident_public_name_unlocked_at: string | null;
       ident_contribution_count: number;
-
-      // guard info
-      guard_err: string | null;
     }>`
       with
       -- ensure thread meta exists
@@ -478,9 +524,43 @@ end as id
         where member_id = ${memberId}::uuid
         limit 1
       )
+            ident_final as (
+        select member_id, anon_label, public_name, public_name_unlocked_at, contribution_count
+        from exegesis_identity
+        where member_id = ${memberId}::uuid
+        limit 1
+      ),
+      stats as (
+        select
+          coalesce((select err from guard), (select err from parent_guard)) as guard_err,
+          (select count(*)::int from inserted) as inserted_count
+      )
       select
-        i.*,
+        -- diagnostic that exists even when inserted is empty
+        s.inserted_count as inserted_count,
+        s.guard_err as guard_err,
 
+        -- comment fields (nullable if not inserted)
+        i.id,
+        i.track_id,
+        i.group_key,
+        i.line_key,
+        i.parent_id,
+        i.root_id,
+        i.depth,
+        i.body_rich,
+        i.body_plain,
+        i.t_ms,
+        i.line_text_snapshot,
+        i.lyrics_version,
+        i.created_by_member_id,
+        i.status::text as status,
+        i.created_at,
+        i.edited_at,
+        i.edit_count,
+        i.vote_count,
+
+        -- meta always present
         m.track_id as meta_track_id,
         m.group_key as meta_group_key,
         m.pinned_comment_id as meta_pinned_comment_id,
@@ -490,111 +570,68 @@ end as id
         m.created_at as meta_created_at,
         m.updated_at as meta_updated_at,
 
+        -- identity always present
         u.member_id as ident_member_id,
         u.anon_label as ident_anon_label,
         u.public_name as ident_public_name,
         u.public_name_unlocked_at as ident_public_name_unlocked_at,
-        u.contribution_count as ident_contribution_count,
-
-        coalesce((select err from guard), (select err from parent_guard)) as guard_err
-      from inserted i
+        u.contribution_count as ident_contribution_count
+      from stats s
       join meta_final m on true
       join ident_final u on true
+      left join inserted i on true
+      limit 1
     `;
 
     const row = q.rows?.[0] ?? null;
 
-    // Guard errors that prevented insert (no row returned)
     if (!row) {
-      console.error("[exegesis/comment] zero-row CTE result", {
+      return json(500, { ok: false, error: "No response row." });
+    }
+
+    if ((row.inserted_count ?? 0) === 0) {
+      console.error("[exegesis/comment] insert suppressed", {
         trackId,
         groupKey,
         lineKey,
         parentId,
         memberId,
-        tMs: tMsOrNull,
-        bodyPlainLen: bodyPlain.length,
-        bodyRichLen: bodyRichJson.length,
+        guard_err: row.guard_err,
       });
 
-      // Run a diagnostic that mirrors the SQL guards and tells us exactly why insert was suppressed.
-      const diag = await sql<{
-        meta_exists: boolean;
-        locked: boolean | null;
-        parent_exists: boolean | null;
-        parent_scope_ok: boolean | null;
-        parent_depth_ok: boolean | null;
-        ident_exists: boolean;
-      }>`
-    with
-    meta as (
-      select locked
-      from exegesis_thread_meta
-      where track_id = ${trackId}
-        and group_key = ${groupKey}
-      limit 1
-    ),
-    parent as (
-      select track_id, group_key, depth
-      from exegesis_comment
-      where id = ${parentId}::uuid
-      limit 1
-    ),
-    ident as (
-      select 1 as ok
-      from exegesis_identity
-      where member_id = ${memberId}::uuid
-      limit 1
-    )
-    select
-      exists(select 1 from meta) as meta_exists,
-      (select locked from meta) as locked,
-      case when ${parentId}::uuid is null then null else exists(select 1 from parent) end as parent_exists,
-      case
-        when ${parentId}::uuid is null then null
-        when not exists(select 1 from parent) then null
-        else ((select track_id from parent) = ${trackId} and (select group_key from parent) = ${groupKey})
-      end as parent_scope_ok,
-      case
-        when ${parentId}::uuid is null then null
-        when not exists(select 1 from parent) then null
-        else (((select depth from parent) + 1) <= 6)
-      end as parent_depth_ok,
-      exists(select 1 from ident) as ident_exists
-  `;
-
-      const d = diag.rows?.[0] ?? null;
-      console.error("[exegesis/comment] diag", d);
-
-      // Return a more specific error for now (temporary, until fixed).
-      if (d) {
-        if (!d.meta_exists) {
-          return json(500, { ok: false, error: "Thread meta missing." });
-        }
-        if (d.locked) {
-          return json(403, { ok: false, error: "Thread is locked." });
-        }
-        if (parentId) {
-          if (d.parent_exists === false) {
-            return json(404, { ok: false, error: "Parent not found." });
-          }
-          if (d.parent_scope_ok === false) {
-            return json(400, { ok: false, error: "Parent scope mismatch." });
-          }
-          if (d.parent_depth_ok === false) {
-            return json(400, {
-              ok: false,
-              error: "Thread depth limit reached.",
-            });
-          }
-        }
-        if (!d.ident_exists) {
-          return json(500, { ok: false, error: "Identity missing." });
-        }
+      // Convert known guard errors into proper HTTP responses
+      if (row.guard_err === "LOCKED") {
+        return json(403, { ok: false, error: "Thread is locked." });
+      }
+      if (row.guard_err === "PARENT_NOT_FOUND") {
+        return json(404, { ok: false, error: "Parent not found." });
+      }
+      if (row.guard_err === "PARENT_SCOPE") {
+        return json(400, { ok: false, error: "Parent scope mismatch." });
+      }
+      if (row.guard_err === "DEPTH") {
+        return json(400, { ok: false, error: "Thread depth limit reached." });
       }
 
-      return json(500, { ok: false, error: "Failed to insert comment." });
+      // If guard_err is null but inserted_count is 0, that's the anomaly we are chasing.
+      return json(500, { ok: false, error: "Insert suppressed unexpectedly." });
     }
+
+    if (
+      !row.id ||
+      !row.track_id ||
+      !row.group_key ||
+      !row.line_key ||
+      !row.root_id
+    ) {
+      console.error(
+        "[exegesis/comment] inserted_count>0 but missing comment fields",
+        row,
+      );
+      return json(500, { ok: false, error: "Insert returned incomplete row." });
+    }
+
+    assertInsertedRow(row);
 
     const comment: CommentDTO = {
       id: row.id,
