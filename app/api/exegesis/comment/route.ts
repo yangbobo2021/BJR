@@ -373,31 +373,54 @@ export async function POST(req: NextRequest) {
       ident_contribution_count: number;
     }>`
       with
-      -- ensure thread meta exists (MUST return a row; not optimisable away)
-meta as (
+      -- ensure thread meta exists (insert-if-missing; never double-updates)
+meta_ins as materialized (
   insert into exegesis_thread_meta (track_id, group_key)
   values (${trackId}, ${groupKey})
-  on conflict (track_id, group_key)
-  do update set track_id = exegesis_thread_meta.track_id
-  returning track_id, group_key, pinned_comment_id, locked, comment_count, last_activity_at, created_at, updated_at
+  on conflict (track_id, group_key) do nothing
+  returning 1 as inserted
+),
+meta as (
+  select
+    track_id, group_key, pinned_comment_id, locked,
+    comment_count, last_activity_at, created_at, updated_at,
+    (select count(*) from meta_ins) as _meta_ins_count
+  from exegesis_thread_meta
+  where track_id = ${trackId}
+    and group_key = ${groupKey}
+  limit 1
+),
+meta_guard as (
+  select case when (select track_id from meta) is null then 'META_MISSING' else null end as err
 ),
 
--- lock guard
+-- lock / existence guard
 guard as (
   select
-    case
-      when (select locked from meta) then 'LOCKED'
-      else null
-    end as err
+    coalesce(
+      (select err from meta_guard),
+      (select err from ident_guard),
+      case when (select locked from meta) then 'LOCKED' else null end
+    ) as err
 ),
 
--- ensure identity exists (MUST return a row; not optimisable away)
-ident as (
+-- ensure identity exists (insert-if-missing; never double-updates)
+ident_ins as materialized (
   insert into exegesis_identity (member_id, anon_label)
   values (${memberId}::uuid, ${label})
-  on conflict (member_id)
-  do update set member_id = exegesis_identity.member_id
-  returning member_id, anon_label, public_name, public_name_unlocked_at, contribution_count
+  on conflict (member_id) do nothing
+  returning 1 as inserted
+),
+ident as (
+  select
+    member_id, anon_label, public_name, public_name_unlocked_at, contribution_count,
+    (select count(*) from ident_ins) as _ident_ins_count
+  from exegesis_identity
+  where member_id = ${memberId}::uuid
+  limit 1
+),
+ident_guard as (
+  select case when (select member_id from ident) is null then 'IDENT_MISSING' else null end as err
 ),
       -- resolve parent (if any)
       parent as (
@@ -617,6 +640,12 @@ limit 1
       }
       if (row.guard_err === "DEPTH") {
         return json(400, { ok: false, error: "Thread depth limit reached." });
+      }
+      if (row.guard_err === "META_MISSING") {
+        return json(500, { ok: false, error: "Thread meta missing." });
+      }
+      if (row.guard_err === "IDENT_MISSING") {
+        return json(500, { ok: false, error: "Identity missing." });
       }
 
       // If guard_err is null but inserted_count is 0, that's the anomaly we are chasing.
