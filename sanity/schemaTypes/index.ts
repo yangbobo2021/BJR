@@ -11,6 +11,7 @@ import { moduleDownloadGrid } from "./moduleDownloadGrid";
 import { moduleRichText } from "./modules/moduleRichText";
 import { artistPost } from "./artistPost";
 import { moduleArtistPosts } from "./moduleArtistPosts";
+import { moduleExegesis } from "./moduleExegesis";
 import album from "./album";
 import lyrics from "./lyrics";
 
@@ -27,6 +28,7 @@ export const schema: { types: SchemaTypeDefinition[] } = {
     moduleRichText,
     artistPost,
     moduleArtistPosts,
+    moduleExegesis,
     album,
     lyrics,
   ],

@@ -9,6 +9,7 @@ import DownloadAlbumButton from "./modules/DownloadAlbumButton";
 import GiftAlbumButton from "./modules/GiftAlbumButton";
 import PortalTabs, { type PortalTabSpec } from "./PortalTabs";
 import PortalArtistPosts from "./modules/PortalArtistPosts";
+import PortalExegesis from "./modules/PortalExegesis";
 
 // --------------------
 // Module discriminated unions
@@ -90,13 +91,22 @@ type ModuleArtistPosts = {
   minVisibility?: "public" | "friend" | "patron" | "partner";
 };
 
+type ModuleExegesis = {
+  _key: string;
+  _type: "moduleExegesis";
+  title?: string;
+  followPlayer?: boolean; // default true
+  initialTrackId?: string | null; // optional pin
+};
+
 type PortalModule =
   | ModuleHeading
   | ModuleRichText
   | ModuleCardGrid
   | ModuleDownloads
   | ModuleDownloadGrid
-  | ModuleArtistPosts;
+  | ModuleArtistPosts
+  | ModuleExegesis;
 
 type Props = {
   modules: PortalModule[];
@@ -569,6 +579,17 @@ function renderModule(m: PortalModule, entitlementKeys: string[]) {
       />
     );
   }
+
+  if (m._type === "moduleExegesis") {
+  return (
+    <PortalExegesis
+      key={m._key}
+      title={m.title ?? "Exegesis"}
+      followPlayer={m.followPlayer ?? true}
+      initialTrackId={(m.initialTrackId ?? "").trim() || null}
+    />
+  );
+}
 
   return null;
 }

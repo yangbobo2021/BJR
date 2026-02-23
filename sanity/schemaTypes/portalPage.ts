@@ -28,6 +28,7 @@ export const portalPage = defineType({
         { type: "moduleCardGrid" },
         { type: "moduleDownloads" },
         { type: "moduleArtistPosts" },
+        { type: "moduleExegesis"},
       ],
       validation: (r) => r.required().min(1),
     }),

@@ -127,7 +127,7 @@ export default function ExegesisAdminClient(props: { embed: boolean }) {
     setBusy(true);
     try {
       const lr = await fetch(
-        `/api/lyrics?trackId=${encodeURIComponent(trackId)}`,
+        `/api/lyrics/by-track?trackId=${encodeURIComponent(trackId)}`,
         { cache: "no-store" },
       );
       const lj: unknown = await lr.json();

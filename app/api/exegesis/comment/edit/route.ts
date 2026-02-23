@@ -44,7 +44,11 @@ type ThreadMetaDTO = {
 };
 
 type ApiOk = { ok: true; comment: CommentDTO; meta: ThreadMetaDTO };
-type ApiErr = { ok: false; error: string; code?: "NOT_FOUND" | "LOCKED" | "FORBIDDEN" };
+type ApiErr = {
+  ok: false;
+  error: string;
+  code?: "NOT_FOUND" | "LOCKED" | "FORBIDDEN";
+};
 
 function json(status: number, body: ApiOk | ApiErr) {
   return NextResponse.json(body, { status });
@@ -100,50 +104,42 @@ export async function POST(req: NextRequest) {
     return json(400, { ok: false, error: "Invalid commentId." });
   }
 
-  const legacyBodyPlain = norm(b.bodyPlain);
+  // Edit is canonical-rich only: require bodyRich and derive plain server-side.
+  if (!("bodyRich" in b)) {
+    return json(400, { ok: false, error: "Missing bodyRich." });
+  }
+  const bodyRichInput: unknown = b.bodyRich ?? null;
 
-  const hasBodyRich = "bodyRich" in b;
-  const bodyRichInput: unknown = hasBodyRich ? (b.bodyRich ?? null) : null;
+  const v = validateAndSanitizeTipTapDoc(bodyRichInput);
+  if (!v.ok) return json(400, { ok: false, error: v.error });
 
-  // Canonical: bodyRich (sanitised) => derive bodyPlain
-  // Legacy: allow bodyPlain-only if bodyRich missing/null
-  let bodyPlain = legacyBodyPlain;
-  let bodyRichJson = JSON.stringify({
-    type: "doc",
-    content: [{ type: "paragraph" }],
-  });
+  const bodyPlain = v.plain;
 
-  if (bodyRichInput !== null && typeof bodyRichInput !== "undefined") {
-    const v = validateAndSanitizeTipTapDoc(bodyRichInput);
-    if (!v.ok) return json(400, { ok: false, error: v.error });
-
-    bodyPlain = v.plain;
-
-    try {
-      bodyRichJson = JSON.stringify(v.doc);
-    } catch {
-      return json(400, { ok: false, error: "Invalid bodyRich." });
-    }
-  } else {
-    if (!bodyPlain) return json(400, { ok: false, error: "Missing bodyPlain." });
-    if (bodyPlain.length > 5000)
-      return json(400, { ok: false, error: "bodyPlain too long." });
+  let bodyRichJson = "";
+  try {
+    bodyRichJson = JSON.stringify(v.doc);
+  } catch {
+    return json(400, { ok: false, error: "Invalid bodyRich." });
   }
 
   if (bodyRichJson.length > 200_000) {
     return json(400, { ok: false, error: "bodyRich too large." });
   }
-  if (!bodyPlain) return json(400, { ok: false, error: "Empty comment." });
-  if (bodyPlain.length > 5000)
-    return json(400, { ok: false, error: "Comment too long." });
+
+  if (bodyRichJson.length > 200_000) {
+    return json(400, { ok: false, error: "bodyRich too large." });
+  }
+  // bodyPlain already validated by validateAndSanitizeTipTapDoc
 
   const memberId = await requireMemberId();
   if (!memberId) return json(401, { ok: false, error: "Sign in required." });
-  if (!isUuid(memberId)) return json(403, { ok: false, error: "Provisioning required." });
+  if (!isUuid(memberId))
+    return json(403, { ok: false, error: "Provisioning required." });
 
   // Policy: editing is a write capability (same gate as posting)
   const canPost = await requireCanPost(memberId);
-  if (!canPost) return json(403, { ok: false, error: "Patron or Partner required." });
+  if (!canPost)
+    return json(403, { ok: false, error: "Patron or Partner required." });
 
   try {
     const q = await sql<{
@@ -177,7 +173,9 @@ export async function POST(req: NextRequest) {
       meta_created_at: string | null;
       meta_updated_at: string | null;
     }>`
-      with
+    with
+one as (select 1 as one),
+
 params as (
   select
     ${commentId}::uuid        as comment_id,
@@ -224,12 +222,17 @@ meta_pre as (
 guard_row as (
   select
     case
-      when (select id from target) is null then 'NOT_FOUND'
-      when (select locked from meta_pre) then 'LOCKED'
-      when (select status from target) = 'deleted' then 'DELETED'
-      when (select created_by_member_id from target) <> (select member_id from params) then 'FORBIDDEN'
+      when t.id is null then 'NOT_FOUND'
+      when mp.locked then 'LOCKED'
+      when t.status = 'deleted' then 'DELETED'
+      when t.status = 'hidden' then 'HIDDEN'
+      when t.created_by_member_id <> p.member_id then 'FORBIDDEN'
       else null
     end as err
+  from one
+  left join target t on true
+  left join meta_pre mp on true
+  left join params p on true
 ),
 
 upd as (
@@ -270,7 +273,7 @@ meta_out as (
 )
 
 select
-  (select err from guard_row) as guard_err,
+  g.err as guard_err,
 
   u.id,
   u.track_id,
@@ -299,8 +302,10 @@ select
   m.last_activity_at as meta_last_activity_at,
   m.created_at as meta_created_at,
   m.updated_at as meta_updated_at
-from meta_out m
+from one
+left join guard_row g on true
 left join upd u on true
+left join meta_out m on true
 limit 1
     `;
 
@@ -309,16 +314,34 @@ limit 1
 
     if (row.guard_err) {
       if (row.guard_err === "NOT_FOUND") {
-        return json(404, { ok: false, code: "NOT_FOUND", error: "Comment not found." });
+        return json(404, {
+          ok: false,
+          code: "NOT_FOUND",
+          error: "Comment not found.",
+        });
       }
       if (row.guard_err === "LOCKED") {
-        return json(403, { ok: false, code: "LOCKED", error: "Thread is locked." });
+        return json(403, {
+          ok: false,
+          code: "LOCKED",
+          error: "Thread is locked.",
+        });
       }
       if (row.guard_err === "FORBIDDEN") {
-        return json(403, { ok: false, code: "FORBIDDEN", error: "You can only edit your own comments." });
+        return json(403, {
+          ok: false,
+          code: "FORBIDDEN",
+          error: "You can only edit your own comments.",
+        });
       }
       if (row.guard_err === "DELETED") {
-        return json(400, { ok: false, error: "Cannot edit a deleted comment." });
+        return json(400, {
+          ok: false,
+          error: "Cannot edit a deleted comment.",
+        });
+      }
+      if (row.guard_err === "HIDDEN") {
+        return json(403, { ok: false, error: "Cannot edit a hidden comment." });
       }
       return json(400, { ok: false, error: "Cannot edit comment." });
     }
@@ -364,6 +387,9 @@ limit 1
     return json(200, { ok: true, comment, meta });
   } catch (e: unknown) {
     console.error("[exegesis/comment/edit] POST failed", e);
-    return json(500, { ok: false, error: e instanceof Error ? e.message : "Unknown error." });
+    return json(500, {
+      ok: false,
+      error: e instanceof Error ? e.message : "Unknown error.",
+    });
   }
 }
