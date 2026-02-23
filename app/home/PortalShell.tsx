@@ -45,6 +45,9 @@ type Props = {
    * If not found, header renders inline at top of PortalShell.
    */
   headerPortalId?: string;
+
+  // ✅ NEW: panels that should remain mounted even when inactive
+  keepMountedPanelIds?: string[];
 };
 
 export default function PortalShell(props: Props) {
@@ -118,17 +121,15 @@ export default function PortalShell(props: Props) {
   const headerPortalEl =
     mounted && headerPortalId ? document.getElementById(headerPortalId) : null;
 
-  const activePanel = panels.find((p) => p.id === active) ?? panels[0] ?? null;
+  const keepMounted = React.useMemo(() => {
+    const ids = props.keepMountedPanelIds ?? [];
+    return new Set(ids.map((x) => (x ?? "").trim()).filter(Boolean));
+  }, [props.keepMountedPanelIds]);
 
   return (
     <div
       className="portalShell"
-      style={{
-        display: "grid",
-        gap: 14,
-        minWidth: 0,
-        alignContent: "start",
-      }}
+      style={{ display: "grid", gap: 14, minWidth: 0, alignContent: "start" }}
     >
       {headerNode
         ? headerPortalEl
@@ -136,26 +137,41 @@ export default function PortalShell(props: Props) {
           : headerNode
         : null}
 
-      {/* CRITICAL: render ONLY the active panel so inactive UI can't mutate anything */}
-      <div
-        style={{
-          display: "grid",
-          minWidth: 0,
-          justifyItems: "center",
-        }}
-      >
-        {activePanel ? (
-          <div
-            style={{
-              width: "100%",
-              maxWidth: "min(100%, 720px)",
-              minWidth: 0,
-              overflowX: "clip",
-            }}
-          >
-            {activePanel.content}
-          </div>
-        ) : null}
+      <div style={{ display: "grid", minWidth: 0, justifyItems: "center" }}>
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "min(100%, 720px)",
+            minWidth: 0,
+            overflowX: "clip",
+          }}
+        >
+          {panels.map((p) => {
+            const isActive = p.id === active;
+            const shouldKeep = keepMounted.has(p.id);
+
+            // Default behavior: unmount inactive panels.
+            if (!isActive && !shouldKeep) return null;
+
+            const inertProps = !isActive
+              ? ({
+                  "aria-hidden": true,
+                  tabIndex: -1,
+                  style: {
+                    display: "none",
+                    pointerEvents: "none",
+                    userSelect: "none",
+                  },
+                } as const)
+              : ({ style: { display: "block" } } as const);
+
+            return (
+              <div key={p.id} {...inertProps}>
+                {p.content}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

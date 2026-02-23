@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { usePlayer } from "./PlayerState";
 import StageCore from "./StageCore";
 import type { LyricCue } from "./stage/LyricsOverlay";
+import { lyricsSurface } from "@/app/home/player/lyrics/lyricsSurface";
 
 function lockBodyScroll(lock: boolean) {
   if (typeof document === "undefined") return;
@@ -212,6 +213,16 @@ export default function StageInline(props: {
     }
   }, [offsetByTrackId]);
 
+  // Publish the evolving lyrics maps to the global surface so LyricsOverlayHost
+  // stays correct even when the inline UI tree changes.
+  React.useEffect(() => {
+    lyricsSurface.setMaps({
+      cuesByTrackId: cuesMap,
+      offsetByTrackId: offsetMap,
+      globalOffsetMs: 0,
+    });
+  }, [cuesMap, offsetMap]);
+
   // Lazy-load lyrics for the currently playing track when missing.
   const currentTrackId = p.current?.id ?? null;
 
@@ -354,6 +365,7 @@ export default function StageInline(props: {
                 variant="fullscreen"
                 cuesByTrackId={cuesMap}
                 offsetByTrackId={offsetMap}
+                lyricsMode="embedded"
               />
 
               <div
@@ -420,6 +432,7 @@ export default function StageInline(props: {
             variant="inline"
             cuesByTrackId={cuesMap}
             offsetByTrackId={offsetMap}
+            lyricsMode="none"
           />
         </div>
 

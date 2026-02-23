@@ -1,3 +1,4 @@
+//web/app/api/lyrics/by-track/route.ts
 import { NextResponse } from "next/server";
 import { client } from "@/sanity/lib/client";
 

@@ -305,8 +305,21 @@ export default async function PortalLayout(props: {
                   height: 560,
                   borderRadius: 18,
                   overflow: "hidden",
+                  position: "relative",
+                  isolation: "isolate",
                 }}
-              />
+              >
+                {/* Persistent LyricsOverlayHost portals into this when present */}
+                <div
+                  id="af-lyrics-overlay-slot"
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    zIndex: 50,
+                    pointerEvents: "auto",
+                  }}
+                />
+              </div>
             </aside>
           </div>
 

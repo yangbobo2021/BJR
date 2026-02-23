@@ -170,7 +170,25 @@ export default async function AlbumLayout(props: {
                 data-cues="{}"
                 data-offsets="{}"
                 data-sig="album-default"
-              />
+                style={{
+                  width: "100%",
+                  height: 560,
+                  borderRadius: 18,
+                  overflow: "hidden",
+                  position: "relative",
+                  isolation: "isolate",
+                }}
+              >
+                <div
+                  id="af-lyrics-overlay-slot"
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    zIndex: 50,
+                    pointerEvents: "auto",
+                  }}
+                />
+              </div>
             </aside>
           </div>
 

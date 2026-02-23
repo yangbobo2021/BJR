@@ -178,11 +178,17 @@ function isTipTapDoc(v: unknown): v is { type: "doc"; content?: unknown[] } {
 
 function setHash(next: { lineKey?: string; commentId?: string }) {
   if (typeof window === "undefined") return;
+
   const sp = new URLSearchParams();
   if (next.lineKey) sp.set("l", next.lineKey);
   if (next.commentId) sp.set("c", next.commentId);
+
   const h = sp.toString();
-  window.history.replaceState(null, "", h ? `#${h}` : window.location.pathname);
+
+  // ✅ Preserve secondary query always.
+  const base = window.location.pathname + window.location.search;
+
+  window.history.replaceState(null, "", h ? `${base}#${h}` : base);
 }
 
 export default function ExegesisTrackClient(props: {

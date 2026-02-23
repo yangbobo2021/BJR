@@ -32,6 +32,7 @@ export default function StageCore(props: {
   offsetByTrackId?: OffsetByTrackId;
   offsetMs?: number;
   autoResumeOnSeek?: boolean;
+  lyricsMode?: "embedded" | "none";
 }) {
   const {
     variant,
@@ -39,6 +40,7 @@ export default function StageCore(props: {
     offsetByTrackId,
     offsetMs: globalOffsetMs = 0,
     autoResumeOnSeek = false,
+    lyricsMode = "embedded",
   } = props;
   const p = usePlayer();
 
@@ -132,13 +134,15 @@ export default function StageCore(props: {
       />
 
       <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
-        <LyricsOverlay
-          cues={cues}
-          offsetMs={effectiveOffsetMs}
-          onSeek={onSeek}
-          variant={lyricsVariant}
-          reservedBottomPx={reservedBottomPx}
-        />
+        {lyricsMode === "embedded" ? (
+          <LyricsOverlay
+            cues={cues}
+            offsetMs={effectiveOffsetMs}
+            onSeek={onSeek}
+            variant={lyricsVariant}
+            reservedBottomPx={reservedBottomPx}
+          />
+        ) : null}
       </div>
 
       {variant === "fullscreen" ? <StageTransportBar /> : null}
