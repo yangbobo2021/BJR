@@ -391,6 +391,7 @@ export default function StageInline(props: {
                   alignItems: "center",
                   gap: 10,
                   pointerEvents: "auto",
+                  zIndex: 50, 
                 }}
               >
                 <RoundIconButton
@@ -455,6 +456,7 @@ export default function StageInline(props: {
             position: "absolute",
             top: 10,
             right: 10,
+            zIndex: 50, 
             pointerEvents: "auto",
           }}
         >
