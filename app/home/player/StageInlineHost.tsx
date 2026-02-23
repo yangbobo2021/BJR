@@ -23,11 +23,16 @@ function ensureOffscreenParking(): HTMLElement {
   el.style.position = "fixed";
   el.style.left = "-100000px";
   el.style.top = "0";
-  el.style.width = "1px";
-  el.style.height = "1px";
+
+  // IMPORTANT: do NOT shrink to 1px.
+  // Keep a stable, “real” box so WebGL/canvas code doesn’t treat it as effectively unmounted.
+  el.style.width = "720px";
+  el.style.height = "560px";
+
   el.style.overflow = "hidden";
   el.style.pointerEvents = "none";
   el.style.opacity = "0";
+  el.style.contain = "layout paint size";
   document.body.appendChild(el);
   return el;
 }
@@ -49,10 +54,16 @@ function ensureStableHostEl(): HTMLElement {
   return el;
 }
 
-function readSlotConfig(slot: HTMLElement | null, fallback: SlotConfig): SlotConfig {
+function readSlotConfig(
+  slot: HTMLElement | null,
+  fallback: SlotConfig,
+): SlotConfig {
   if (!slot) return fallback;
 
-  const height = safeParseHeight(slot.getAttribute("data-height"), fallback.height);
+  const height = safeParseHeight(
+    slot.getAttribute("data-height"),
+    fallback.height,
+  );
   return { height };
 }
 
@@ -105,7 +116,10 @@ export default function StageInlineHost(props: {
       if (hostEl.parentElement !== targetParent) {
         try {
           targetParent.appendChild(hostEl);
-          dbg("moved hostEl into", slot ? `#${slotId}` : "#af-stage-inline-offscreen");
+          dbg(
+            "moved hostEl into",
+            slot ? `#${slotId}` : "#af-stage-inline-offscreen",
+          );
         } catch (e) {
           dbg("appendChild failed", e);
         }
@@ -113,6 +127,11 @@ export default function StageInlineHost(props: {
 
       // Read config from slot (or fallback if no slot).
       const nextCfg = readSlotConfig(slot, fallback);
+
+      // Keep parking sized to the current intended stage height
+      // so the mounted tree doesn’t collapse when the slot disappears.
+      parking.style.height = `${Math.max(1, Math.floor(nextCfg.height))}px`;
+
       setCfg((prev) => (prev.height === nextCfg.height ? prev : nextCfg));
     };
 
