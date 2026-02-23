@@ -69,14 +69,6 @@ function json(status: number, body: ApiOk | ApiErr) {
   return NextResponse.json(body, { status });
 }
 
-function safeJsonStringify(v: unknown): string {
-  try {
-    return JSON.stringify(v ?? null);
-  } catch {
-    return "null";
-  }
-}
-
 function norm(s: unknown): string {
   return typeof s === "string" ? s.trim() : "";
 }
@@ -197,8 +189,8 @@ function assertInsertedRow(row: {
     !row.line_key ||
     !row.root_id ||
     typeof row.depth !== "number" ||
-    !row.body_plain ||
-    !row.line_text_snapshot ||
+    row.body_plain === null ||
+    row.line_text_snapshot === null ||
     !row.created_by_member_id ||
     !row.status ||
     !row.created_at ||
@@ -232,8 +224,15 @@ export async function POST(req: NextRequest) {
   // groupKey becomes optional (client may still send it, but we don't trust it)
   const groupKeyClient = norm(b.groupKey);
 
+  function normNullableId(v: unknown): string | null {
+    const s = norm(v);
+    if (!s) return null;
+    if (s === "null" || s === "undefined") return null;
+    return s;
+  }
+
   const parentIdRaw = norm(b.parentId);
-  const parentId = parentIdRaw ? parentIdRaw : null;
+  const parentId = normNullableId(b.parentId);
 
   const legacyBodyPlain = norm(b.bodyPlain);
 
@@ -243,13 +242,17 @@ export async function POST(req: NextRequest) {
   // Phase C: if bodyRich present, it becomes canonical; derive bodyPlain server-side.
   // If bodyRich missing/null, fall back to legacy plain-only posting.
   let bodyPlain = legacyBodyPlain;
-  let bodyRichJson = safeJsonStringify(null); // JSON "null" (still a jsonb value)
+  let bodyRichJson = "{}";
 
   if (bodyRichInput !== null && typeof bodyRichInput !== "undefined") {
     const v = validateAndSanitizeTipTapDoc(bodyRichInput);
     if (!v.ok) return json(400, { ok: false, error: v.error });
     bodyPlain = v.plain;
-    bodyRichJson = JSON.stringify(v.doc);
+    try {
+      bodyRichJson = JSON.stringify(v.doc);
+    } catch {
+      return json(400, { ok: false, error: "Invalid bodyRich." });
+    }
   } else {
     // legacy mode
     if (!bodyPlain)
@@ -373,22 +376,38 @@ export async function POST(req: NextRequest) {
       ident_contribution_count: number;
     }>`
       with
--- ensure thread meta exists and yield exactly one row (base)
+params as (
+  select
+    ${trackId}::text          as track_id,
+    ${groupKey}::text         as group_key,
+    ${lineKey}::text          as line_key,
+    nullif(${parentUuid}::text, '')::uuid as parent_id,
+    ${memberId}::uuid         as member_id,
+    ${label}::text            as anon_label,
+    ${bodyRichJson}::jsonb    as body_rich,
+    ${bodyPlain}::text        as body_plain,
+    ${tMsOrNull}::int         as t_ms,
+    ${lineTextSnapshot}::text as line_text_snapshot,
+    ${lyricsVersion}::text    as lyrics_version,
+    ${rootIdForRootComment}::uuid as root_id_for_root,
+    ${commentIdForReply}::uuid    as id_for_reply
+),
+
+-- ensure thread meta exists (exactly one row)
 meta_base as (
   insert into exegesis_thread_meta (track_id, group_key)
-  values (${trackId}, ${groupKey})
+  select p.track_id, p.group_key
+  from params p
   on conflict (track_id, group_key) do nothing
-  returning
-    track_id, group_key, pinned_comment_id, locked,
-    comment_count, last_activity_at, created_at, updated_at
+  returning track_id, group_key, pinned_comment_id, locked,
+            comment_count, last_activity_at, created_at, updated_at
 ),
 meta_existing as (
-  select
-    track_id, group_key, pinned_comment_id, locked,
-    comment_count, last_activity_at, created_at, updated_at
-  from exegesis_thread_meta
-  where track_id = ${trackId}
-    and group_key = ${groupKey}
+  select m.track_id, m.group_key, m.pinned_comment_id, m.locked,
+         m.comment_count, m.last_activity_at, m.created_at, m.updated_at
+  from exegesis_thread_meta m
+  join params p
+    on p.track_id = m.track_id and p.group_key = m.group_key
   limit 1
 ),
 meta_pre as (
@@ -398,19 +417,18 @@ meta_pre as (
   where not exists (select 1 from meta_base)
 ),
 
--- ensure identity exists and yield exactly one row (base)
+-- ensure identity exists (exactly one row)
 ident_base as (
   insert into exegesis_identity (member_id, anon_label)
-  values (${memberId}::uuid, ${label})
+  select p.member_id, p.anon_label
+  from params p
   on conflict (member_id) do nothing
-  returning
-    member_id, anon_label, public_name, public_name_unlocked_at, contribution_count
+  returning member_id, anon_label, public_name, public_name_unlocked_at, contribution_count
 ),
 ident_existing as (
-  select
-    member_id, anon_label, public_name, public_name_unlocked_at, contribution_count
-  from exegesis_identity
-  where member_id = ${memberId}::uuid
+  select i.member_id, i.anon_label, i.public_name, i.public_name_unlocked_at, i.contribution_count
+  from exegesis_identity i
+  join params p on p.member_id = i.member_id
   limit 1
 ),
 ident_pre as (
@@ -420,127 +438,123 @@ ident_pre as (
   where not exists (select 1 from ident_base)
 ),
 
--- lock / existence guard (depends on meta_pre + ident_pre)
-guard as (
+-- parent (0/1 row) + a single-row “parent facts” shim
+parent_row as (
+  select c.id, c.track_id, c.group_key, c.root_id, c.depth
+  from exegesis_comment c
+  join params p on c.id = p.parent_id
+  limit 1
+),
+parent_facts as (
+  select
+    p.parent_id is not null                          as has_parent,
+    (select id from parent_row)                      as parent_id_found,
+    (select track_id from parent_row)                as parent_track_id,
+    (select group_key from parent_row)               as parent_group_key,
+    (select root_id from parent_row)                 as parent_root_id,
+    (select depth from parent_row)                   as parent_depth
+  from params p
+),
+
+-- single-row guard (this is the key structural change)
+guard_row as (
   select
     case
       when (select track_id from meta_pre) is null then 'META_MISSING'
       when (select member_id from ident_pre) is null then 'IDENT_MISSING'
       when (select locked from meta_pre) then 'LOCKED'
+
+      when (select has_parent from parent_facts)
+           and (select parent_id_found from parent_facts) is null then 'PARENT_NOT_FOUND'
+
+      when (select has_parent from parent_facts)
+           and (select parent_track_id from parent_facts) <> (select track_id from params) then 'PARENT_SCOPE'
+
+      when (select has_parent from parent_facts)
+           and (select parent_group_key from parent_facts) <> (select group_key from params) then 'PARENT_SCOPE'
+
+      when (select has_parent from parent_facts)
+           and ((select parent_depth from parent_facts) + 1) > 6 then 'DEPTH'
+
       else null
     end as err
 ),
-      -- resolve parent (if any)
-      parent as (
-        select id, track_id, group_key, root_id, depth
-        from exegesis_comment
-        where id = ${parentUuid}::uuid
-        limit 1
-      ),
-      parent_guard as (
-        select
-          case
-            when ${parentUuid}::uuid is null then null
-            when (select id from parent) is null then 'PARENT_NOT_FOUND'
-            when (select track_id from parent) <> ${trackId} then 'PARENT_SCOPE'
-            when (select group_key from parent) <> ${groupKey} then 'PARENT_SCOPE'
-            when ((select depth from parent) + 1) > 6 then 'DEPTH'
-            else null
-          end as err
-      ),
-      resolved as (
-        select
-          case
-  when ${parentUuid}::uuid is null then ${rootIdForRootComment}::uuid
-  else (select root_id from parent)
-end as root_id,
-          case
-            when ${parentUuid}::uuid is null then 0::int
-            else ((select depth from parent) + 1)::int
-          end as depth,
-          case
-  when ${parentUuid}::uuid is null then ${rootIdForRootComment}::uuid
-  else ${commentIdForReply}::uuid
-end as id
-      ),
-      inserted as (
-        insert into exegesis_comment (
-          id,
-          track_id,
-          group_key,
-          line_key,
-          parent_id,
-          root_id,
-          depth,
-          body_rich,
-          body_plain,
-          t_ms,
-          line_text_snapshot,
-          lyrics_version,
-          created_by_member_id,
-          status
-        )
-        select
-          (select id from resolved),
-          ${trackId},
-          ${groupKey},
-          ${lineKey},
-          ${parentUuid}::uuid,
-          (select root_id from resolved),
-          (select depth from resolved),
-          ${bodyRichJson}::jsonb,
-          ${bodyPlain},
-          ${tMsOrNull}::int,
-          ${lineTextSnapshot},
-          ${lyricsVersion},
-          ${memberId}::uuid,
-          'live'
-        where (select err from guard) is null
-          and (select err from parent_guard) is null
-        returning
-          id,
-          track_id,
-          group_key,
-          line_key,
-          parent_id,
-          root_id,
-          depth,
-          body_rich,
-          body_plain,
-          t_ms,
-          line_text_snapshot,
-          lyrics_version,
-          created_by_member_id,
-          status::text as status,
-          created_at,
-          edited_at,
-          edit_count,
-          vote_count
-      ),
-          meta_upd as (
-  update exegesis_thread_meta
+
+resolved as (
+  select
+    case
+      when (select parent_id from params) is null then (select root_id_for_root from params)
+      else (select parent_root_id from parent_facts)
+    end as root_id,
+    case
+      when (select parent_id from params) is null then 0::int
+      else ((select parent_depth from parent_facts) + 1)::int
+    end as depth,
+    case
+      when (select parent_id from params) is null then (select root_id_for_root from params)
+      else (select id_for_reply from params)
+    end as id
+),
+
+inserted as (
+  insert into exegesis_comment (
+    id, track_id, group_key, line_key, parent_id, root_id, depth,
+    body_rich, body_plain, t_ms, line_text_snapshot, lyrics_version,
+    created_by_member_id, status
+  )
+  select
+    r.id,
+    p.track_id,
+    p.group_key,
+    p.line_key,
+    p.parent_id,
+    r.root_id,
+    r.depth,
+    p.body_rich,
+    p.body_plain,
+    p.t_ms,
+    p.line_text_snapshot,
+    p.lyrics_version,
+    p.member_id,
+    'live'
+  from params p
+  cross join resolved r
+  cross join guard_row g
+  where g.err is null
+  returning
+    id, track_id, group_key, line_key, parent_id, root_id, depth,
+    body_rich, body_plain, t_ms, line_text_snapshot, lyrics_version,
+    created_by_member_id, status::text as status,
+    created_at, edited_at, edit_count, vote_count
+),
+
+meta_upd as (
+  update exegesis_thread_meta m
   set
-    comment_count = comment_count + 1,
+    comment_count = m.comment_count + 1,
     last_activity_at = now(),
     updated_at = now()
-  where track_id = ${trackId}
-    and group_key = ${groupKey}
+  from params p
+  where m.track_id = p.track_id
+    and m.group_key = p.group_key
     and exists (select 1 from inserted)
-  returning track_id, group_key, pinned_comment_id, locked, comment_count, last_activity_at, created_at, updated_at
+  returning m.track_id, m.group_key, m.pinned_comment_id, m.locked,
+            m.comment_count, m.last_activity_at, m.created_at, m.updated_at
 ),
 
 ident_upd as (
-  update exegesis_identity
+  update exegesis_identity i
   set
-    contribution_count = contribution_count + 1,
+    contribution_count = i.contribution_count + 1,
     public_name_unlocked_at = case
-      when public_name_unlocked_at is null and (contribution_count + 1) >= 5 then now()
-      else public_name_unlocked_at
+      when i.public_name_unlocked_at is null and (i.contribution_count + 1) >= 5 then now()
+      else i.public_name_unlocked_at
     end,
     updated_at = now()
-  where member_id = ${memberId}::uuid
+  from params p
+  where i.member_id = p.member_id
     and exists (select 1 from inserted)
-  returning member_id, anon_label, public_name, public_name_unlocked_at, contribution_count
+  returning i.member_id, i.anon_label, i.public_name, i.public_name_unlocked_at, i.contribution_count
 ),
 
 meta_out as (
@@ -559,13 +573,13 @@ ident_out as (
 
 stats as (
   select
-    coalesce((select err from guard), (select err from parent_guard)) as guard_err,
+    (select err from guard_row) as guard_err,
     (select count(*)::int from inserted) as inserted_count
 )
 
 select
-  s.inserted_count as inserted_count,
-  s.guard_err as guard_err,
+  s.inserted_count,
+  s.guard_err,
 
   i.id,
   i.track_id,
@@ -580,7 +594,7 @@ select
   i.line_text_snapshot,
   i.lyrics_version,
   i.created_by_member_id,
-  i.status::text as status,
+  i.status,
   i.created_at,
   i.edited_at,
   i.edit_count,
@@ -614,21 +628,10 @@ limit 1
       return json(500, { ok: false, error: "No response row." });
     }
 
-    if (!row.meta_exists) {
-      console.error("[exegesis/comment] meta_final missing", {
-        trackId,
-        groupKey,
-      });
-      return json(500, { ok: false, error: "Thread meta missing." });
-    }
-    if (!row.ident_exists) {
-      console.error("[exegesis/comment] ident_final missing", { memberId });
-      return json(500, { ok: false, error: "Identity missing." });
-    }
-
     if ((row.inserted_count ?? 0) === 0) {
       console.error("[exegesis/comment] insert suppressed", {
         trackId,
+        parentIdRaw,
         groupKey,
         lineKey,
         parentId,
