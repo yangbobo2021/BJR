@@ -3,6 +3,7 @@
 
 import React from "react";
 import TipTapEditor from "./TipTapEditor";
+import TipTapReadOnly from "./TipTapReadOnly";
 
 type LyricsApiCue = {
   lineKey: string;
@@ -98,6 +99,13 @@ type CommentPostOk = {
   identities: Record<string, IdentityDTO>;
 };
 
+type CommentEditOk = {
+  ok: true;
+  comment: CommentDTO;
+  meta: ThreadMetaDTO;
+};
+type CommentEditErr = { ok: false; error: string; code?: string };
+
 type VoteOk = {
   ok: true;
   commentId: string;
@@ -137,7 +145,9 @@ function reorderRootsPinnedFirst(
   const pid = (pinnedCommentId ?? "").trim();
   if (!pid) return roots;
 
-  const idx = roots.findIndex((r) => (r.comments?.[0]?.id ?? "") === pid);
+  const idx = roots.findIndex((r) =>
+    (r.comments ?? []).some((c) => c.id === pid),
+  );
   if (idx <= 0) return roots;
 
   const pinned = roots[idx];
@@ -156,6 +166,14 @@ function parseHash(): { lineKey?: string; commentId?: string } {
     lineKey: lineKey || undefined,
     commentId: commentId || undefined,
   };
+}
+
+function isTipTapDoc(v: unknown): v is { type: "doc"; content?: unknown[] } {
+  if (!v || typeof v !== "object") return false;
+  const o = v as { type?: unknown; content?: unknown };
+  if (o.type !== "doc") return false;
+  if (typeof o.content === "undefined") return true;
+  return Array.isArray(o.content);
 }
 
 function setHash(next: { lineKey?: string; commentId?: string }) {
@@ -186,6 +204,30 @@ export default function ExegesisTrackClient(props: {
   const [draft, setDraft] = React.useState<string>("");
   const [draftDoc, setDraftDoc] = React.useState<unknown | null>(null);
   const [posting, setPosting] = React.useState<boolean>(false);
+
+  type ReplyDraft = {
+    open: boolean;
+    plain: string;
+    doc: unknown | null;
+    posting: boolean;
+    err: string;
+  };
+
+  type EditDraft = {
+    open: boolean;
+    plain: string;
+    doc: unknown | null;
+    posting: boolean;
+    err: string;
+  };
+
+  const [editByCommentId, setEditByCommentId] = React.useState<
+    Record<string, EditDraft>
+  >({});
+
+  const [replyByCommentId, setReplyByCommentId] = React.useState<
+    Record<string, ReplyDraft>
+  >({});
 
   const [claimOpen, setClaimOpen] = React.useState(false);
   const [claimName, setClaimName] = React.useState("");
@@ -248,6 +290,165 @@ export default function ExegesisTrackClient(props: {
       if (!cur) return prev;
       return { ...prev, [commentId]: { ...cur, open: false, err: "" } };
     });
+  }
+
+  function openReply(commentId: string) {
+    if (!canPost || isLocked) return;
+    setReplyByCommentId((prev) => {
+      const cur = prev[commentId];
+      const base: ReplyDraft = cur ?? {
+        open: true,
+        plain: "",
+        doc: null,
+        posting: false,
+        err: "",
+      };
+      return {
+        ...prev,
+        [commentId]: { ...base, open: true, err: "" },
+      };
+    });
+  }
+
+  function closeReply(commentId: string) {
+    setReplyByCommentId((prev) => {
+      if (!prev[commentId]) return prev;
+      const next = { ...prev };
+      delete next[commentId];
+      return next;
+    });
+  }
+
+  function openEdit(c: CommentDTO) {
+    if (!canPost || isLocked) return;
+    if (!viewerMemberId) return;
+    if (c.createdByMemberId !== viewerMemberId) return;
+    if (c.status !== "live") return;
+
+    setEditByCommentId((prev) => {
+      const cur = prev[c.id];
+      const base: EditDraft = cur ?? {
+        open: true,
+        plain: c.bodyPlain ?? "",
+        doc: isTipTapDoc(c.bodyRich) ? c.bodyRich : null,
+        posting: false,
+        err: "",
+      };
+      return {
+        ...prev,
+        [c.id]: {
+          ...base,
+          open: true,
+          // refresh from current comment snapshot when opening
+          plain: c.bodyPlain ?? base.plain,
+          doc: isTipTapDoc(c.bodyRich) ? c.bodyRich : base.doc,
+          err: "",
+        },
+      };
+    });
+  }
+
+  function closeEdit(commentId: string) {
+    setEditByCommentId((prev) => {
+      if (!prev[commentId]) return prev;
+      const next = { ...prev };
+      delete next[commentId];
+      return next;
+    });
+  }
+
+  async function submitEdit(c: CommentDTO) {
+    if (!canPost) {
+      setThreadErr("Patron or Partner required to edit.");
+      return;
+    }
+    if (isLocked) {
+      setThreadErr("Thread is locked.");
+      return;
+    }
+    if (!thread) {
+      setThreadErr("Thread not loaded yet.");
+      return;
+    }
+    if (!viewerMemberId || c.createdByMemberId !== viewerMemberId) {
+      setThreadErr("You can only edit your own comments.");
+      return;
+    }
+    if (c.status !== "live") {
+      setThreadErr("Only live comments can be edited.");
+      return;
+    }
+
+    const draft0 = editByCommentId[c.id];
+    if (!draft0 || !draft0.open) return;
+
+    const text = (draft0.plain ?? "").trim();
+    if (!text) {
+      setEditByCommentId((prev) => ({
+        ...prev,
+        [c.id]: { ...draft0, err: "Edit is empty." },
+      }));
+      return;
+    }
+
+    setEditByCommentId((prev) => ({
+      ...prev,
+      [c.id]: { ...draft0, posting: true, err: "" },
+    }));
+    setThreadErr("");
+
+    const doc =
+      draft0.doc ??
+      ({
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+      } as const);
+
+    try {
+      const r = await fetch("/api/exegesis/comment/edit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          commentId: c.id,
+          bodyPlain: text, // rollout: keep sending
+          bodyRich: doc,
+        }),
+      });
+
+      const j = (await r.json()) as CommentEditOk | CommentEditErr;
+
+      if (!j.ok) {
+        setEditByCommentId((prev) => ({
+          ...prev,
+          [c.id]: { ...draft0, posting: false, err: j.error || "Edit failed." },
+        }));
+        return;
+      }
+
+      // optimistic patch: replace the edited comment by id everywhere
+      setThread((prev) => {
+        if (!prev) return prev;
+
+        const roots = (prev.roots ?? []).map((root) => ({
+          ...root,
+          comments: (root.comments ?? []).map((x) =>
+            x.id === j.comment.id ? { ...x, ...j.comment } : x,
+          ),
+        }));
+
+        return { ...prev, roots, meta: j.meta };
+      });
+
+      // close editor
+      closeEdit(c.id);
+    } finally {
+      setEditByCommentId((prev) => {
+        const cur = prev[c.id];
+        if (!cur) return prev;
+        if (!cur.posting) return prev;
+        return { ...prev, [c.id]: { ...cur, posting: false } };
+      });
+    }
   }
 
   async function submitReport(commentId: string) {
@@ -363,7 +564,7 @@ export default function ExegesisTrackClient(props: {
   }, [lyrics.trackId, lyrics.cues]);
 
   const threadKey = thread
-    ? `${thread.trackId}::${thread.groupKey}::${thread.roots.length}`
+    ? `${thread.trackId}::${thread.groupKey}::${thread.meta?.commentCount ?? 0}`
     : "";
 
   React.useEffect(() => {
@@ -527,6 +728,166 @@ export default function ExegesisTrackClient(props: {
         .catch(() => {});
     } finally {
       setPosting(false);
+    }
+  }
+
+  async function postReply(parentComment: CommentDTO) {
+    if (!selected) return;
+    if (!canPost) {
+      setThreadErr("Patron or Partner required to post.");
+      return;
+    }
+    if (isLocked) {
+      setThreadErr("Thread is locked.");
+      return;
+    }
+    if (!thread) {
+      setThreadErr("Thread not loaded yet.");
+      return;
+    }
+
+    const parentId = parentComment.id;
+    const draft0 = replyByCommentId[parentId];
+    if (!draft0 || !draft0.open) return;
+
+    const text = (draft0.plain ?? "").trim();
+    if (!text) {
+      setReplyByCommentId((prev) => ({
+        ...prev,
+        [parentId]: { ...draft0, err: "Reply is empty." },
+      }));
+      return;
+    }
+
+    // depth cap: server enforces, but keep UI aligned
+    if ((parentComment.depth ?? 0) + 1 > 6) {
+      setReplyByCommentId((prev) => ({
+        ...prev,
+        [parentId]: { ...draft0, err: "Thread depth limit reached." },
+      }));
+      return;
+    }
+
+    setReplyByCommentId((prev) => ({
+      ...prev,
+      [parentId]: { ...draft0, posting: true, err: "" },
+    }));
+    setThreadErr("");
+
+    const groupKey = (thread.groupKey ?? "").trim();
+
+    try {
+      const doc =
+        draft0.doc ??
+        ({
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text }],
+            },
+          ],
+        } as const);
+
+      const r = await fetch("/api/exegesis/comment", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          trackId,
+          lineKey: selected.lineKey,
+          groupKey, // drift guard
+          parentId,
+
+          // rollout: still send bodyPlain; server derives when bodyRich present
+          bodyPlain: text,
+          bodyRich: doc,
+
+          tMs: selected.tMs,
+          lineTextSnapshot: selected.lineText,
+          lyricsVersion: lyrics.version ?? null,
+        }),
+      });
+
+      const j = (await r.json()) as
+        | CommentPostOk
+        | { ok: false; error: string };
+
+      if (!j.ok) {
+        setReplyByCommentId((prev) => ({
+          ...prev,
+          [parentId]: {
+            ...draft0,
+            posting: false,
+            err: j.error || "Reply failed.",
+          },
+        }));
+        return;
+      }
+
+      // clear reply draft
+      setReplyByCommentId((prev) => ({
+        ...prev,
+        [parentId]: {
+          ...draft0,
+          posting: false,
+          open: false,
+          plain: "",
+          doc: null,
+          err: "",
+        },
+      }));
+
+      pendingScrollCommentIdRef.current = j.comment.id;
+      setHash({ lineKey: selected.lineKey, commentId: j.comment.id });
+
+      // optimistic insert into the correct root bucket (append chronologically)
+      setThread((prev) => {
+        if (!prev) return prev;
+        if (prev.trackId !== j.trackId || prev.groupKey !== j.groupKey)
+          return prev;
+
+        const roots = (prev.roots ?? []).map((root) => {
+          if (root.rootId !== j.comment.rootId) return root;
+          return { ...root, comments: [...(root.comments ?? []), j.comment] };
+        });
+
+        // if we didn't find the root (shouldn't happen), fall back by creating it
+        const found = roots.some((r0) => r0.rootId === j.comment.rootId);
+        const roots2 = found
+          ? roots
+          : roots.concat([{ rootId: j.comment.rootId, comments: [j.comment] }]);
+
+        return {
+          ...prev,
+          meta: j.meta,
+          roots: roots2,
+          identities: { ...prev.identities, ...j.identities },
+        };
+      });
+
+      // reconcile with server truth (same as root post)
+      const url =
+        `/api/exegesis/thread?trackId=${encodeURIComponent(trackId)}` +
+        `&groupKey=${encodeURIComponent(groupKey)}` +
+        `&sort=${encodeURIComponent(sort)}`;
+
+      fetch(url, { cache: "no-store" })
+        .then((r2) => r2.json())
+        .then((jj: ThreadApiOk | ThreadApiErr) => {
+          if (jj && (jj as ThreadApiOk).ok) {
+            setThread(jj as ThreadApiOk);
+            setThreadErr("");
+          }
+        })
+        .catch(() => {});
+    } finally {
+      // ensure posting flag is cleared even on throw
+      setReplyByCommentId((prev) => {
+        const cur = prev[parentId];
+        if (!cur) return prev;
+        if (!cur.posting) return prev;
+        return { ...prev, [parentId]: { ...cur, posting: false } };
+      });
     }
   }
 
@@ -807,6 +1168,16 @@ export default function ExegesisTrackClient(props: {
                       const ident = thread?.identities?.[c.createdByMemberId];
                       const name =
                         ident?.publicName || ident?.anonLabel || "Anonymous";
+                      const replyBusy = Boolean(
+                        replyByCommentId[c.id]?.posting,
+                      );
+                      const isAuthor =
+                        !!viewerMemberId &&
+                        c.createdByMemberId === viewerMemberId;
+                      const canEdit =
+                        canPost && !isLocked && isAuthor && c.status === "live";
+
+                      const editBusy = Boolean(editByCommentId[c.id]?.posting);
 
                       // Phase A safety: respect status
                       if (c.status === "deleted") return null;
@@ -816,9 +1187,19 @@ export default function ExegesisTrackClient(props: {
                           id={`exegesis-c-${c.id}`}
                           key={c.id}
                           className="py-2 scroll-mt-4"
+                          style={{
+                            paddingLeft: Math.min(24, (c.depth ?? 0) * 12),
+                          }}
                         >
                           <div className="flex items-center justify-between gap-3">
-                            <div className="text-xs opacity-70">{name}</div>
+                            <div className="flex items-center gap-2">
+                              <div className="text-xs opacity-70">{name}</div>
+                              {c.editedAt || (c.editCount ?? 0) > 0 ? (
+                                <div className="text-[11px] opacity-50">
+                                  edited
+                                </div>
+                              ) : null}
+                            </div>
 
                             <div className="flex items-center gap-2">
                               {canVote ? (
@@ -853,6 +1234,36 @@ export default function ExegesisTrackClient(props: {
                                   Report
                                 </button>
                               ) : null}
+
+                              {canEdit ? (
+                                <button
+                                  className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40"
+                                  disabled={editBusy || replyBusy}
+                                  onClick={() => openEdit(c)}
+                                  title="Edit"
+                                >
+                                  Edit
+                                </button>
+                              ) : null}
+
+                              {canPost && !isLocked ? (
+                                <button
+                                  className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40"
+                                  disabled={
+                                    replyBusy ||
+                                    c.status !== "live" ||
+                                    c.depth >= 6
+                                  }
+                                  onClick={() => openReply(c.id)}
+                                  title={
+                                    c.depth >= 6
+                                      ? "Max thread depth reached"
+                                      : "Reply"
+                                  }
+                                >
+                                  Reply
+                                </button>
+                              ) : null}
                             </div>
                           </div>
 
@@ -861,8 +1272,166 @@ export default function ExegesisTrackClient(props: {
                               This comment is hidden.
                             </div>
                           ) : (
-                            <div className="mt-1 text-sm">{c.bodyPlain}</div>
+                            <div className="mt-1">
+                              {isTipTapDoc(c.bodyRich) ? (
+                                <TipTapReadOnly doc={c.bodyRich} />
+                              ) : (
+                                <div className="text-sm whitespace-pre-wrap">
+                                  {c.bodyPlain}
+                                </div>
+                              )}
+                            </div>
                           )}
+
+                          {canPost &&
+                          !isLocked &&
+                          canEdit &&
+                          editByCommentId[c.id]?.open ? (
+                            <div className="mt-2 rounded-md bg-black/25 p-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="text-xs opacity-70">Edit</div>
+                                <button
+                                  className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
+                                  onClick={() => closeEdit(c.id)}
+                                >
+                                  Close
+                                </button>
+                              </div>
+
+                              <div className="mt-2">
+                                <TipTapEditor
+                                  valuePlain={
+                                    editByCommentId[c.id]?.plain ?? ""
+                                  }
+                                  valueDoc={editByCommentId[c.id]?.doc ?? null}
+                                  disabled={editByCommentId[c.id]?.posting}
+                                  onChangePlain={(plain) =>
+                                    setEditByCommentId((prev) => ({
+                                      ...prev,
+                                      [c.id]: {
+                                        ...(prev[c.id] as EditDraft),
+                                        plain,
+                                        err: "",
+                                      },
+                                    }))
+                                  }
+                                  onChangeDoc={(doc) =>
+                                    setEditByCommentId((prev) => ({
+                                      ...prev,
+                                      [c.id]: {
+                                        ...(prev[c.id] as EditDraft),
+                                        doc,
+                                        err: "",
+                                      },
+                                    }))
+                                  }
+                                />
+                              </div>
+
+                              {editByCommentId[c.id]?.err ? (
+                                <div className="mt-2 text-xs opacity-75">
+                                  {editByCommentId[c.id]?.err}
+                                </div>
+                              ) : null}
+
+                              <div className="mt-2 flex items-center justify-between">
+                                <div className="text-xs opacity-60">
+                                  {
+                                    (editByCommentId[c.id]?.plain ?? "").trim()
+                                      .length
+                                  }
+                                  /5000
+                                </div>
+                                <button
+                                  className="rounded-md bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15 disabled:opacity-40"
+                                  disabled={
+                                    editByCommentId[c.id]?.posting ||
+                                    !(editByCommentId[c.id]?.plain ?? "").trim()
+                                  }
+                                  onClick={() => void submitEdit(c)}
+                                >
+                                  {editByCommentId[c.id]?.posting
+                                    ? "Saving…"
+                                    : "Save edit"}
+                                </button>
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {canPost &&
+                          !isLocked &&
+                          replyByCommentId[c.id]?.open ? (
+                            <div className="mt-2 rounded-md bg-black/25 p-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="text-xs opacity-70">Reply</div>
+                                <button
+                                  className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
+                                  onClick={() => closeReply(c.id)}
+                                >
+                                  Close
+                                </button>
+                              </div>
+
+                              <div className="mt-2">
+                                <TipTapEditor
+                                  valuePlain={
+                                    replyByCommentId[c.id]?.plain ?? ""
+                                  }
+                                  disabled={replyByCommentId[c.id]?.posting}
+                                  onChangePlain={(plain) =>
+                                    setReplyByCommentId((prev) => ({
+                                      ...prev,
+                                      [c.id]: {
+                                        ...(prev[c.id] as ReplyDraft),
+                                        plain,
+                                        err: "",
+                                      },
+                                    }))
+                                  }
+                                  onChangeDoc={(doc) =>
+                                    setReplyByCommentId((prev) => ({
+                                      ...prev,
+                                      [c.id]: {
+                                        ...(prev[c.id] as ReplyDraft),
+                                        doc,
+                                        err: "",
+                                      },
+                                    }))
+                                  }
+                                />
+                              </div>
+
+                              {replyByCommentId[c.id]?.err ? (
+                                <div className="mt-2 text-xs opacity-75">
+                                  {replyByCommentId[c.id]?.err}
+                                </div>
+                              ) : null}
+
+                              <div className="mt-2 flex items-center justify-between">
+                                <div className="text-xs opacity-60">
+                                  {
+                                    (replyByCommentId[c.id]?.plain ?? "").trim()
+                                      .length
+                                  }
+                                  /5000
+                                </div>
+                                <button
+                                  className="rounded-md bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15 disabled:opacity-40"
+                                  disabled={
+                                    replyByCommentId[c.id]?.posting ||
+                                    !(
+                                      replyByCommentId[c.id]?.plain ?? ""
+                                    ).trim()
+                                  }
+                                  onClick={() => void postReply(c)}
+                                >
+                                  {replyByCommentId[c.id]?.posting
+                                    ? "Posting…"
+                                    : "Post reply"}
+                                </button>
+                              </div>
+                            </div>
+                          ) : null}
 
                           {canReport && reportByCommentId[c.id]?.open ? (
                             <div className="mt-2 rounded-md bg-black/25 p-3 text-sm">

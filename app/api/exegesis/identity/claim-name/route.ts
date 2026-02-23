@@ -83,15 +83,6 @@ function validatePublicName(
   return { ok: true, value: s, lowered };
 }
 
-function toIso(v: unknown): string | null {
-  if (!v) return null;
-  if (typeof v === "string") return v; // already serialized by driver
-  if (v instanceof Date) return v.toISOString();
-  return String(v);
-}
-
-const UNLOCK_AT = 5;
-
 async function requireMemberId(): Promise<string | null> {
   const { userId } = await auth();
   if (!userId) return null;
@@ -136,7 +127,7 @@ export async function POST(req: NextRequest) {
       member_id: string | null;
       anon_label: string | null;
       public_name: string | null;
-      public_name_unlocked_at: unknown;
+      public_name_unlocked_at: string | null;
       contribution_count: number | null;
     }>`
       with
@@ -147,13 +138,13 @@ export async function POST(req: NextRequest) {
         limit 1
       ),
       guard as (
-        select
-          case
-            when (select member_id from me) is null then 'NO_IDENTITY'
-            when coalesce((select contribution_count from me), 0) < ${UNLOCK_AT} then 'NOT_UNLOCKED'
-            else null
-          end as err
-      ),
+  select
+    case
+      when (select member_id from me) is null then 'NO_IDENTITY'
+      when (select public_name_unlocked_at from me) is null then 'NOT_UNLOCKED'
+      else null
+    end as err
+),
       upd as (
         update exegesis_identity
         set
@@ -165,37 +156,48 @@ export async function POST(req: NextRequest) {
         returning member_id, anon_label, public_name, public_name_unlocked_at, contribution_count
       ),
       out as (
-        -- If already claimed, return existing row.
-        select member_id, anon_label, public_name, public_name_unlocked_at, contribution_count
-        from me
-        where (select public_name from me) is not null
+  -- If already claimed, return existing row.
+  select member_id, anon_label, public_name, public_name_unlocked_at, contribution_count
+  from me
+  where (select public_name from me) is not null
 
-        union all
+  union all
 
-        -- If we just updated, return updated row.
-        select member_id, anon_label, public_name, public_name_unlocked_at, contribution_count
-        from upd
-      )
-      select
-        (select err from guard) is null as ok,
-        (select err from guard) as err,
-        o.member_id,
-        o.anon_label,
-        o.public_name,
-        o.public_name_unlocked_at,
-        o.contribution_count
-      from out o
-      union all
-      select
-        false as ok,
-        (select err from guard) as err,
-        null::uuid as member_id,
-        null::text as anon_label,
-        null::citext as public_name,
-        null::timestamptz as public_name_unlocked_at,
-        null::int as contribution_count
-      where (select err from guard) is not null
-      limit 1
+  -- If we just updated, return updated row.
+  select member_id, anon_label, public_name, public_name_unlocked_at, contribution_count
+  from upd
+
+  union all
+
+  -- Guard OK but update didn't happen (race). Return current row anyway.
+  select member_id, anon_label, public_name, public_name_unlocked_at, contribution_count
+  from me
+  where (select err from guard) is null
+    and not exists (select 1 from upd)
+)
+  select
+    true as ok,
+    null::text as err,
+    o.member_id,
+    o.anon_label,
+    o.public_name,
+    o.public_name_unlocked_at,
+    o.contribution_count
+  from out o
+
+  union all
+
+  select
+    false as ok,
+    (select err from guard) as err,
+    null::uuid as member_id,
+    null::text as anon_label,
+    null::citext as public_name,
+    null::timestamptz as public_name_unlocked_at,
+    null::int as contribution_count
+  where (select err from guard) is not null
+
+  limit 1
     `;
 
     const row = r.rows?.[0] ?? null;
@@ -213,7 +215,7 @@ export async function POST(req: NextRequest) {
         return json(403, {
           ok: false,
           code: "NOT_UNLOCKED",
-          error: `Public name unlocks after ${UNLOCK_AT} contributions.`,
+          error: `Public name unlocks after 5 contributions.`,
         });
       }
       return json(400, { ok: false, error: "Cannot claim name." });
@@ -228,7 +230,7 @@ export async function POST(req: NextRequest) {
         memberId: String(row.member_id),
         anonLabel: String(row.anon_label ?? ""),
         publicName: row.public_name ?? null,
-        publicNameUnlockedAt: toIso(row.public_name_unlocked_at),
+        publicNameUnlockedAt: row.public_name_unlocked_at,
         contributionCount: Number(row.contribution_count ?? 0),
       },
     });

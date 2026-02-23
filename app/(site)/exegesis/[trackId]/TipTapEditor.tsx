@@ -27,8 +27,17 @@ function makeLinkSafe(href: string): string | null {
   }
 }
 
+import type { JSONContent } from "@tiptap/core";
+
+function isJsonDoc(v: unknown): v is JSONContent {
+  return (
+    !!v && typeof v === "object" && (v as { type?: unknown }).type === "doc"
+  );
+}
+
 export default function TipTapEditor(props: {
   valuePlain: string;
+  valueDoc?: unknown | null; // NEW
   disabled?: boolean;
   onChangePlain: (plain: string) => void;
   onChangeDoc: (doc: TipTapDoc) => void;
@@ -55,7 +64,11 @@ export default function TipTapEditor(props: {
         validate: (href) => Boolean(makeLinkSafe(href)),
       }),
     ],
-    content: valuePlain ? valuePlain : "",
+    content: isJsonDoc(props.valueDoc)
+      ? (props.valueDoc as JSONContent)
+      : valuePlain
+        ? valuePlain
+        : "",
     editorProps: {
       attributes: {
         class:
@@ -79,11 +92,19 @@ export default function TipTapEditor(props: {
   // If external value changes (rare), update editor content
   React.useEffect(() => {
     if (!editor) return;
-    const current = (editor.getText() ?? "").trim();
+
+    const nextDoc = props.valueDoc;
+    if (isJsonDoc(nextDoc)) {
+      editor.commands.setContent(nextDoc as JSONContent, { emitUpdate: false });
+      return;
+    }
+
+    const current = (editor.getText({ blockSeparator: "\n" }) ?? "").trim();
     const next = (valuePlain ?? "").trim();
     if (current === next) return;
+
     editor.commands.setContent(next, { emitUpdate: false });
-  }, [editor, valuePlain]);
+  }, [editor, valuePlain, props.valueDoc]);
 
   return <EditorContent editor={editor} />;
 }

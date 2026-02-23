@@ -150,12 +150,12 @@ function stableAnonLabel(memberId: string): string {
   return `Anonymous ${w}`;
 }
 
-async function getViewer(req: NextRequest): Promise<Viewer> {
+async function getViewer(
+  req: NextRequest,
+  mintedAnonId: string,
+): Promise<Viewer> {
   const { userId } = await auth();
-  if (!userId) {
-    const anonId = (req.cookies.get("af_anon")?.value ?? "").trim();
-    return { kind: "anon", anonId: anonId || "anon_missing" };
-  }
+  if (!userId) return { kind: "anon", anonId: mintedAnonId };
 
   const r = await sql<{ id: string }>`
     select id
@@ -164,7 +164,8 @@ async function getViewer(req: NextRequest): Promise<Viewer> {
     limit 1
   `;
   const memberId = r.rows?.[0]?.id ?? "";
-  if (!memberId) return { kind: "anon", anonId: "anon_provisioning" };
+  if (!memberId) return { kind: "anon", anonId: mintedAnonId };
+
   return { kind: "member", memberId };
 }
 
@@ -287,20 +288,13 @@ export async function GET(req: NextRequest) {
 
   if (!groupKey) return json(400, { ok: false, error: "Invalid group key." });
 
-  // Prepare a response so we can persist anon cookie when needed
   const res = NextResponse.json<ApiOk | ApiErr>(
     { ok: false, error: "init" },
     { status: 200 },
   );
   const { anonId } = ensureAnonId(req, res);
 
-  const viewer0 = await getViewer(req);
-
-  // If anon, force minted anonId (never operate on "anon_missing")
-  const viewer: Viewer =
-    viewer0.kind === "anon" && viewer0.anonId === "anon_missing"
-      ? { kind: "anon", anonId }
-      : viewer0;
+  const viewer = await getViewer(req, anonId);
 
   const viewerMemberId =
     viewer.kind === "member" && isUuid(viewer.memberId)
@@ -321,16 +315,21 @@ export async function GET(req: NextRequest) {
   if (viewer.kind === "anon") {
     const LIMIT = 8;
 
-    const sessionId = viewer.anonId; // v1: sessionId === anonId cookie value
+    const sessionId = anonId; // session id is the minted cookie id
 
     // Ensure session row exists (same as mark-opened)
     await sql`
   insert into anon_exegesis_sessions (id, anon_id)
-  values (${sessionId}, ${viewer.anonId})
+  values (${sessionId}, ${anonId})
   on conflict (id) do nothing
 `;
 
-    const gate = await sql<{ already: boolean; n: number }>`
+    const gate = await sql<{
+      already: boolean;
+      allowed: boolean;
+      n_before: number;
+      n_after: number;
+    }>`
   with
   already as (
     select exists(
@@ -341,32 +340,41 @@ export async function GET(req: NextRequest) {
         and group_key = ${groupKey}
     ) as already
   ),
-  cnt as (
-    select count(*)::int as n
+  cnt_before as (
+    select count(*)::int as n_before
     from anon_exegesis_thread_opens
     where session_id = ${sessionId}
   ),
-  ins as (
+  attempt as (
     insert into anon_exegesis_thread_opens (session_id, track_id, group_key)
     select ${sessionId}, ${trackId}, ${groupKey}
     where (select already from already) = false
-      and (select n from cnt) < ${LIMIT}
+      and (select n_before from cnt_before) < ${LIMIT}
     on conflict (session_id, track_id, group_key) do nothing
     returning 1
+  ),
+  cnt_after as (
+    select count(*)::int as n_after
+    from anon_exegesis_thread_opens
+    where session_id = ${sessionId}
   )
-  select (select already from already) as already, (select n from cnt) as n
+  select
+    (select already from already) as already,
+    ((select already from already) = true or exists(select 1 from attempt)) as allowed,
+    (select n_before from cnt_before) as n_before,
+    (select n_after from cnt_after) as n_after
 `;
 
-    const alreadyOpened = Boolean(gate.rows?.[0]?.already);
-    const n = Number(gate.rows?.[0]?.n ?? 0);
+    const row = gate.rows?.[0];
+    const allowed = Boolean(row?.allowed);
 
-    if (!alreadyOpened && n >= LIMIT) {
+    if (!allowed) {
       return NextResponse.json<ApiErr>(
         {
           ok: false,
           code: "ANON_LIMIT",
           error:
-            "You’ve hit the anon reading limit. Sign in to keep reading and voting.",
+            "Sign in to keep reading.",
         },
         { status: 403, headers: res.headers },
       );
@@ -535,10 +543,7 @@ export async function GET(req: NextRequest) {
 
     const me = identities[viewerMemberId];
     const canClaimName =
-      !!me &&
-      !me.publicName &&
-      typeof me.publicNameUnlockedAt === "string" &&
-      me.publicNameUnlockedAt.trim().length > 0;
+      !!me && !me.publicName && me.publicNameUnlockedAt != null;
 
     viewerDto = {
       kind: "member",

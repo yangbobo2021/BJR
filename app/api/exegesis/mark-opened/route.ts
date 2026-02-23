@@ -3,12 +3,16 @@ import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@vercel/postgres";
 import { ensureAnonId } from "@/lib/anon";
+import {
+  isGroupKeyV1,
+  isKnownCanonicalGroupKey,
+} from "@/lib/exegesis/resolveGroupKey";
 
 export const runtime = "nodejs";
 
 type ApiOk = {
   ok: true;
-  anonId: string;   // cookie anon id (also used as session id here)
+  anonId: string; // cookie anon id (also used as session id here)
   opened: boolean;
   count: number;
   limit: number;
@@ -18,15 +22,6 @@ type ApiErr = { ok: false; error: string };
 
 function norm(s: unknown): string {
   return typeof s === "string" ? s.trim() : "";
-}
-
-function isGroupKeyV1(groupKey: string): boolean {
-  const g = norm(groupKey);
-  if (!g.startsWith("lk:")) return false;
-  const lk = g.slice(3).trim();
-  if (!lk) return false;
-  if (lk.length > 200) return false;
-  return true;
 }
 
 const ANON_LIMIT = 8;
@@ -70,13 +65,25 @@ export async function POST(req: NextRequest) {
     return res;
   }
 
-  if (!groupKey || !isGroupKeyV1(groupKey)) {
+  if (!groupKey) {
     const res = NextResponse.json<ApiErr>(
-      { ok: false, error: "Invalid groupKey." },
+      { ok: false, error: "Missing groupKey." },
       { status: 400 },
     );
     ensureAnonId(req, res);
     return res;
+  }
+
+  if (!isGroupKeyV1(groupKey)) {
+    const ok = await isKnownCanonicalGroupKey({ trackId, groupKey });
+    if (!ok) {
+      const res = NextResponse.json<ApiErr>(
+        { ok: false, error: "Unknown groupKey." },
+        { status: 400 },
+      );
+      ensureAnonId(req, res);
+      return res;
+    }
   }
 
   // Prepare a response so we can persist the anon cookie if newly minted.

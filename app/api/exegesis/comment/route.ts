@@ -242,7 +242,7 @@ export async function POST(req: NextRequest) {
   // Phase C: if bodyRich present, it becomes canonical; derive bodyPlain server-side.
   // If bodyRich missing/null, fall back to legacy plain-only posting.
   let bodyPlain = legacyBodyPlain;
-  let bodyRichJson = "{}";
+  let bodyRichJson = JSON.stringify({ type: "doc", content: [{ type: "paragraph" }] });
 
   if (bodyRichInput !== null && typeof bodyRichInput !== "undefined") {
     const v = validateAndSanitizeTipTapDoc(bodyRichInput);
