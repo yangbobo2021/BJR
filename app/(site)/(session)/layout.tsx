@@ -1,11 +1,9 @@
 // web/app/(site)/(session)/layout.tsx
 import React from "react";
-import { headers } from "next/headers";
 import FooterDrawer from "@/app/home/FooterDrawer";
 import { client } from "@/sanity/lib/client";
 import { urlFor } from "@/sanity/lib/image";
 
-export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
@@ -24,7 +22,6 @@ export default async function SessionLayout(props: {
   // we render ALL “player vs portal” runtime inside this slot.
   runtime: React.ReactNode;
 }) {
-  headers();
 
   const page = await client.fetch<ShadowHomeDoc>(
     shadowHomeQuery,

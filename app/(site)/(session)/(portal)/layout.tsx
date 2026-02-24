@@ -1,14 +1,12 @@
 // web/app/(site)/(portal)/layout.tsx
 import React from "react";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 
 import { client } from "@/sanity/lib/client";
 import { urlFor } from "@/sanity/lib/image";
 
 import FooterDrawer from "@/app/home/FooterDrawer";
 
-export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
@@ -40,8 +38,6 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function PortalLayout(props: {
   children: React.ReactNode;
 }) {
-  headers();
-
   const page = await client.fetch<ShadowHomeDoc>(
     shadowHomeQuery,
     { slug: "home" },

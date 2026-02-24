@@ -1,6 +1,5 @@
 // web/app/(site)/(session)/@runtime/SessionRuntime.tsx
 import React from "react";
-import { headers } from "next/headers";
 import { auth, currentUser } from "@clerk/nextjs/server";
 
 import { client } from "@/sanity/lib/client";
@@ -47,7 +46,6 @@ export default async function SessionRuntime(props: {
   // When present, this is the “player album” canonical slug for /album/:slug routes.
   albumSlugOverride?: string | null;
 }) {
-  headers();
 
   const { userId } = await auth();
   const user = userId ? await currentUser() : null;

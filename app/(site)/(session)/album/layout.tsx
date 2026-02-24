@@ -1,11 +1,9 @@
 // web/app/(site)/album/layout.tsx
 import React from "react";
-import { headers } from "next/headers";
 import { client } from "@/sanity/lib/client";
 import { urlFor } from "@/sanity/lib/image";
 import FooterDrawer from "@/app/home/FooterDrawer";
 
-export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
@@ -22,7 +20,6 @@ const shadowHomeQuery = `
 export default async function AlbumLayout(props: {
   children: React.ReactNode;
 }) {
-  headers();
 
   const page = await client.fetch<ShadowHomeDoc>(
     shadowHomeQuery,
