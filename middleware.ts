@@ -27,8 +27,11 @@ function pickPreservedParams(url: URL): URLSearchParams {
   const out = new URLSearchParams();
 
   // unify share token into st
-  const st = (url.searchParams.get("st") ?? url.searchParams.get("share") ?? "")
-    .trim();
+  const st = (
+    url.searchParams.get("st") ??
+    url.searchParams.get("share") ??
+    ""
+  ).trim();
   if (st) out.set("st", st);
 
   // keep autoplay if present
@@ -53,7 +56,10 @@ function filteredCanonicalParams(url: URL): URLSearchParams {
   const out = new URLSearchParams();
   for (const [k, v] of url.searchParams.entries()) {
     if (STRIP_KEYS.has(k)) continue;
-    if (PRESERVE_KEYS.has(k) || PRESERVE_PREFIXES.some((p) => k.startsWith(p))) {
+    if (
+      PRESERVE_KEYS.has(k) ||
+      PRESERVE_PREFIXES.some((p) => k.startsWith(p))
+    ) {
       const vv = (v ?? "").trim();
       if (vv) out.set(k, vv);
     }
@@ -79,9 +85,12 @@ function sameParams(a: URLSearchParams, b: URLSearchParams): boolean {
 
 function redirect308(reqUrl: URL, pathname: string, qp: URLSearchParams) {
   const dest = new URL(pathname, reqUrl.origin);
-  // assign params
   for (const [k, v] of qp.entries()) dest.searchParams.set(k, v);
-  return NextResponse.redirect(dest, 308);
+
+  const res = NextResponse.redirect(dest, 308);
+  // Debug header: lets you confirm redirect source in prod via Network panel
+  res.headers.set("x-af-mw-redirect", `${reqUrl.pathname} -> ${dest.pathname}`);
+  return res;
 }
 
 export default clerkMiddleware((_, req) => {
@@ -100,7 +109,11 @@ export default clerkMiddleware((_, req) => {
   if (pathname.startsWith("/home/")) {
     const parts = splitPath(pathname); // ["home", "<tab>", ...]
     const tab = (parts[1] ?? "").trim();
-    return redirect308(url, tab ? `/${encodeURIComponent(tab)}` : "/extras", pickPreservedParams(url));
+    return redirect308(
+      url,
+      tab ? `/${encodeURIComponent(tab)}` : "/extras",
+      pickPreservedParams(url),
+    );
   }
 
   // ---- B) Hard upgrades: legacy /albums family -> canonical /album ----

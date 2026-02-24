@@ -145,6 +145,13 @@ export default function PortalTabs(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial]);
 
+  React.useEffect(() => {
+    console.log("[PortalTabs] pathname", {
+      pathname,
+      href: typeof window !== "undefined" ? window.location.href : "",
+    });
+  }, [pathname]);
+
   React.useLayoutEffect(() => {
     measure();
   }, [measure]);
@@ -256,6 +263,13 @@ export default function PortalTabs(props: {
                 // Fallback (should not be used in your app anymore)
                 const currentSearch =
                   typeof window !== "undefined" ? window.location.search : "";
+
+                console.log("[PortalTabs] push", {
+                  from:
+                    typeof window !== "undefined" ? window.location.href : "",
+                  to: `${pathForTab(t.id)}${currentSearch}`,
+                  tabId: t.id,
+                });
 
                 router.push(`${pathForTab(t.id)}${currentSearch}`, {
                   scroll: false,
