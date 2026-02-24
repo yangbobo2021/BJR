@@ -55,6 +55,7 @@ export default function PortalTabs(props: {
   const router = useRouter();
   const pathname = usePathname();
   const stablePathname = getStablePathname(pathname);
+  const didHydrateRef = React.useRef(false);
 
   const hasTabs = tabs.length > 0;
   const firstId = (hasTabs ? tabs[0]?.id : null) ?? null;
@@ -141,9 +142,17 @@ export default function PortalTabs(props: {
 
   React.useEffect(() => {
     if (!initial) return;
-    if (activeId !== initial) setActiveId(initial);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initial]);
+
+    if (!didHydrateRef.current) {
+      didHydrateRef.current = true;
+      setActiveId(initial);
+      return;
+    }
+
+    if (activeId !== initial) {
+      setActiveId(initial);
+    }
+  }, [initial, activeId]);
 
   React.useEffect(() => {
     console.log("[PortalTabs] pathname", {
@@ -271,9 +280,17 @@ export default function PortalTabs(props: {
                   tabId: t.id,
                 });
 
-                router.push(`${pathForTab(t.id)}${currentSearch}`, {
-                  scroll: false,
-                });
+                const targetPath = pathForTab(t.id);
+                const currentPath =
+                  typeof window !== "undefined"
+                    ? window.location.pathname
+                    : null;
+
+                if (currentPath !== targetPath) {
+                  router.push(`${targetPath}${currentSearch}`, {
+                    scroll: false,
+                  });
+                }
               }}
               style={tabBtn(isActive)}
               title={t.locked ? (t.lockedHint ?? "Locked") : t.title}
