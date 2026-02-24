@@ -101,6 +101,67 @@ export default function PortalTabs(props: {
     return s;
   });
 
+  // --- underline indicator (rail + sliding pill) ---
+  const rowRef = React.useRef<HTMLDivElement | null>(null);
+  const btnRefs = React.useRef<Map<string, HTMLButtonElement>>(new Map());
+
+  const [indicator, setIndicator] = React.useState<{
+    x: number;
+    w: number;
+  } | null>(null);
+  const [rail, setRail] = React.useState<{ x: number; w: number } | null>(null);
+
+  const measure = React.useCallback(() => {
+    const row = rowRef.current;
+    if (!row) return;
+    if (!tabs.length) return;
+
+    const rowRect = row.getBoundingClientRect();
+
+    const btns = tabs
+      .map((t) => btnRefs.current.get(t.id))
+      .filter(Boolean) as HTMLButtonElement[];
+
+    if (!btns.length) return;
+
+    const first = btns[0];
+    const last = btns[btns.length - 1];
+
+    const firstRect = first.getBoundingClientRect();
+    const lastRect = last.getBoundingClientRect();
+
+    const railX = firstRect.left - rowRect.left + row.scrollLeft;
+    const railW = lastRect.right - firstRect.left;
+
+    const r = (n: number) =>
+      Math.round(n * (window.devicePixelRatio || 1)) /
+      (window.devicePixelRatio || 1);
+
+    setRail({ x: r(railX), w: r(railW) });
+
+    const id = activeId;
+    if (!id) return;
+
+    const btn = btnRefs.current.get(id) ?? null;
+    if (!btn) return;
+
+    const b = btn.getBoundingClientRect();
+    const x = b.left - rowRect.left + row.scrollLeft;
+    const w = b.width;
+
+    setIndicator({ x: r(x), w: r(w) });
+  }, [tabs, activeId]);
+
+  React.useLayoutEffect(() => {
+    measure();
+  }, [measure]);
+
+  React.useEffect(() => {
+    const onResize = () => measure();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [measure]);
+
   // ✅ Keep your prewarm-all behavior unchanged
   React.useEffect(() => {
     if (!tabs.length) return;
@@ -169,15 +230,20 @@ export default function PortalTabs(props: {
     const syncFromLocation = () => {
       const t = tabFromPathname(window.location.pathname);
       const v = resolveValid(t) ?? initial;
+
+      if (v) setLastPortalTab(v);
+
       if (v && v !== activeId) {
         setActiveId(v);
+
         setMountedIds((prev) => {
           const next = new Set(prev);
           next.add(v);
           return next;
         });
+
+        requestAnimationFrame(() => measure());
       }
-      if (v) setLastPortalTab(v);
     };
 
     const onPop = () => syncFromLocation();
@@ -189,7 +255,7 @@ export default function PortalTabs(props: {
       window.removeEventListener("popstate", onPop);
       window.removeEventListener(PATH_EVENT, onCustom as EventListener);
     };
-  }, [activeId, initial, resolveValid]);
+  }, [activeId, initial, resolveValid, measure]);
 
   if (!hasTabs) return null;
 
@@ -210,7 +276,10 @@ export default function PortalTabs(props: {
 
   return (
     <div style={{ display: "grid", gap: 12, minWidth: 0 }}>
+      <style>{`.afPortalTabRow::-webkit-scrollbar { display:none; height:0; }`}</style>
+
       <div
+        ref={rowRef}
         className="afPortalTabRow"
         style={{
           position: "relative",
@@ -224,13 +293,52 @@ export default function PortalTabs(props: {
           scrollbarWidth: "none",
           minWidth: 0,
         }}
+        onScroll={() => measure()}
       >
+        {/* rail */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            bottom: 3,
+            left: rail?.x ?? 0,
+            width: rail?.w ?? 0,
+            height: 1,
+            background: "rgba(255,255,255,0.18)",
+            pointerEvents: "none",
+            opacity: rail ? 1 : 0,
+            transition: "left 220ms ease, width 220ms ease, opacity 120ms ease",
+          }}
+        />
+
+        {/* indicator */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            bottom: 1,
+            height: 2,
+            borderRadius: 999,
+            background: "rgba(255,255,255,0.90)",
+            pointerEvents: "none",
+            transform: `translateX(${indicator?.x ?? 0}px)`,
+            width: indicator?.w ?? 0,
+            transition:
+              "transform 220ms ease, width 220ms ease, opacity 120ms ease",
+            opacity: indicator ? 1 : 0,
+          }}
+        />
+
         {tabs.map((t) => {
           const isActive = t.id === active?.id;
 
           return (
             <button
               key={t.id}
+              ref={(el) => {
+                if (el) btnRefs.current.set(t.id, el);
+                else btnRefs.current.delete(t.id);
+              }}
               type="button"
               aria-current={isActive ? "page" : undefined}
               aria-label={t.title}
@@ -249,6 +357,9 @@ export default function PortalTabs(props: {
                   next.add(t.id);
                   return next;
                 });
+
+                // measure after DOM updates / font layout
+                requestAnimationFrame(() => measure());
 
                 // Optional: still warm Next’s cache for refresh/direct entry
                 try {
