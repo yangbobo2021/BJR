@@ -5,20 +5,6 @@ import { headers } from "next/headers";
 
 import { client } from "@/sanity/lib/client";
 import { urlFor } from "@/sanity/lib/image";
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { ensureMemberByClerk } from "@/lib/members";
-import { listCurrentEntitlementKeys } from "@/lib/entitlements";
-import { deriveTier } from "@/lib/vocab";
-
-import { fetchPortalPage } from "@/lib/portal";
-import PortalModules from "@/app/home/PortalModules";
-import PortalArea from "@/app/home/PortalArea";
-import {
-  listAlbumsForBrowse,
-  getAlbumBySlug,
-  getFeaturedAlbumSlugFromSanity,
-} from "@/lib/albums";
-import type { AlbumNavItem } from "@/lib/types";
 
 import FooterDrawer from "@/app/home/FooterDrawer";
 
@@ -27,20 +13,14 @@ export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
 type ShadowHomeDoc = {
-  title?: string;
   subtitle?: string;
   backgroundImage?: unknown;
-  topLogoUrl?: string | null;
-  topLogoHeight?: number | null;
 };
 
 const shadowHomeQuery = `
   *[_type == "shadowHomePage" && slug.current == $slug][0]{
-    title,
     subtitle,
-    backgroundImage,
-    "topLogoUrl": topLogo.asset->url,
-    topLogoHeight
+    backgroundImage
   }
 `;
 
@@ -62,43 +42,11 @@ export default async function PortalLayout(props: {
 }) {
   headers();
 
-  const { userId } = await auth();
-  const user = userId ? await currentUser() : null;
-  const email =
-    user?.primaryEmailAddress?.emailAddress ??
-    user?.emailAddresses?.[0]?.emailAddress ??
-    null;
-
-  const [page, portal, featured] = await Promise.all([
-    client.fetch<ShadowHomeDoc>(
-      shadowHomeQuery,
-      { slug: "home" },
-      { next: { tags: ["shadowHome"] } },
-    ),
-    fetchPortalPage("home"),
-    getFeaturedAlbumSlugFromSanity(),
-  ]);
-
-  let member: null | { id: string; created: boolean; email: string } = null;
-  let entitlementKeys: string[] = [];
-  let tier = "none";
-
-  if (userId && email) {
-    const ensured = await ensureMemberByClerk({
-      clerkUserId: userId,
-      email,
-      source: "portal_layout_clerk",
-      // We can't reliably know the exact tab in a route-group layout.
-      // (If you really want it later, we can wire it via a small client reporter.)
-      sourceDetail: { route: "portal_layout" },
-    });
-
-    member = { id: ensured.id, created: ensured.created, email };
-    entitlementKeys = await listCurrentEntitlementKeys(ensured.id);
-    tier = deriveTier(entitlementKeys);
-  }
-
-  const isPatron = tier === "patron";
+  const page = await client.fetch<ShadowHomeDoc>(
+    shadowHomeQuery,
+    { slug: "home" },
+    { next: { tags: ["shadowHome"] } },
+  );
 
   const bgUrl = page?.backgroundImage
     ? urlFor(page.backgroundImage).width(2400).height(1400).quality(80).url()
@@ -110,58 +58,6 @@ export default async function PortalLayout(props: {
     backgroundColor: "#050506",
     color: "rgba(255,255,255,0.92)",
   };
-
-  const portalPanel = portal?.modules?.length ? (
-    <PortalModules modules={portal.modules} memberId={member?.id ?? null} />
-  ) : (
-    <div
-      style={{
-        borderRadius: 18,
-        border: "1px solid rgba(255,255,255,0.10)",
-        background: "rgba(255,255,255,0.04)",
-        padding: 16,
-        fontSize: 13,
-        opacity: 0.78,
-        lineHeight: 1.55,
-      }}
-    >
-      No portal modules yet. Create a <code>portalPage</code> with slug{" "}
-      <code>home</code> in Sanity Studio.
-    </div>
-  );
-
-  // Featured album is used for visualizer cues in portal shell.
-  const featuredAlbumSlug =
-    featured.slug ?? featured.fallbackSlug ?? "consolers";
-
-  const albumSlug = featuredAlbumSlug;
-  const albumData = await getAlbumBySlug(albumSlug);
-
-  const browseAlbumsRaw = await listAlbumsForBrowse();
-
-  const asTierName = (v: unknown): "friend" | "patron" | "partner" | null => {
-    const s = typeof v === "string" ? v.trim().toLowerCase() : "";
-    if (s === "friend" || s === "patron" || s === "partner") return s;
-    return null;
-  };
-
-  const browseAlbums: AlbumNavItem[] = browseAlbumsRaw
-    .filter((a) => a.slug && a.title)
-    .filter((a) => a.policy?.publicPageVisible !== false)
-    .map((a) => ({
-      id: a.id,
-      slug: a.slug,
-      title: a.title,
-      artist: a.artist ?? undefined,
-      year: a.year ?? undefined,
-      coverUrl: a.artwork
-        ? urlFor(a.artwork).width(400).height(400).quality(80).url()
-        : null,
-      policy: {
-        publicPageVisible: a.policy?.publicPageVisible !== false,
-        minTierToLoad: asTierName(a.policy?.minTierToLoad),
-      },
-    }));
 
   return (
     <main style={mainStyle}>
@@ -177,14 +73,6 @@ export default async function PortalLayout(props: {
         .shadowHomeGrid > * { min-width: 0; }
         .shadowHomeSidebar > * { width: 100%; }
 
-        .portalCardGrid2up {
-          display: grid;
-          gap: 12px;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-        @media (max-width: 700px) {
-          .portalCardGrid2up { grid-template-columns: 1fr; }
-        }
         @media (max-width: 1060px) {
           .shadowHomeGrid { grid-template-columns: 1fr; }
           .shadowHomeSidebar { order: 1; position: static !important; top: auto !important; }
@@ -255,19 +143,6 @@ export default async function PortalLayout(props: {
               className="shadowHomeMain"
               style={{ display: "grid", gap: 18 }}
             >
-              <PortalArea
-                portalPanel={portalPanel}
-                albumSlug={albumSlug}
-                album={albumData.album}
-                tracks={albumData.tracks}
-                albums={browseAlbums}
-                attentionMessage={null}
-                tier={tier}
-                isPatron={isPatron}
-                canManageBilling={!!member}
-                topLogoUrl={page?.topLogoUrl ?? null}
-                topLogoHeight={page?.topLogoHeight ?? null}
-              />
               {props.children}
             </div>
 
@@ -293,7 +168,6 @@ export default async function PortalLayout(props: {
                   isolation: "isolate",
                 }}
               >
-                {/* Persistent LyricsOverlayHost portals into this when present */}
                 <div
                   id="af-lyrics-overlay-slot"
                   style={{

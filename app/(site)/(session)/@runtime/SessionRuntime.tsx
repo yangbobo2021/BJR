@@ -1,21 +1,25 @@
-// web/app/(site)/album/[slug]/page.tsx
+// web/app/(site)/(session)/@runtime/SessionRuntime.tsx
 import React from "react";
-import { notFound } from "next/navigation";
-import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { auth, currentUser } from "@clerk/nextjs/server";
+
 import { client } from "@/sanity/lib/client";
 import { urlFor } from "@/sanity/lib/image";
-import { deriveTier } from "@/lib/vocab";
-import { musicAlbumJsonLd } from "@/lib/structuredData";
+
 import { ensureMemberByClerk } from "@/lib/members";
 import { listCurrentEntitlementKeys } from "@/lib/entitlements";
-import { fetchPortalPage } from "@/lib/portal";
-import { listAlbumsForBrowse, getAlbumBySlug } from "@/lib/albums";
-import type { AlbumNavItem } from "@/lib/types";
+import { deriveTier } from "@/lib/vocab";
 
+import { fetchPortalPage } from "@/lib/portal";
 import PortalModules from "@/app/home/PortalModules";
 import PortalArea from "@/app/home/PortalArea";
+
+import {
+  listAlbumsForBrowse,
+  getAlbumBySlug,
+  getFeaturedAlbumSlugFromSanity,
+} from "@/lib/albums";
+import type { AlbumNavItem } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -39,37 +43,11 @@ const shadowHomeQuery = `
   }
 `;
 
-function JsonLdScript({ data }: { data: Record<string, unknown> }) {
-  return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
-    />
-  );
-}
-
-export async function generateMetadata(props: {
-  params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
-  const { slug } = await props.params;
-
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
-  const canonical = appUrl
-    ? `${appUrl}/album/${encodeURIComponent(slug)}`
-    : `/album/${encodeURIComponent(slug)}`;
-
-  return {
-    title: slug,
-    alternates: { canonical },
-  };
-}
-
-export default async function AlbumCanonicalPage(props: {
-  params: Promise<{ slug: string }>;
+export default async function SessionRuntime(props: {
+  // When present, this is the “player album” canonical slug for /album/:slug routes.
+  albumSlugOverride?: string | null;
 }) {
   headers();
-
-  const { slug } = await props.params;
 
   const { userId } = await auth();
   const user = userId ? await currentUser() : null;
@@ -78,18 +56,15 @@ export default async function AlbumCanonicalPage(props: {
     user?.emailAddresses?.[0]?.emailAddress ??
     null;
 
-  const [page, portal, albumData, browseAlbumsRaw] = await Promise.all([
+  const [page, portal, featured] = await Promise.all([
     client.fetch<ShadowHomeDoc>(
       shadowHomeQuery,
       { slug: "home" },
       { next: { tags: ["shadowHome"] } },
     ),
     fetchPortalPage("home"),
-    getAlbumBySlug(slug),
-    listAlbumsForBrowse(),
+    getFeaturedAlbumSlugFromSanity(),
   ]);
-
-  if (!albumData.album) notFound();
 
   let member: null | { id: string; created: boolean; email: string } = null;
   let entitlementKeys: string[] = [];
@@ -99,12 +74,11 @@ export default async function AlbumCanonicalPage(props: {
     const ensured = await ensureMemberByClerk({
       clerkUserId: userId,
       email,
-      source: "album_route_clerk",
-      sourceDetail: { route: `/album/${slug}` },
+      source: "session_runtime_clerk",
+      sourceDetail: { route: "(session)" },
     });
 
     member = { id: ensured.id, created: ensured.created, email };
-
     entitlementKeys = await listCurrentEntitlementKeys(ensured.id);
     tier = deriveTier(entitlementKeys);
   }
@@ -125,9 +99,19 @@ export default async function AlbumCanonicalPage(props: {
         lineHeight: 1.55,
       }}
     >
-      No portal modules yet.
+      No portal modules yet. Create a <code>portalPage</code> with slug{" "}
+      <code>home</code> in Sanity Studio.
     </div>
   );
+
+  const featuredAlbumSlug =
+    featured.slug ?? featured.fallbackSlug ?? "consolers";
+
+  const albumSlug = (props.albumSlugOverride ?? "").trim() || featuredAlbumSlug;
+
+  const albumData = await getAlbumBySlug(albumSlug);
+
+  const browseAlbumsRaw = await listAlbumsForBrowse();
 
   const asTierName = (v: unknown): "friend" | "patron" | "partner" | null => {
     const s = typeof v === "string" ? v.trim().toLowerCase() : "";
@@ -153,35 +137,19 @@ export default async function AlbumCanonicalPage(props: {
       },
     }));
 
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
-  const pageUrl = appUrl ? `${appUrl}/album/${encodeURIComponent(slug)}` : "";
-
-  const jsonLd =
-    albumData.album && pageUrl
-      ? musicAlbumJsonLd({
-          album: albumData.album,
-          tracks: albumData.tracks,
-          pageUrl,
-        })
-      : null;
-
   return (
-    <>
-      {jsonLd ? <JsonLdScript data={jsonLd} /> : null}
-
-      <PortalArea
-        portalPanel={portalPanel}
-        albumSlug={slug}
-        album={albumData.album}
-        tracks={albumData.tracks}
-        albums={browseAlbums}
-        attentionMessage={null}
-        tier={tier}
-        isPatron={isPatron}
-        canManageBilling={!!member}
-        topLogoUrl={page?.topLogoUrl ?? null}
-        topLogoHeight={page?.topLogoHeight ?? null}
-      />
-    </>
+    <PortalArea
+      portalPanel={portalPanel}
+      albumSlug={albumSlug}
+      album={albumData.album}
+      tracks={albumData.tracks}
+      albums={browseAlbums}
+      attentionMessage={null}
+      tier={tier}
+      isPatron={isPatron}
+      canManageBilling={!!member}
+      topLogoUrl={page?.topLogoUrl ?? null}
+      topLogoHeight={page?.topLogoHeight ?? null}
+    />
   );
 }
