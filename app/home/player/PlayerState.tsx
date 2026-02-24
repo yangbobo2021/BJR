@@ -700,19 +700,36 @@ export function PlayerStateProvider(props: { children: React.ReactNode }) {
             correlationId?: string | null;
           },
         ) =>
-          setState((s) => ({
-            ...s,
-            status: "blocked",
-            lastError: reason ?? "Playback blocked.",
-            loadingReason: undefined,
-            intent: null,
-            intentAtMs: undefined,
+          setState((s) => {
+            const nextReason = reason ?? "Playback blocked.";
+            const nextCode = meta?.code;
+            const nextAction = meta?.action;
+            const nextCorr =
+              meta?.correlationId ?? s.blockedCorrelationId ?? null;
 
-            blockedCode: meta?.code,
-            blockedAction: meta?.action,
-            blockedCorrelationId:
-              meta?.correlationId ?? s.blockedCorrelationId ?? null,
-          })),
+            // ✅ Idempotent: if we're already blocked with the same payload, do nothing.
+            if (
+              s.status === "blocked" &&
+              s.lastError === nextReason &&
+              s.blockedCode === nextCode &&
+              s.blockedAction === nextAction &&
+              (s.blockedCorrelationId ?? null) === (nextCorr ?? null)
+            ) {
+              return s;
+            }
+
+            return {
+              ...s,
+              status: "blocked",
+              lastError: nextReason,
+              loadingReason: undefined,
+              intent: null,
+              intentAtMs: undefined,
+              blockedCode: nextCode,
+              blockedAction: nextAction,
+              blockedCorrelationId: nextCorr,
+            };
+          }),
 
         clearBlocked: () =>
           setState((s) => ({

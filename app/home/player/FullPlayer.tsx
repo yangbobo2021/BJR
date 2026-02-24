@@ -170,15 +170,108 @@ function NowPlayingPip() {
   );
 }
 
-type AccessPayload = {
-  ok?: boolean;
-  allowed?: boolean;
-  embargoed?: boolean;
-  releaseAt?: string | null;
-  code?: string | null;
-  action?: string | null;
-  reason?: string | null;
+// ---- access-check single-flight cache (module scope) ----
+const BLOCK_ACTIONS = ["login", "subscribe", "buy", "wait"] as const;
+type BlockAction = (typeof BLOCK_ACTIONS)[number];
+
+function isBlockAction(v: unknown): v is BlockAction {
+  return (
+    typeof v === "string" && (BLOCK_ACTIONS as readonly string[]).includes(v)
+  );
+}
+
+type AccessState = {
+  forCatalogId: string;
+  allowed: boolean;
+  embargoed: boolean;
+  releaseAt: string | null;
+  code?: string;
+  action?: BlockAction; // <-- typed to player.setBlocked contract
+  reason?: string;
+  corr?: string | null;
 };
+
+const accessResultCache = new Map<string, AccessState>();
+const accessInFlight = new Map<string, Promise<AccessState>>();
+
+function readShareTokenFromLocation(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const sp = new URLSearchParams(window.location.search);
+    const st = (sp.get("st") ?? sp.get("share") ?? "").trim();
+    return st || null;
+  } catch {
+    return null;
+  }
+}
+
+function accessKey(catalogId: string, st: string | null) {
+  // include st because it can change entitlement decision
+  return `${catalogId}::st=${st ?? ""}`;
+}
+
+async function fetchAccessOnce(
+  catalogId: string,
+  st: string | null,
+  signal?: AbortSignal,
+): Promise<AccessState> {
+  const key = accessKey(catalogId, st);
+
+  const cached = accessResultCache.get(key);
+  if (cached) return cached;
+
+  const existing = accessInFlight.get(key);
+  if (existing) return existing;
+
+  const p = (async () => {
+    const u = new URL("/api/access/check", window.location.origin);
+    u.searchParams.set("albumId", catalogId);
+    if (st) u.searchParams.set("st", st);
+
+    const r = await fetch(u.toString(), { method: "GET", signal });
+    const corr = r.headers.get("x-correlation-id") ?? null;
+
+    const j = (await r.json()) as {
+      allowed?: boolean;
+      embargoed?: boolean;
+      releaseAt?: string | null;
+      code?: string | null;
+      action?: string | null;
+      reason?: string | null;
+    };
+
+    const allowed = j?.allowed !== false;
+    const embargoed = j?.embargoed === true;
+    const releaseAt = (j?.releaseAt ?? null) as string | null;
+
+    const code =
+      typeof j?.code === "string" && j.code.trim() ? j.code : undefined;
+
+    const action = isBlockAction(j?.action) ? j.action : undefined;
+
+    const reason =
+      typeof j?.reason === "string" && j.reason.trim() ? j.reason : undefined;
+
+    const next: AccessState = {
+      forCatalogId: catalogId,
+      allowed,
+      embargoed,
+      releaseAt,
+      code,
+      action,
+      reason,
+      corr,
+    };
+
+    accessResultCache.set(key, next);
+    return next;
+  })().finally(() => {
+    accessInFlight.delete(key);
+  });
+
+  accessInFlight.set(key, p);
+  return p;
+}
 
 type StableView = {
   albumSlug: string;
@@ -438,6 +531,12 @@ export default function FullPlayer(props: {
   const effAlbumSlug = showCached ? stableView!.albumSlug : albumSlug;
   const effAlbum = showCached ? stableView!.album : album;
   const effTracks = showCached ? stableView!.tracks : tracks;
+  // Track membership ref (lets access-check logic test membership without re-triggering fetch)
+  const effTrackIdSetRef = React.useRef<Set<string>>(new Set());
+
+  React.useEffect(() => {
+    effTrackIdSetRef.current = new Set(effTracks.map((t) => t.id));
+  }, [effTracks]);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -492,18 +591,6 @@ export default function FullPlayer(props: {
     reason?: string;
   } | null>(null);
 
-  type AccessState = {
-    forCatalogId: string;
-    allowed: boolean;
-    embargoed: boolean;
-    releaseAt: string | null;
-    code?: string;
-    action?: string | null;
-    reason?: string;
-  };
-
-  const accessCacheRef = React.useRef<Record<string, AccessState>>({});
-
   // ✅ use a single scalar for deps + narrowing
   const catalogId = effAlbum?.catalogId ?? null;
 
@@ -514,92 +601,53 @@ export default function FullPlayer(props: {
   // Canonical album key used in queue context + gating
   const albumKey = effAlbum?.catalogId ?? effAlbum?.id ?? null;
 
-  // ✅ stable membership test without capturing effTracks inside the effect
-  const effTrackIdSet = React.useMemo(
-    () => new Set(effTracks.map((t) => t.id)),
-    [effTracks],
-  );
-
   React.useEffect(() => {
     if (!catalogId) return;
 
-    // ✅ hydrate immediately from cache (prevents "embargo-looking" disabled flash)
-    const cached = accessCacheRef.current[catalogId] ?? null;
-    setAccess(cached);
-
-    let cancelled = false;
     const ac = new AbortController();
 
-    let st: string | null = null;
-    try {
-      const sp = new URLSearchParams(window.location.search);
-      st = (sp.get("st") ?? sp.get("share") ?? "").trim() || null;
-    } catch {
-      st = null;
-    }
+    const st = readShareTokenFromLocation();
+    const key = accessKey(catalogId, st);
 
-    const u = new URL("/api/access/check", window.location.origin);
-    u.searchParams.set("albumId", catalogId);
-    if (st) u.searchParams.set("st", st);
+    // hydrate from module cache instantly (no component-instance cache)
+    const cached = accessResultCache.get(key) ?? null;
+    setAccess((prev) => {
+      // avoid churn if identical
+      if (!cached && !prev) return prev;
+      if (cached && prev && JSON.stringify(cached) === JSON.stringify(prev))
+        return prev;
+      return cached;
+    });
+
     (async () => {
       try {
-        const r = await fetch(u.toString(), {
-          method: "GET",
-          signal: ac.signal,
+        const next = await fetchAccessOnce(catalogId, st, ac.signal);
+
+        setAccess((prev) => {
+          if (prev && JSON.stringify(prev) === JSON.stringify(next))
+            return prev;
+          return next;
         });
-        const corr = r.headers.get("x-correlation-id") ?? null;
-        const j = (await r.json()) as AccessPayload;
-        if (cancelled) return;
-
-        type BlockAction = "login" | "subscribe" | "buy" | "wait";
-        const asBlockAction = (v: unknown): BlockAction | undefined =>
-          v === "login" || v === "subscribe" || v === "buy" || v === "wait"
-            ? v
-            : undefined;
-
-        const allowed = j?.allowed !== false;
-        const embargoed = j?.embargoed === true;
-        const releaseAt = (j?.releaseAt ?? null) as string | null;
-
-        const code =
-          typeof j?.code === "string" && j.code.trim() ? j.code : undefined;
-        const action = asBlockAction(j?.action);
-        const reason =
-          typeof j?.reason === "string" && j.reason.trim()
-            ? j.reason
-            : undefined;
-
-        const next: AccessState = {
-          forCatalogId: catalogId,
-          allowed,
-          embargoed,
-          releaseAt,
-          code,
-          action: action ?? null,
-          reason,
-        };
-
-        // ✅ write-through cache
-        accessCacheRef.current[catalogId] = next;
-        setAccess(next);
 
         const player = pRef.current;
 
-        if (!allowed) {
+        if (!next.allowed) {
           const cur = player.current;
-          const curInThisAlbum = Boolean(cur?.id && effTrackIdSet.has(cur.id));
+          const set = effTrackIdSetRef.current;
+          const curInThisAlbum = Boolean(cur?.id && set.has(cur.id));
+
           const queueIsThisAlbum = Boolean(
             albumKey && player.queueContextId === albumKey,
           );
           const pendingInThisAlbum = Boolean(
-            player.pendingTrackId && effTrackIdSet.has(player.pendingTrackId),
+            player.pendingTrackId && set.has(player.pendingTrackId),
           );
 
           if (curInThisAlbum || queueIsThisAlbum || pendingInThisAlbum) {
-            player.setBlocked(reason ?? "Playback blocked.", {
-              code,
-              action,
-              correlationId: corr,
+            player.setBlocked(next.reason ?? "Playback blocked.", {
+              code: next.code,
+              action: next.action,
+              correlationId: next.corr ?? null,
             });
           }
         } else {
@@ -613,7 +661,7 @@ export default function FullPlayer(props: {
           }
         }
       } catch (e) {
-        if (cancelled) return;
+        if (ac.signal.aborted) return;
         console.error("FullPlayer access check failed", e);
 
         const fallback: AccessState = {
@@ -622,12 +670,11 @@ export default function FullPlayer(props: {
           embargoed: false,
           releaseAt: null,
           code: "ACCESS_CHECK_ERROR",
-          action: null,
+          // action is optional; don't set it to null
           reason: "Access check failed (client).",
         };
 
-        // ✅ cache fallback too (optional, but prevents repeated flicker on flaky nets)
-        accessCacheRef.current[catalogId] = fallback;
+        accessResultCache.set(accessKey(catalogId, st), fallback);
         setAccess(fallback);
 
         const player = pRef.current;
@@ -638,10 +685,9 @@ export default function FullPlayer(props: {
     })();
 
     return () => {
-      cancelled = true;
       ac.abort();
     };
-  }, [catalogId, albumKey, effTrackIdSet]);
+  }, [catalogId, albumKey]);
 
   // ✅ “unknown access” disables play/glow until check resolves (prevents stale UI)
   const canPlay =

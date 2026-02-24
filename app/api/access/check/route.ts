@@ -74,10 +74,18 @@ async function readAdminDebugCookie(): Promise<{
 
 function baseJson<T extends Record<string, unknown>>(
   body: T,
-  opts: { correlationId: string; status?: number },
+  opts: { correlationId: string; status?: number; anonId?: string },
 ) {
   const res = NextResponse.json(body, { status: opts.status ?? 200 });
+  // ✅ micro-cache to absorb double-invokes / fast remounts
+  // safe because access state doesn't change multiple times per second.
+  res.headers.set(
+    "Cache-Control",
+    "private, max-age=2, stale-while-revalidate=20",
+  );
+  res.headers.set("Vary", "Cookie");
   res.headers.set("x-correlation-id", opts.correlationId);
+  if (opts.anonId) persistAnonId(res, opts.anonId);
   return res;
 }
 
@@ -91,6 +99,11 @@ function anonJsonWithId<T extends Record<string, unknown>>(
 ) {
   const res = NextResponse.json(body, { status: opts.status ?? 200 });
   persistAnonId(res, anonId);
+  res.headers.set(
+    "Cache-Control",
+    "private, max-age=2, stale-while-revalidate=20",
+  );
+  res.headers.set("Vary", "Cookie");
   res.headers.set("x-correlation-id", opts.correlationId);
   return res;
 }
@@ -130,6 +143,7 @@ export async function GET(req: NextRequest) {
   // ---- Unauthed ----
   if (!userId) {
     // Mint once if missing/invalid; we will persist EXACTLY this id in every response below.
+    // ✅ ensure stable anonId and persist if it was minted
     const { anonId } = ensureAnonId(req);
 
     const policy = await getAlbumPolicyByAlbumId(albumId);
@@ -258,6 +272,9 @@ export async function GET(req: NextRequest) {
   // ---- Authed ----
   const memberId = await getMemberIdByClerkUserId(userId);
   if (!memberId) {
+    // ✅ if we touched ensureAnonId above (st path), persist it even for authed
+    const anonForAuthed = st ? ensureAnonId(req).anonId : undefined;
+
     return baseJson(
       {
         ok: true,
@@ -270,7 +287,7 @@ export async function GET(req: NextRequest) {
         correlationId,
         redeemed: null,
       },
-      { correlationId },
+      { correlationId, anonId: anonForAuthed },
     );
   }
 
