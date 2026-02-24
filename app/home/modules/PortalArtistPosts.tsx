@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import { useRouter } from "next/navigation";
+import { replaceQuery } from "@/app/home/urlState";
 import {
   PortableText,
   type PortableTextComponents,
@@ -133,15 +133,31 @@ function isTall(aspectRatio: number | null | undefined) {
 
 function shareUrlFor(slug: string) {
   if (typeof window === "undefined") return "";
-  const url = new URL(window.location.href);
-  url.searchParams.set("p", "posts");
-  url.searchParams.set("post", slug);
-  url.searchParams.delete("pt");
-  url.searchParams.delete("album");
-  url.searchParams.delete("track");
-  url.searchParams.delete("t");
-  url.searchParams.delete("autoplay");
-  return url.toString();
+  const cur = new URL(window.location.href);
+
+  // canonical portal tab route
+  const next = new URL(window.location.origin);
+  next.pathname = "/posts";
+
+  // preserve allowed “secondary” params
+  const keep = new URLSearchParams();
+  const st = (cur.searchParams.get("st") ?? "").trim();
+  const share = (cur.searchParams.get("share") ?? "").trim();
+  const autoplay = (cur.searchParams.get("autoplay") ?? "").trim();
+  if (st) keep.set("st", st);
+  else if (share) keep.set("share", share);
+  if (autoplay) keep.set("autoplay", autoplay);
+
+  for (const [k, v] of cur.searchParams.entries()) {
+    if (k.startsWith("utm_") && v.trim()) keep.set(k, v.trim());
+  }
+
+  // post selection
+  keep.set("post", slug);
+  keep.delete("pt"); // your “post type” reset if desired
+
+  next.search = keep.toString();
+  return next.toString();
 }
 
 function parsePostsResponse(raw: unknown): ArtistPostsResponse {
@@ -621,7 +637,6 @@ export default function PortalArtistPosts(props: {
     defaultInlineImageMaxWidthPx,
   } = props;
 
-  const router = useRouter();
   const sp = useClientSearchParams();
   const deepSlug = (sp.get("post") ?? "").trim() || null;
 
@@ -742,13 +757,19 @@ export default function PortalArtistPosts(props: {
     ],
   );
 
-  React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    void fetchPage(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const firstFilterRunRef = React.useRef(true);
 
   React.useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // On first run, do NOT “reset then refetch” (state is already clean).
+    if (firstFilterRunRef.current) {
+      firstFilterRunRef.current = false;
+      void fetchPage(null);
+      return;
+    }
+
+    // On subsequent filter changes, reset then fetch.
     setRequiresAuth(false);
     setCursor(null);
     setPosts([]);
@@ -938,10 +959,10 @@ export default function PortalArtistPosts(props: {
       }
 
       // Optional: reflect selection in URL for deep-linking.
-// If you don't need it, delete this whole block and rely on internal state.
-router.replace(`/posts?post=${encodeURIComponent(post.slug)}`);
+      // If you don't need it, delete this whole block and rely on internal state.
+      replaceQuery({ post: post.slug, pt: null });
     },
-    [share, shareBuilders, authorName, router],
+    [share, shareBuilders, authorName],
   );
 
   const components: PortableTextComponents = React.useMemo(
