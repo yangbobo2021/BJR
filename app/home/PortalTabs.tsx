@@ -85,6 +85,58 @@ export default function PortalTabs(props: {
 
   const [activeId, setActiveId] = React.useState<string | null>(initial);
 
+  // ✅ mount-once caching per tab id (prevents expensive remount on switch)
+  const [mountedIds, setMountedIds] = React.useState<Set<string>>(() => {
+    const s = new Set<string>();
+    if (initial) s.add(initial);
+    return s;
+  });
+
+  // ✅ (optional) prewarm all tabs after first paint / idle
+  React.useEffect(() => {
+    if (!tabs.length) return;
+
+    const warmAll = () => {
+      setMountedIds((prev) => {
+        const next = new Set(prev);
+        tabs.forEach((tab, i) => {
+          window.setTimeout(
+            () => {
+              setMountedIds((prev) => {
+                const next = new Set(prev);
+                next.add(tab.id);
+                return next;
+              });
+            },
+            100 * (i + 1),
+          );
+        });
+        return next;
+      });
+    };
+
+    type IdleWin = Window & {
+      requestIdleCallback?: (cb: () => void) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    const win = typeof window !== "undefined" ? (window as IdleWin) : null;
+
+    let id: number | null = null;
+
+    if (win?.requestIdleCallback) {
+      id = win.requestIdleCallback(warmAll);
+      return () => {
+        if (win.cancelIdleCallback && id != null) {
+          win.cancelIdleCallback(id);
+        }
+      };
+    }
+
+    const t = window.setTimeout(warmAll, 250);
+    return () => window.clearTimeout(t);
+  }, [tabs]);
+
   const rowRef = React.useRef<HTMLDivElement | null>(null);
   const btnRefs = React.useRef<Map<string, HTMLButtonElement>>(new Map());
 
@@ -270,13 +322,20 @@ export default function PortalTabs(props: {
                   typeof window !== "undefined" ? window.location.search : "";
 
                 setActiveId(t.id);
+                setMountedIds((prev) => {
+                  const next = new Set(prev);
+                  next.add(t.id);
+                  return next;
+                });
 
                 if (currentPath !== targetPath) {
                   router.prefetch(targetPath);
 
-                  React.startTransition(() => {
-                    router.push(`${targetPath}${currentSearch}`, {
-                      scroll: false,
+                  requestAnimationFrame(() => {
+                    React.startTransition(() => {
+                      router.push(`${targetPath}${currentSearch}`, {
+                        scroll: false,
+                      });
                     });
                   });
                 }
@@ -295,7 +354,25 @@ export default function PortalTabs(props: {
         })}
       </div>
 
-      <div style={{ minWidth: 0 }}>{active?.content}</div>
+      <div style={{ minWidth: 0 }}>
+        {tabs.map((t) => {
+          if (!mountedIds.has(t.id)) return null;
+
+          const isActive = t.id === activeId;
+
+          return (
+            <div
+              key={t.id}
+              style={{
+                display: isActive ? "block" : "none",
+                minWidth: 0,
+              }}
+            >
+              {t.content}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
