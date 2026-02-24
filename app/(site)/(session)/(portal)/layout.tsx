@@ -1,4 +1,4 @@
-// web/app/(site)/(portal)/layout.tsx
+// web/app/(site)/(session)/(portal)/layout.tsx
 import React from "react";
 import type { Metadata } from "next";
 

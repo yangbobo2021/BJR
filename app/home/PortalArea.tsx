@@ -746,16 +746,6 @@ export default function PortalArea(props: {
     });
   }, [buildSecondaryForNav, portalTabId, playerAlbumSlug]);
 
-  // Prefetch on mount + whenever targets change.
-  React.useEffect(() => {
-    try {
-      router.prefetch(hrefToPlayer);
-      router.prefetch(hrefToPortal);
-    } catch {
-      // ignore
-    }
-  }, [router, hrefToPlayer, hrefToPortal]);
-
   const prefetchPlayer = React.useCallback(() => {
     try {
       router.prefetch(hrefToPlayer);

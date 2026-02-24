@@ -140,13 +140,6 @@ export default function PortalTabs(props: {
   }, [hasTabs, tabs, active?.id]);
 
   React.useEffect(() => {
-    if (!hasTabs) return;
-
-    // ✅ prefetch tab surfaces; `/exegesis` now exists so this is safe
-    tabs.forEach((t) => router.prefetch(pathForTab(t.id)));
-  }, [router, tabs, hasTabs]);
-
-  React.useEffect(() => {
     if (!initial) return;
     if (activeId !== initial) setActiveId(initial);
     // eslint-disable-next-line react-hooks/exhaustive-deps
