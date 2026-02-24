@@ -91,9 +91,8 @@ function redirect308(reqUrl: URL, pathname: string, qp: URLSearchParams) {
 }
 
 export default clerkMiddleware((auth, req) => {
-  // IMPORTANT: keep auth param in signature so Clerk can reliably detect middleware.
-  // (We don't need to call auth() here; just having clerkMiddleware applied is the key.)
-  void auth;
+  // Force Clerk to initialize on every matched request
+  auth();
 
   const url = new URL(req.url);
   const pathname = url.pathname;
@@ -206,12 +205,5 @@ export default clerkMiddleware((auth, req) => {
 });
 
 export const config = {
-  matcher: [
-    // App Router pages (everything except _next and static files)
-    "/((?!_next|.*\\..*).*)",
-    // Always include API routes (if any route.ts calls auth())
-    "/api/(.*)",
-    // If you use tRPC, keep it explicit
-    "/trpc/(.*)",
-  ],
+  matcher: ["/((?!_next|.*\\..*).*)", "/api/(.*)", "/trpc/(.*)"],
 };
