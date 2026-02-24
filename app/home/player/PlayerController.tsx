@@ -5,7 +5,6 @@ import React from "react";
 import FullPlayer from "./FullPlayer";
 import type { AlbumInfo, AlbumNavItem, PlayerTrack, Tier } from "@/lib/types";
 import StageOverlay from "./stage/StageOverlay";
-import type { LyricCue } from "./stage/LyricsOverlay";
 
 export default function PlayerController(props: {
   albumSlug: string;
@@ -31,9 +30,6 @@ export default function PlayerController(props: {
   const openStage = React.useCallback(() => setStageOpen(true), []);
   const closeStage = React.useCallback(() => setStageOpen(false), []);
 
-  const cues: LyricCue[] | null = null;
-  const offsetMs = 0;
-
   return (
     <>
       <FullPlayer
@@ -52,8 +48,6 @@ export default function PlayerController(props: {
       <StageOverlay
         open={stageOpen}
         onClose={closeStage}
-        cues={cues}
-        offsetMs={offsetMs}
       />
     </>
   );
