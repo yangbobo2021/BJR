@@ -290,7 +290,7 @@ export default function StageInline(props: { height?: number }) {
         }}
       >
         <div style={{ position: "absolute", inset: 0 }}>
-          <StageCore variant="inline" lyricsMode="none" />
+          <StageCore variant="inline" lyricsMode="embedded" />
         </div>
 
         <div
