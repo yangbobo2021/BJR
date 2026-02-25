@@ -5,7 +5,7 @@ import { urlFor } from "@/sanity/lib/image";
 
 type AlbumResolve = {
   _id: string;
-  catalogId?: string;
+  catalogueId?: string;
   slug?: { current?: string };
   title?: string;
   artist?: string;
@@ -29,11 +29,11 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Transitional: allow lookup by catalogId OR by _id so you can use test IDs immediately.
+  // Transitional: allow lookup by catalogueId OR by _id so you can use test IDs immediately.
   const q = `
-    *[_type == "album" && (catalogId == $albumId || _id == $albumId)][0]{
+    *[_type == "album" && (catalogueId == $albumId || _id == $albumId)][0]{
       _id,
-      catalogId,
+      catalogueId,
       slug,
       title,
       artist,
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
     ok: true,
     album: {
       id: doc._id,
-      catalogId: normStr(doc.catalogId) ?? null,
+      catalogueId: normStr(doc.catalogueId) ?? null,
       slug,
       title: normStr(doc.title) ?? "Album",
       artist: normStr(doc.artist),

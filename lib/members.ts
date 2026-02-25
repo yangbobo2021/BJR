@@ -35,11 +35,11 @@ async function ensureBaselineEntitlements(memberId: string, reason: string) {
     eventSource: EVENT_SOURCES.CLERK,
   });
 
-  // ✅ NEW: catalog-wide play permission (this is what checkAccess is looking for via fallback)
+  // ✅ NEW: catalogue-wide play permission (this is what checkAccess is looking for via fallback)
   await grantEntitlement({
     memberId,
     entitlementKey: ENTITLEMENTS.PLAY_ALBUM,
-    scopeId: "catalog",
+    scopeId: "catalogue",
     scopeMeta: { implied_by: ENTITLEMENTS.TIER_FRIEND },
     grantedBy: "system",
     grantReason: reason,

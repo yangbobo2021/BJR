@@ -10,7 +10,7 @@ import { listCurrentEntitlementKeys } from "@/lib/entitlements";
 import {
   ACCESS_ACTIONS,
   ENTITLEMENTS,
-  SCOPE_CATALOG,
+  SCOPE_CATALOGUE,
   type AccessAction,
 } from "@/lib/vocab";
 
@@ -109,7 +109,7 @@ export async function decideAlbumPlaybackAccess(params: {
   }
 
   const albumScopeId =
-    albumId === SCOPE_CATALOG ? SCOPE_CATALOG : `alb:${albumId}`;
+    albumId === SCOPE_CATALOGUE ? SCOPE_CATALOGUE : `alb:${albumId}`;
 
   const policy = await getAlbumPolicyByAlbumId(albumId);
   const releaseAt = safeParseReleaseAt(policy?.releaseAt ?? null);
@@ -200,10 +200,10 @@ export async function decideAlbumPlaybackAccess(params: {
   // ---- Entitlement gate (play_album) ----
   const decision = await checkAccess(
     params.memberId,
-    albumScopeId === SCOPE_CATALOG
+    albumScopeId === SCOPE_CATALOGUE
       ? {
           kind: "global",
-          scopeId: SCOPE_CATALOG,
+          scopeId: SCOPE_CATALOGUE,
           required: [ENTITLEMENTS.PLAY_ALBUM],
         }
       : { kind: "album", albumScopeId, required: [ENTITLEMENTS.PLAY_ALBUM] },

@@ -45,11 +45,11 @@ export function musicAlbumJsonLd(args: {
             name,
             position: idx + 1,
             // Use canonical IDs if present
-            identifier: t.catalogId
+            identifier: t.catalogueId
               ? {
                   "@type": "PropertyValue",
-                  propertyID: "catalogId",
-                  value: t.catalogId,
+                  propertyID: "catalogueId",
+                  value: t.catalogueId,
                 }
               : undefined,
             duration: dur ?? undefined,
@@ -89,11 +89,11 @@ export function musicAlbumJsonLd(args: {
       "@type": "MusicGroup",
       name: byArtistName,
     },
-    identifier: album.catalogId
+    identifier: album.catalogueId
       ? {
           "@type": "PropertyValue",
-          propertyID: "catalogId",
-          value: album.catalogId,
+          propertyID: "catalogueId",
+          value: album.catalogueId,
         }
       : undefined,
     numTracks: Array.isArray(tracks) ? tracks.length : undefined,

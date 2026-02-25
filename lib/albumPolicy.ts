@@ -41,9 +41,9 @@ export async function getAlbumPolicyByAlbumId(
   const id = (albumId ?? "").trim();
   if (!id) return null;
 
-  // Transitional: accept catalogId OR Sanity _id (so your test IDs work).
+  // Transitional: accept catalogueId OR Sanity _id (so your test IDs work).
   const q = `
-    *[_type == "album" && (catalogId == $albumId || _id == $albumId)][0]{
+    *[_type == "album" && (catalogueId == $albumId || _id == $albumId)][0]{
       publicPageVisible,
       releaseAt,
       earlyAccessEnabled,

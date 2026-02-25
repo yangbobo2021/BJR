@@ -2,7 +2,7 @@
 import "server-only";
 import { findAnyEntitlement } from "./entitlements";
 import { logAccessDecision } from "./events";
-import { ACCESS_ACTIONS, SCOPE_CATALOG } from "./vocab";
+import { ACCESS_ACTIONS, SCOPE_CATALOGUE } from "./vocab";
 
 /**
  * ACCESS CONTRACT (do not violate):
@@ -14,7 +14,7 @@ import { ACCESS_ACTIONS, SCOPE_CATALOG } from "./vocab";
  */
 
 export type AccessCheck =
-  | { kind: "global"; required: string[]; scopeId?: string | null } // default: 'catalog'
+  | { kind: "global"; required: string[]; scopeId?: string | null } // default: 'catalogue'
   | { kind: "album"; albumScopeId: string; required: string[] };
 
 export type AccessDecision =
@@ -42,7 +42,7 @@ export async function checkAccess(
   const scopeId =
     check.kind === "album"
       ? check.albumScopeId
-      : (check.scopeId ?? SCOPE_CATALOG); // explicit: global means "catalog", not null
+      : (check.scopeId ?? SCOPE_CATALOGUE); // explicit: global means "catalogue", not null
 
   const action = opts?.action ?? ACCESS_ACTIONS.PLAYBACK_TOKEN_ISSUE;
   const shouldLog = opts?.log ?? false;
@@ -50,8 +50,8 @@ export async function checkAccess(
 
   const matched = await findAnyEntitlement(memberId, check.required, scopeId, {
     allowGlobalFallback: true,
-    allowCatalogFallback: true,
-    catalogScopeId: SCOPE_CATALOG,
+    allowCatalogueFallback: true,
+    catalogueScopeId: SCOPE_CATALOGUE,
   });
 
   if (matched) {

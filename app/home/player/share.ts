@@ -20,7 +20,7 @@ type AlbumResolveOk = {
   ok: true;
   album: {
     id: string;
-    catalogId: string | null;
+    catalogueId: string | null;
     slug: string;
     title: string;
     artist?: string;
@@ -126,7 +126,7 @@ export function deriveShareContext(args: {
   queueArtist?: string;
   albumId?: string;
 }): PlayerShareContext {
-  const albumId = args.albumId ?? args.album?.catalogId ?? args.album?.id;
+  const albumId = args.albumId ?? args.album?.catalogueId ?? args.album?.id;
 
   return {
     albumSlug: clean(args.albumSlug),

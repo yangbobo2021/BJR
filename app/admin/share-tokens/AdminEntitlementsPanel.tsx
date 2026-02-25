@@ -122,7 +122,7 @@ export default function AdminEntitlementsPanel(props: {
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
       <button
         type="button"
-        onClick={() => setScopeId("catalog")}
+        onClick={() => setScopeId("catalogue")}
         style={{
           padding: "8px 10px",
           borderRadius: 10,
@@ -131,7 +131,7 @@ export default function AdminEntitlementsPanel(props: {
           color: "rgba(255,255,255,0.9)",
         }}
       >
-        scope: catalog
+        scope: catalogue
       </button>
       {albums.slice(0, 6).map((a) => (
         <button
@@ -279,7 +279,7 @@ export default function AdminEntitlementsPanel(props: {
                 <input
                   value={scopeId}
                   onChange={(e) => setScopeId(e.target.value)}
-                  placeholder="scope_id (optional): catalog OR alb:<albumId>"
+                  placeholder="scope_id (optional): catalogue OR alb:<albumId>"
                   style={{
                     padding: "10px 12px",
                     borderRadius: 12,

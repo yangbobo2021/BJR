@@ -23,16 +23,16 @@ function fmtLocalInputValue(d: Date) {
 
 export default function AdminMintShareTokenForm({ albums }: Props) {
   const mintable = React.useMemo(
-    () => albums.filter((a) => !!a.catalogId),
+    () => albums.filter((a) => !!a.catalogueId),
     [albums],
   );
   const hasUnmintable = React.useMemo(
-    () => albums.some((a) => !a.catalogId),
+    () => albums.some((a) => !a.catalogueId),
     [albums],
   );
 
-  const [albumCatalogId, setAlbumCatalogId] = React.useState<string>(
-    () => (mintable[0]?.catalogId ?? "") as string,
+  const [albumCatalogueId, setAlbumCatalogueId] = React.useState<string>(
+    () => (mintable[0]?.catalogueId ?? "") as string,
   );
 
   const [expiresEnabled, setExpiresEnabled] = React.useState(false);
@@ -48,8 +48,8 @@ export default function AdminMintShareTokenForm({ albums }: Props) {
 
   const selected = React.useMemo(
     () =>
-      mintable.find((a) => (a.catalogId as string) === albumCatalogId) ?? null,
-    [mintable, albumCatalogId],
+      mintable.find((a) => (a.catalogueId as string) === albumCatalogueId) ?? null,
+    [mintable, albumCatalogueId],
   );
 
   const deepLink = React.useMemo(() => {
@@ -70,10 +70,10 @@ export default function AdminMintShareTokenForm({ albums }: Props) {
     setResult(null);
 
     try {
-      if (!albumCatalogId) {
+      if (!albumCatalogueId) {
         setResult({
           ok: false,
-          error: "No catalogId selected (album must have catalogId).",
+          error: "No catalogueId selected (album must have catalogueId).",
         });
         return;
       }
@@ -91,7 +91,7 @@ export default function AdminMintShareTokenForm({ albums }: Props) {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          albumId: albumCatalogId, // ✅ ALWAYS catalogId
+          albumId: albumCatalogueId, // ✅ ALWAYS catalogueId
           expiresAt,
           maxRedemptions: max,
           note: note.trim() || null,
@@ -129,8 +129,8 @@ export default function AdminMintShareTokenForm({ albums }: Props) {
           No mintable albums
         </div>
         <div style={{ opacity: 0.85 }}>
-          No albums have <code>catalogId</code> set. Add a{" "}
-          <code>catalogId</code> in Sanity before minting press tokens.
+          No albums have <code>catalogueId</code> set. Add a{" "}
+          <code>catalogueId</code> in Sanity before minting press tokens.
         </div>
       </div>
     );
@@ -141,12 +141,12 @@ export default function AdminMintShareTokenForm({ albums }: Props) {
       <label style={{ display: "grid", gap: 6 }}>
         <div style={{ fontWeight: 700 }}>Album</div>
         <select
-          value={albumCatalogId}
-          onChange={(e) => setAlbumCatalogId(e.target.value)}
+          value={albumCatalogueId}
+          onChange={(e) => setAlbumCatalogueId(e.target.value)}
           style={{ padding: 10, borderRadius: 10 }}
         >
           {mintable.map((a) => (
-            <option key={a.catalogId as string} value={a.catalogId as string}>
+            <option key={a.catalogueId as string} value={a.catalogueId as string}>
               {a.title} {a.year ? `(${a.year})` : ""} — {a.slug}
             </option>
           ))}
@@ -154,7 +154,7 @@ export default function AdminMintShareTokenForm({ albums }: Props) {
 
         {hasUnmintable ? (
           <div style={{ opacity: 0.75, fontSize: 13 }}>
-            Some albums are hidden because they have no <code>catalogId</code>{" "}
+            Some albums are hidden because they have no <code>catalogueId</code>{" "}
             (we avoid minting broken-scope tokens).
           </div>
         ) : null}
@@ -207,7 +207,7 @@ export default function AdminMintShareTokenForm({ albums }: Props) {
       <button
         type="button"
         onClick={onMint}
-        disabled={busy || !albumCatalogId}
+        disabled={busy || !albumCatalogueId}
         style={{ padding: "12px 14px", borderRadius: 12, fontWeight: 800 }}
       >
         {busy ? "Minting…" : "Mint token"}
@@ -286,7 +286,7 @@ export default function AdminMintShareTokenForm({ albums }: Props) {
               ) : null}
 
               <div style={{ opacity: 0.8, fontSize: 13 }}>
-                catalogId: <code>{albumCatalogId}</code> • tokenId:{" "}
+                catalogueId: <code>{albumCatalogueId}</code> • tokenId:{" "}
                 <code>{result.tokenId}</code>
               </div>
             </div>

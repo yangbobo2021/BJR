@@ -31,7 +31,7 @@ async function ensureEntitlementType(
   if (!key) return;
 
   // Contract:
-  // - scope_id NULL => "global" entitlements (this includes catalog-wide rights)
+  // - scope_id NULL => "global" entitlements (this includes catalogue-wide rights)
   // - scope_id NOT NULL => "scoped" entitlements (album-scoped, etc)
   const scope = scopeId ? "scoped" : "global";
 

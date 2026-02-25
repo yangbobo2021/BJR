@@ -17,7 +17,7 @@ export const ENTITLEMENTS = {
 } as const;
 
 // Canonical scope IDs
-export const SCOPE_CATALOG = "catalog" as const;
+export const SCOPE_CATALOGUE = "catalogue" as const;
 
 export type EntitlementKey = (typeof ENTITLEMENTS)[keyof typeof ENTITLEMENTS];
 

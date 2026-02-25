@@ -42,7 +42,7 @@ export default defineType({
   type: "document",
   fields: [
     defineField({
-      name: "catalogId",
+      name: "catalogueId",
       title: "Catalogue ID",
       type: "string",
       description:
@@ -245,7 +245,7 @@ export default defineType({
           title: "Track",
           fields: [
             defineField({
-              name: "catalogId",
+              name: "catalogueId",
               title: "Track Catalogue ID",
               type: "string",
               description:
@@ -310,7 +310,7 @@ export default defineType({
               title: "title",
               subtitle: "muxPlaybackId",
               theme: "visualTheme",
-              cat: "catalogId",
+              cat: "catalogueId",
               explicit: "explicit",
             },
             prepare({
@@ -333,7 +333,7 @@ export default defineType({
               const cid =
                 typeof cat === "string" && cat.trim().length
                   ? cat.trim()
-                  : "no catalogId";
+                  : "no catalogueId";
               const e = explicit ? " · E" : "";
               return {
                 title,
@@ -349,7 +349,7 @@ export default defineType({
   preview: {
     select: {
       title: "title",
-      cat: "catalogId",
+      cat: "catalogueId",
       artist: "artist",
       year: "year",
     },

@@ -181,7 +181,7 @@ function isBlockAction(v: unknown): v is BlockAction {
 }
 
 type AccessState = {
-  forCatalogId: string;
+  forCatalogueId: string;
   allowed: boolean;
   embargoed: boolean;
   releaseAt: string | null;
@@ -205,17 +205,17 @@ function readShareTokenFromLocation(): string | null {
   }
 }
 
-function accessKey(catalogId: string, st: string | null) {
+function accessKey(catalogueId: string, st: string | null) {
   // include st because it can change entitlement decision
-  return `${catalogId}::st=${st ?? ""}`;
+  return `${catalogueId}::st=${st ?? ""}`;
 }
 
 async function fetchAccessOnce(
-  catalogId: string,
+  catalogueId: string,
   st: string | null,
   signal?: AbortSignal,
 ): Promise<AccessState> {
-  const key = accessKey(catalogId, st);
+  const key = accessKey(catalogueId, st);
 
   const cached = accessResultCache.get(key);
   if (cached) return cached;
@@ -225,7 +225,7 @@ async function fetchAccessOnce(
 
   const p = (async () => {
     const u = new URL("/api/access/check", window.location.origin);
-    u.searchParams.set("albumId", catalogId);
+    u.searchParams.set("albumId", catalogueId);
     if (st) u.searchParams.set("st", st);
 
     const r = await fetch(u.toString(), { method: "GET", signal });
@@ -253,7 +253,7 @@ async function fetchAccessOnce(
       typeof j?.reason === "string" && j.reason.trim() ? j.reason : undefined;
 
     const next: AccessState = {
-      forCatalogId: catalogId,
+      forCatalogueId: catalogueId,
       allowed,
       embargoed,
       releaseAt,
@@ -582,7 +582,7 @@ export default function FullPlayer(props: {
   const playingish = p.status === "playing" || p.status === "loading";
 
   const [access, setAccess] = React.useState<{
-    forCatalogId: string;
+    forCatalogueId: string;
     allowed: boolean;
     embargoed: boolean;
     releaseAt: string | null;
@@ -592,22 +592,22 @@ export default function FullPlayer(props: {
   } | null>(null);
 
   // ✅ use a single scalar for deps + narrowing
-  const catalogId = effAlbum?.catalogId ?? null;
+  const catalogueId = effAlbum?.catalogueId ?? null;
 
   // ✅ album-scoped view (prevents stale flash)
   const accessForAlbum =
-    catalogId && access?.forCatalogId === catalogId ? access : null;
+    catalogueId && access?.forCatalogueId === catalogueId ? access : null;
 
   // Canonical album key used in queue context + gating
-  const albumKey = effAlbum?.catalogId ?? effAlbum?.id ?? null;
+  const albumKey = effAlbum?.catalogueId ?? effAlbum?.id ?? null;
 
   React.useEffect(() => {
-    if (!catalogId) return;
+    if (!catalogueId) return;
 
     const ac = new AbortController();
 
     const st = readShareTokenFromLocation();
-    const key = accessKey(catalogId, st);
+    const key = accessKey(catalogueId, st);
 
     // hydrate from module cache instantly (no component-instance cache)
     const cached = accessResultCache.get(key) ?? null;
@@ -621,7 +621,7 @@ export default function FullPlayer(props: {
 
     (async () => {
       try {
-        const next = await fetchAccessOnce(catalogId, st, ac.signal);
+        const next = await fetchAccessOnce(catalogueId, st, ac.signal);
 
         setAccess((prev) => {
           if (prev && JSON.stringify(prev) === JSON.stringify(next))
@@ -665,7 +665,7 @@ export default function FullPlayer(props: {
         console.error("FullPlayer access check failed", e);
 
         const fallback: AccessState = {
-          forCatalogId: catalogId,
+          forCatalogueId: catalogueId,
           allowed: true,
           embargoed: false,
           releaseAt: null,
@@ -674,7 +674,7 @@ export default function FullPlayer(props: {
           reason: "Access check failed (client).",
         };
 
-        accessResultCache.set(accessKey(catalogId, st), fallback);
+        accessResultCache.set(accessKey(catalogueId, st), fallback);
         setAccess(fallback);
 
         const player = pRef.current;
@@ -687,7 +687,7 @@ export default function FullPlayer(props: {
     return () => {
       ac.abort();
     };
-  }, [catalogId, albumKey]);
+  }, [catalogueId, albumKey]);
 
   // ✅ “unknown access” disables play/glow until check resolves (prevents stale UI)
   const canPlay =

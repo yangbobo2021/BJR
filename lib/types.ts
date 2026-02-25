@@ -11,7 +11,7 @@ export type AlbumEmbargoInfo = {
 
 export type AlbumInfo = {
   id: string;
-  catalogId?: string;
+  catalogueId?: string;
   title: string;
   artist?: string;
   year?: number;
@@ -47,7 +47,7 @@ export type AlbumNavItem = {
 
 export type PlayerTrack = {
   id: string;
-  catalogId: string | null;
+  catalogueId: string | null;
   title?: string;
   artist?: string;
   durationMs?: number;

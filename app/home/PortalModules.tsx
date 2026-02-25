@@ -95,8 +95,6 @@ type ModuleExegesis = {
   _key: string;
   _type: "moduleExegesis";
   title?: string;
-  followPlayer?: boolean; // default true
-  initialTrackId?: string | null; // optional pin
 };
 
 type PortalModule =
@@ -581,15 +579,8 @@ function renderModule(m: PortalModule, entitlementKeys: string[]) {
   }
 
   if (m._type === "moduleExegesis") {
-  return (
-    <PortalExegesis
-      key={m._key}
-      title={m.title ?? "Exegesis"}
-      followPlayer={m.followPlayer ?? true}
-      initialTrackId={(m.initialTrackId ?? "").trim() || null}
-    />
-  );
-}
+    return <PortalExegesis key={m._key} title={m.title ?? "Exegesis"} />;
+  }
 
   return null;
 }
@@ -687,10 +678,5 @@ export default async function PortalModules(props: Props) {
     ),
   }));
 
-    return (
-    <PortalTabs
-      tabs={tabs}
-      defaultTabId={tabs[0]?.id ?? null}
-    />
-  );
+  return <PortalTabs tabs={tabs} defaultTabId={tabs[0]?.id ?? null} />;
 }

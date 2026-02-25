@@ -1009,8 +1009,8 @@ export default function PortalArea(props: {
     if (!first?.id) return;
 
     const ctxId = hasSt
-      ? (album.catalogId ?? undefined)
-      : (album.catalogId ?? album.id ?? undefined);
+      ? (album.catalogueId ?? undefined)
+      : (album.catalogueId ?? album.id ?? undefined);
 
     const ctxSlug = qAlbum ?? currentAlbumSlug;
 
@@ -1046,8 +1046,8 @@ export default function PortalArea(props: {
     autoplayFiredRef.current = key;
 
     const ctxId = hasSt
-      ? (album.catalogId ?? undefined)
-      : (album.catalogId ?? album.id ?? undefined);
+      ? (album.catalogueId ?? undefined)
+      : (album.catalogueId ?? album.id ?? undefined);
     const ctxSlug = qAlbum ?? currentAlbumSlug;
 
     setQueue(tracks, {

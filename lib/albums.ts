@@ -6,7 +6,7 @@ import type { LyricCue } from "@/app/home/player/stage/LyricsOverlay";
 
 type AlbumDoc = {
   _id?: string;
-  catalogId?: string | null;
+  catalogueId?: string | null;
   title?: string;
   artist?: string;
   year?: number;
@@ -25,7 +25,7 @@ type AlbumDoc = {
   }>;
   tracks?: Array<{
     id: string; // legacy
-    catalogId?: string; // new canonical
+    catalogueId?: string; // new canonical
     title?: string;
     artist?: string;
     durationMs?: number;
@@ -73,7 +73,7 @@ export async function getFeaturedAlbumSlugFromSanity(): Promise<{
 export type AlbumBrowseItem = {
   id: string;
   slug: string;
-  catalogId?: string | null;
+  catalogueId?: string | null;
   title: string;
   artist?: string;
   year?: number;
@@ -154,7 +154,7 @@ export async function getAlbumBySlug(slug: string): Promise<{
   const q = `
     *[_type == "album" && slug.current == $slug][0]{
       _id,
-      catalogId,
+      catalogueId,
       title,
       artist,
       year,
@@ -173,7 +173,7 @@ export async function getAlbumBySlug(slug: string): Promise<{
       },
       "tracks": tracks[]{
         id,
-        catalogId,
+        catalogueId,
         title,
         artist,
         durationMs,
@@ -194,7 +194,7 @@ export async function getAlbumBySlug(slug: string): Promise<{
     };
   }
 
-  const albumCatalogId = normStr(doc.catalogId) ?? undefined;
+  const albumCatalogueId = normStr(doc.catalogueId) ?? undefined;
   const albumTheme = normTheme(doc.visualTheme);
 
   const releaseAt = doc.releaseAt ?? null;
@@ -207,7 +207,7 @@ export async function getAlbumBySlug(slug: string): Promise<{
 
   const album: AlbumInfo = {
     id: doc._id,
-    catalogId: albumCatalogId,
+    catalogueId: albumCatalogueId,
     title: doc.title ?? "Untitled",
     artist: normStr(doc.artist),
     year:
@@ -254,7 +254,7 @@ export async function getAlbumBySlug(slug: string): Promise<{
 
           return {
             id: t.id,
-            catalogId: normStr(t.catalogId) ?? null,
+            catalogueId: normStr(t.catalogueId) ?? null,
             title: normStr(t.title),
             artist: normStr(t.artist),
             muxPlaybackId: normStr(t.muxPlaybackId),
@@ -303,7 +303,7 @@ export async function listAlbumsForBrowse(): Promise<AlbumBrowseItem[]> {
   const q = `
     *[_type=="album"]|order(year desc, _createdAt desc){
       "id": _id,
-      "catalogId": catalogId,
+      "catalogueId": catalogueId,
       "slug": slug.current,
       title,
       artist,
@@ -319,7 +319,7 @@ export async function listAlbumsForBrowse(): Promise<AlbumBrowseItem[]> {
   const items = Array.isArray(data) ? data : [];
   return items.map((a) => ({
     ...a,
-    catalogId: normStr(a.catalogId) ?? null,
+    catalogueId: normStr(a.catalogueId) ?? null,
     artist: normStr(a.artist),
     title: a.title ?? "Untitled",
     artworkUrl: a.artwork
