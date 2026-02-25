@@ -243,11 +243,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log("[MUX_TOKEN] about to decideAlbumPlaybackAccess", {
+      correlationId,
+      userId,
+      memberId,
+      rawAlbumId,
+      albumId,
+      albumScopeId, // `alb:${albumId}`
+      tokenAllowsPlayback,
+    });
+
     const d = await decideAlbumPlaybackAccess({
       memberId,
       albumId,
       correlationId,
       action: ACCESS_ACTIONS.PLAYBACK_TOKEN_ISSUE,
+    });
+
+    console.log("[MUX_TOKEN] decideAlbumPlaybackAccess result", {
+      correlationId,
+      memberId,
+      albumId,
+      albumScopeId,
+      decision: d,
     });
 
     if (!d.allowed) {
