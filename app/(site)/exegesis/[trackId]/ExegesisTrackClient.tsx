@@ -1143,7 +1143,7 @@ export default function ExegesisTrackClient(props: {
               title="Open on Genius"
               aria-label="Open on Genius"
             >
-              <GeniusIcon className="h-4 w-auto" />
+              <GeniusIcon className="h-7 w-auto" />
             </a>
           ) : null}
         </div>
@@ -1168,7 +1168,7 @@ export default function ExegesisTrackClient(props: {
         </div>
       </div>
 
-      <div className="mt-6 grid gap-6 md:grid-cols-[1fr_420px]">
+      <div className="mt-6 grid gap-6 md:grid-cols-[0.9fr_520px]">
         <div className="rounded-xl bg-white/5 p-4">
           <div className="text-sm opacity-70">Lyrics</div>
           <div className="mt-3 space-y-0.5">

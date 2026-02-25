@@ -1,3 +1,4 @@
+//web/app/home/AdminDebugBar.tsx
 "use client";
 
 import React from "react";
