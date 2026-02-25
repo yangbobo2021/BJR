@@ -591,15 +591,15 @@ export default function FullPlayer(props: {
     reason?: string;
   } | null>(null);
 
+  // Canonical album key used in queue context + gating
+  const albumKey = effAlbum?.catalogueId ?? effAlbum?.id ?? null;
+
   // ✅ use a single scalar for deps + narrowing
-  const catalogueId = effAlbum?.catalogueId ?? null;
+  const catalogueId = albumKey;
 
   // ✅ album-scoped view (prevents stale flash)
   const accessForAlbum =
     catalogueId && access?.forCatalogueId === catalogueId ? access : null;
-
-  // Canonical album key used in queue context + gating
-  const albumKey = effAlbum?.catalogueId ?? effAlbum?.id ?? null;
 
   React.useEffect(() => {
     if (!catalogueId) return;
