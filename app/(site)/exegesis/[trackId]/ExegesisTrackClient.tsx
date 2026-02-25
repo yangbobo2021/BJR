@@ -10,6 +10,7 @@ type LyricsApiCue = {
   tMs: number;
   text: string;
   endMs?: number;
+  canonicalGroupKey?: string;
 };
 
 type LyricsApiOk = {
@@ -19,6 +20,7 @@ type LyricsApiOk = {
   version: string;
   geniusUrl: string | null;
   cues: LyricsApiCue[];
+  groupMap?: Record<string, { canonicalGroupKey: string; updatedAt: string }>;
 };
 
 type ThreadSort = "top" | "recent";
@@ -168,6 +170,24 @@ function parseHash(): { lineKey?: string; commentId?: string } {
   };
 }
 
+function cueGroupKey(lyrics: LyricsApiOk, lineKey: string): string {
+  const lk = (lineKey ?? "").trim();
+  if (!lk) return "";
+  // prefer the explicit mapping table if present
+  const m = lyrics.groupMap?.[lk]?.canonicalGroupKey;
+  if (typeof m === "string" && m.trim()) return m.trim();
+  // fallback: look at cue annotation
+  const c = (lyrics.cues ?? []).find((x) => x.lineKey === lk);
+  const g = c?.canonicalGroupKey;
+  return typeof g === "string" ? g.trim() : "";
+}
+
+function isSameGroup(a: string, b: string): boolean {
+  const aa = (a ?? "").trim();
+  const bb = (b ?? "").trim();
+  return !!aa && !!bb && aa === bb;
+}
+
 function isTipTapDoc(v: unknown): v is { type: "doc"; content?: unknown[] } {
   if (!v || typeof v !== "object") return false;
   const o = v as { type?: unknown; content?: unknown };
@@ -292,11 +312,14 @@ export default function ExegesisTrackClient(props: {
     window.history.replaceState(null, "", h ? `${base}#${h}` : base);
   }
 
-  const [selected, setSelected] = React.useState<{
+  type SelectedLine = {
     lineKey: string;
     lineText: string;
     tMs: number;
-  } | null>(null);
+    groupKey?: string; // canonicalGroupKey if mapped
+  };
+
+  const [selected, setSelected] = React.useState<SelectedLine | null>(null);
 
   const [thread, setThread] = React.useState<ThreadApiOk | null>(null);
   const [threadErr, setThreadErr] = React.useState<string>("");
@@ -705,10 +728,11 @@ export default function ExegesisTrackClient(props: {
       lineKey: pick.lineKey,
       lineText: pick.text,
       tMs: pick.tMs,
+      groupKey: cueGroupKey(lyrics, pick.lineKey) || undefined,
     });
 
     if (h.commentId) pendingScrollCommentIdRef.current = h.commentId;
-  }, [lyrics.trackId, lyrics.cues]);
+  }, [lyrics.trackId, lyrics.cues, lyrics]);
 
   const threadKey = thread
     ? `${thread.trackId}::${thread.groupKey}::${thread.meta?.commentCount ?? 0}`
@@ -736,9 +760,15 @@ export default function ExegesisTrackClient(props: {
     async function run() {
       if (!selected?.lineKey) return;
 
+      const gk = (selected.groupKey ?? "").trim();
+
       const url =
         `/api/exegesis/thread?trackId=${encodeURIComponent(trackId)}` +
-        `&lineKey=${encodeURIComponent(selected.lineKey)}` +
+        (gk
+          ? `&groupKey=${encodeURIComponent(gk)}&lineKey=${encodeURIComponent(
+              selected.lineKey,
+            )}` // include anchor for nicer server-side semantics + optional drift guard later
+          : `&lineKey=${encodeURIComponent(selected.lineKey)}`) +
         `&sort=${encodeURIComponent(sort)}`;
 
       try {
@@ -770,7 +800,7 @@ export default function ExegesisTrackClient(props: {
     return () => {
       alive = false;
     };
-  }, [trackId, selected?.lineKey, sort]);
+  }, [trackId, selected?.lineKey, sort, selected?.groupKey]);
 
   async function postComment() {
     if (!selected) return;
@@ -1170,10 +1200,17 @@ export default function ExegesisTrackClient(props: {
 
       <div className="mt-6 grid gap-6 md:grid-cols-[1fr_520px]">
         <div className="rounded-xl bg-white/5 p-4">
-          <div className="text-sm opacity-70">Lyrics</div>
           <div className="mt-3 space-y-0.5">
             {(lyrics.cues ?? []).map((c) => {
               const active = selected?.lineKey === c.lineKey;
+
+              const gk = (
+                c.canonicalGroupKey ??
+                cueGroupKey(lyrics, c.lineKey) ??
+                ""
+              ).trim();
+              const selectedGk = (selected?.groupKey ?? "").trim();
+              const inSelectedGroup = isSameGroup(gk, selectedGk);
 
               return (
                 <button
@@ -1181,11 +1218,20 @@ export default function ExegesisTrackClient(props: {
                   type="button"
                   className="block w-full text-left"
                   onClick={() => {
+                    const nextGroupKey = (
+                      c.canonicalGroupKey ??
+                      cueGroupKey(lyrics, c.lineKey) ??
+                      ""
+                    ).trim();
+
                     setSelected({
                       lineKey: c.lineKey,
                       lineText: c.text,
                       tMs: c.tMs,
+                      groupKey: nextGroupKey || undefined,
                     });
+
+                    // hash remains lineKey-based (stable, human-shareable)
                     setHash({ lineKey: c.lineKey });
                   }}
                 >
@@ -1193,8 +1239,10 @@ export default function ExegesisTrackClient(props: {
                     className={[
                       "inline-block rounded px-1.5 py-0.5 text-sm leading-snug transition",
                       active
-                        ? "bg-white/15"
-                        : "bg-transparent hover:bg-white/8",
+                        ? "bg-white/18"
+                        : inSelectedGroup
+                          ? "bg-white/10 hover:bg-white/12"
+                          : "bg-transparent hover:bg-white/8",
                     ].join(" ")}
                   >
                     <span className="opacity-90">{c.text}</span>
@@ -1206,7 +1254,6 @@ export default function ExegesisTrackClient(props: {
         </div>
 
         <div className="rounded-xl bg-white/5 p-4">
-          <div className="text-sm opacity-70">Thread</div>
           {isLocked ? (
             <div className="mt-2 rounded-md bg-white/5 p-3 text-sm">
               <div className="opacity-80">This thread is locked.</div>
@@ -1219,20 +1266,33 @@ export default function ExegesisTrackClient(props: {
 
           {selected ? (
             <div className="mt-2 rounded-md bg-black/20 p-3 text-sm">
-              <div className="opacity-70">Selected line</div>
-              <div className="mt-1">{selected.lineText}</div>
-              <div className="mt-1 text-xs opacity-60">
-                GroupKey:{" "}
-                <span className="opacity-80">{thread?.groupKey ?? "—"}</span>
-              </div>
+              {(() => {
+                const gk = (selected.groupKey ?? "").trim();
+                if (!gk) return <div className="mt-1">{selected.lineText}</div>;
+
+                const lines = (lyrics.cues ?? [])
+                  .filter((c) =>
+                    isSameGroup((c.canonicalGroupKey ?? "").trim(), gk),
+                  )
+                  .map((c) => c.text);
+
+                // fallback: if groupKey exists but no cues annotated (shouldn't happen), show the one line
+                const safe = lines.length > 0 ? lines : [selected.lineText];
+
+                return (
+                  <div className="mt-1 space-y-1">
+                    {safe.map((t, i) => (
+                      <div key={i}>{t}</div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           ) : null}
 
           {showIdentityPanel ? (
             <div className="mt-3 rounded-md bg-black/20 p-3 text-sm">
               <div className="flex items-center justify-between gap-3">
-                <div className="opacity-70">Your identity</div>
-
                 <button
                   className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40"
                   disabled={!canClaimName}
@@ -1251,7 +1311,7 @@ export default function ExegesisTrackClient(props: {
               </div>
 
               <div className="mt-1 text-sm">
-                Showing as{" "}
+                Commenting as{" "}
                 <span className="font-semibold">{identityLabel}</span>
               </div>
 

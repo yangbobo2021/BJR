@@ -1,8 +1,18 @@
 //web/app/api/lyrics/by-track/route.ts
+import "server-only";
 import { NextResponse } from "next/server";
 import { client } from "@/sanity/lib/client";
+import { sql } from "@vercel/postgres";
 
-export type LyricCue = { lineKey: string; tMs: number; text: string; endMs?: number };
+export const runtime = "nodejs";
+
+export type LyricCue = {
+  lineKey: string;
+  tMs: number;
+  text: string;
+  endMs?: number;
+  canonicalGroupKey?: string;
+};
 
 type TrackLyricsDoc = {
   trackId?: string;
@@ -55,6 +65,32 @@ function safeUrl(raw: unknown): string | null {
   }
 }
 
+async function fetchGroupMap(
+  trackId: string,
+): Promise<Record<string, { canonicalGroupKey: string; updatedAt: string }>> {
+  const r = await sql<{
+    anchor_line_key: string;
+    canonical_group_key: string;
+    updated_at: string;
+  }>`
+    select anchor_line_key, canonical_group_key, updated_at
+    from exegesis_group_map
+    where track_id = ${trackId}
+  `;
+
+  const map: Record<string, { canonicalGroupKey: string; updatedAt: string }> =
+    {};
+
+  for (const row of r.rows ?? []) {
+    const lk = (row.anchor_line_key ?? "").trim();
+    const gk = (row.canonical_group_key ?? "").trim();
+    if (!lk || !gk) continue;
+    map[lk] = { canonicalGroupKey: gk, updatedAt: row.updated_at };
+  }
+
+  return map;
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const trackIdRaw = searchParams.get("trackId");
@@ -93,9 +129,26 @@ export async function GET(req: Request) {
 
   const geniusUrl = safeUrl(doc?.geniusUrl);
 
+  // Embed exegesis grouping map (admin-auth not needed; it's just presentation data)
+  const groupMap = await fetchGroupMap(trackId);
+
+  // Annotate cues with canonicalGroupKey when mapped (unmapped cues omit the field)
+  const cuesWithGroups: LyricCue[] = cues.map((c) => {
+    const hit = groupMap[c.lineKey];
+    return hit ? { ...c, canonicalGroupKey: hit.canonicalGroupKey } : c;
+  });
+
   // Important: prevent any caching weirdness during rapid track switching
   return NextResponse.json(
-    { ok: true, trackId, cues, offsetMs, version, geniusUrl },
+    {
+      ok: true,
+      trackId,
+      cues: cuesWithGroups,
+      offsetMs,
+      version,
+      geniusUrl,
+      groupMap, // keyed by lineKey
+    },
     {
       headers: {
         "Cache-Control": "no-store, max-age=0",
