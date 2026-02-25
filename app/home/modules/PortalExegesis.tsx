@@ -89,41 +89,47 @@ export default function PortalExegesis(props: { title?: string }) {
   const [lyricsLoading, setLyricsLoading] = React.useState(false);
 
   React.useEffect(() => {
-    let alive = true;
+    const ac = new AbortController();
 
     async function loadIndex() {
       setCatalogueLoading(true);
       setCatalogueErr("");
       try {
-        const r = await fetch("/api/lyrics/catalogue", { cache: "no-store" });
+        const r = await fetch("/api/lyrics/catalogue", {
+          cache: "no-store",
+          signal: ac.signal,
+        });
         const j = (await r.json()) as CatalogueOk | CatalogueErr;
-        if (!alive) return;
+
         if (!j.ok) {
           setCatalogueErr(j.error || "Failed to load catalogue.");
           setCatalogue(null);
           return;
         }
+
         setCatalogue(j);
-      } catch {
-        if (!alive) return;
+      } catch (e: unknown) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
         setCatalogueErr("Failed to load catalogue.");
         setCatalogue(null);
       } finally {
-        if (!alive) return;
         setCatalogueLoading(false);
       }
     }
 
-    // load once (or after hard reset), regardless of trackId
-    if (!catalogue && !catalogueLoading) void loadIndex();
-
-    return () => {
-      alive = false;
-    };
-  }, [catalogue, catalogueLoading]);
+    void loadIndex();
+    return () => ac.abort();
+  }, []);
 
   React.useEffect(() => {
-    let alive = true;
+    if (!trackId) {
+      setLyrics(null);
+      setLyricsErr("");
+      setLyricsLoading(false);
+      return;
+    }
+
+    const ac = new AbortController();
 
     async function loadTrack(tid: string) {
       setLyricsLoading(true);
@@ -132,30 +138,24 @@ export default function PortalExegesis(props: { title?: string }) {
 
       try {
         const url = `/api/lyrics/by-track?trackId=${encodeURIComponent(tid)}`;
-        const r = await fetch(url, { cache: "no-store" });
+        const r = await fetch(url, { cache: "no-store", signal: ac.signal });
         const j = (await r.json()) as LyricsOk | LyricsErr;
-        if (!alive) return;
 
         if (!j.ok) {
           setLyricsErr(j.error || "Failed to load lyrics.");
           return;
         }
-
         setLyrics(j);
-      } catch {
-        if (!alive) return;
+      } catch (e: unknown) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
         setLyricsErr("Failed to load lyrics.");
       } finally {
-        if (!alive) return;
         setLyricsLoading(false);
       }
     }
 
-    if (trackId) void loadTrack(trackId);
-
-    return () => {
-      alive = false;
-    };
+    void loadTrack(trackId);
+    return () => ac.abort();
   }, [trackId]);
 
   // -------- render --------
