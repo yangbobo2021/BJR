@@ -1123,7 +1123,7 @@ export default function ExegesisTrackClient(props: {
   }, [thread?.roots, meta?.pinnedCommentId]);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6">
+    <div className="w-full max-w-none px-4 py-6">
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="mt-1 text-xl font-semibold">
@@ -1168,7 +1168,7 @@ export default function ExegesisTrackClient(props: {
         </div>
       </div>
 
-      <div className="mt-6 grid gap-6 md:grid-cols-[0.9fr_520px]">
+      <div className="mt-6 grid gap-6 md:grid-cols-[1fr_520px]">
         <div className="rounded-xl bg-white/5 p-4">
           <div className="text-sm opacity-70">Lyrics</div>
           <div className="mt-3 space-y-0.5">

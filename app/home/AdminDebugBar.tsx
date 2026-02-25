@@ -1,4 +1,4 @@
-//web/app/home/AdminDebugBar.tsx
+// web/app/home/AdminDebugBar.tsx
 "use client";
 
 import React from "react";
@@ -64,10 +64,10 @@ export default function AdminDebugBar(props: { isAdmin: boolean }) {
   const [tokensOpen, setTokensOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
 
-  type AdminPanelId = "access" | "share_tokens" | "mailbag";
+  type AdminPanelId = "access" | "share_tokens" | "mailbag" | "exegesis";
   const [adminPanel, setAdminPanel] = React.useState<AdminPanelId>("access");
 
-  // NEW: combined dropdown for all buttons after Force state
+  // combined dropdown for all buttons after Force state
   const [uiAction, setUiAction] = React.useState<UiActionId>("apply_ui");
 
   React.useEffect(() => setMounted(true), []);
@@ -98,13 +98,15 @@ export default function AdminDebugBar(props: { isAdmin: boolean }) {
   function adminTitle(panel: AdminPanelId) {
     if (panel === "access") return "Admin — Access";
     if (panel === "share_tokens") return "Admin — Share tokens";
-    return "Admin — Mailbag";
+    if (panel === "mailbag") return "Admin — Mailbag";
+    return "Admin — Exegesis";
   }
 
   function adminSrc(panel: AdminPanelId) {
     if (panel === "access") return "/admin/access?embed=1";
     if (panel === "share_tokens") return "/admin/access?tab=tokens&embed=1";
-    return "/admin/mailbag?embed=1";
+    if (panel === "mailbag") return "/admin/mailbag?embed=1";
+    return "/admin/exegesis?embed=1";
   }
 
   if (!ENABLED) return null;
@@ -134,7 +136,7 @@ export default function AdminDebugBar(props: { isAdmin: boolean }) {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Share tokens admin"
+            aria-label="Admin modal"
             onMouseDown={(e) => {
               if (e.target === e.currentTarget) setTokensOpen(false);
             }}
@@ -182,6 +184,7 @@ export default function AdminDebugBar(props: { isAdmin: boolean }) {
                     Inline modal shell (server page inside iframe)
                   </div>
                 </div>
+
                 <div
                   style={{
                     display: "flex",
@@ -190,39 +193,46 @@ export default function AdminDebugBar(props: { isAdmin: boolean }) {
                     flexWrap: "wrap",
                   }}
                 >
-                  {(["access", "share_tokens", "mailbag"] as const).map(
-                    (id) => {
-                      const active = adminPanel === id;
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() => setAdminPanel(id)}
-                          style={{
-                            height: 28,
-                            padding: "0 10px",
-                            borderRadius: 999,
-                            border: "1px solid rgba(255,255,255,0.14)",
-                            background: active
-                              ? "rgba(255,255,255,0.10)"
-                              : "rgba(255,255,255,0.04)",
-                            color: "rgba(255,255,255,0.90)",
-                            cursor: "pointer",
-                            fontSize: 12,
-                            opacity: active ? 1 : 0.78,
-                            userSelect: "none",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {id === "access"
-                            ? "Access"
-                            : id === "share_tokens"
-                              ? "Share tokens"
-                              : "Mailbag"}
-                        </button>
-                      );
-                    },
-                  )}
+                  {(
+                    [
+                      "access",
+                      "share_tokens",
+                      "mailbag",
+                      "exegesis",
+                    ] as const
+                  ).map((id) => {
+                    const active = adminPanel === id;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setAdminPanel(id)}
+                        style={{
+                          height: 28,
+                          padding: "0 10px",
+                          borderRadius: 999,
+                          border: "1px solid rgba(255,255,255,0.14)",
+                          background: active
+                            ? "rgba(255,255,255,0.10)"
+                            : "rgba(255,255,255,0.04)",
+                          color: "rgba(255,255,255,0.90)",
+                          cursor: "pointer",
+                          fontSize: 12,
+                          opacity: active ? 1 : 0.78,
+                          userSelect: "none",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {id === "access"
+                          ? "Access"
+                          : id === "share_tokens"
+                            ? "Share tokens"
+                            : id === "mailbag"
+                              ? "Mailbag"
+                              : "Exegesis"}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <button
@@ -262,7 +272,7 @@ export default function AdminDebugBar(props: { isAdmin: boolean }) {
 
   const runUiAction = (id: UiActionId) => {
     switch (id) {
-      // NEW: immediate client-side forcing (tests spotlight/veil path)
+      // immediate client-side forcing (tests spotlight/veil path)
       case "apply_ui": {
         if (force === "none") {
           p.clearBlocked();
@@ -362,6 +372,9 @@ export default function AdminDebugBar(props: { isAdmin: boolean }) {
           <button style={btn} onClick={() => openAdmin("mailbag")}>
             Mailbag
           </button>
+          <button style={btn} onClick={() => openAdmin("exegesis")}>
+            Exegesis
+          </button>
 
           <span
             aria-hidden
@@ -403,12 +416,11 @@ export default function AdminDebugBar(props: { isAdmin: boolean }) {
             </div>
           </div>
 
-          {/* NEW: single dropdown for all remaining actions */}
           <div style={{ position: "relative", display: "grid" }}>
             <select
               aria-label="UI Action"
               value={uiAction}
-              onChange={(e) => setUiAction(e.currentTarget.value as UiActionId)}
+              onChange={(e) => setUiAction(e.target.value as UiActionId)}
               style={selectStyle}
             >
               <option value="apply_ui">UI Action: Apply (UI)</option>
