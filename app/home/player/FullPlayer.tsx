@@ -563,9 +563,25 @@ export default function FullPlayer(props: {
   const [pendingAlbumSlug, setPendingAlbumSlug] = React.useState<string | null>(
     null,
   );
+
+  // Clear when the pending selection has actually become the effective album view.
   React.useEffect(() => {
-    if (!isBrowsingAlbum) setPendingAlbumSlug(null);
-  }, [isBrowsingAlbum]);
+    if (!pendingAlbumSlug) return;
+
+    const resolved =
+      effAlbumSlug === pendingAlbumSlug &&
+      Boolean(effAlbum) &&
+      effTracks.length > 0;
+
+    if (resolved) setPendingAlbumSlug(null);
+  }, [pendingAlbumSlug, effAlbumSlug, effAlbum, effTracks.length]);
+
+  // Safety: auto-clear after 8s so it can't stick forever if something goes sideways.
+  React.useEffect(() => {
+    if (!pendingAlbumSlug) return;
+    const t = window.setTimeout(() => setPendingAlbumSlug(null), 8000);
+    return () => window.clearTimeout(t);
+  }, [pendingAlbumSlug]);
 
   const albumTitle = effAlbum?.title ?? "—";
   const albumDesc =
@@ -1308,7 +1324,10 @@ export default function FullPlayer(props: {
                   isActive ||
                   !canLoadByTier;
                 const isPendingPick =
-                  isBrowsingAlbum && pendingAlbumSlug === a.slug;
+                  pendingAlbumSlug === a.slug &&
+                  (effAlbumSlug !== a.slug ||
+                    !effAlbum ||
+                    effTracks.length === 0);
 
                 return (
                   <button
