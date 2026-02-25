@@ -434,7 +434,7 @@ export default function LyricsOverlay(props: {
               isInline && (idx === hoverIdx || idx === revealIdx);
 
             const iconSize = 26;
-            const iconGutter = isInline ? iconSize + 18 : 0; // reserve space so text never sits under the icon
+            const iconGutter = isInline ? iconSize + 8 : 0; // reserve space so text never sits under the icon
 
             return (
               <div
@@ -496,7 +496,8 @@ export default function LyricsOverlay(props: {
                     zIndex: 3,
                     opacity: showDiscourse && trackId ? 1 : 0,
                     display: isInline ? "grid" : "none",
-                    transition: "opacity 140ms ease, transform 140ms ease",
+                    overflow: "visible",
+                    transition: "opacity 140ms ease, transform 160ms ease, filter 160ms ease",
                   }}
                 >
                   <svg
@@ -695,9 +696,43 @@ export default function LyricsOverlay(props: {
 
                     /* Inline-only: reveal discourse affordance on hover even if React hover state misses. */
           .af-lyric-row[data-af-inline="1"][data-af-has-track="1"]:hover .af-discourse-btn {
-            opacity: 1 !important;
-            transform: translateY(-50%) scale(1) !important;
-          }
+  opacity: 1 !important;
+  transform: translateY(-50%) scale(1) !important;
+}
+
+.af-discourse-btn:hover {
+  transform: translateY(-50%) scale(1.12) !important;
+  filter: brightness(1.15);
+}
+
+/* Subtle radial glow behind discourse icon */
+.af-discourse-btn {
+  position: absolute; /* already true, but ensures pseudo works */
+}
+
+.af-discourse-btn::before {
+  content: "";
+  position: absolute;
+  inset: -10px; /* halo size */
+  border-radius: 999px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease, transform 180ms ease;
+
+  background: radial-gradient(
+    circle at center,
+    rgba(255,255,255,0.18) 0%,
+    rgba(255,255,255,0.10) 35%,
+    rgba(255,255,255,0.05) 55%,
+    rgba(255,255,255,0.0) 75%
+  );
+  transform: scale(0.9);
+}
+
+.af-discourse-btn:hover::before {
+  opacity: 1;
+  transform: scale(1);
+}
 
           /* Touch reveal path: when we set revealIdx, make sure it shows regardless of hover. */
           .af-lyric-row[data-af-inline="1"][data-af-has-track="1"][data-af-reveal="1"] .af-discourse-btn {
