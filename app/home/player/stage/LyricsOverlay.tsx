@@ -112,14 +112,14 @@ export default function LyricsOverlay(props: {
   }, []);
 
   function openExegesis(cue: LyricCue) {
-  if (!trackId) return;
+    if (!trackId) return;
 
-  const path =
-    `/exegesis/${encodeURIComponent(trackId)}` +
-    `#l=${encodeURIComponent(cue.lineKey)}`;
+    const path =
+      `/exegesis/${encodeURIComponent(trackId)}` +
+      `#l=${encodeURIComponent(cue.lineKey)}`;
 
-  router.push(path, { scroll: false });
-}
+    router.push(path, { scroll: false });
+  }
 
   // Fade-in whenever a new lyrics set becomes available.
   const [fadeInKey, setFadeInKey] = React.useState(0);
@@ -434,7 +434,7 @@ export default function LyricsOverlay(props: {
               isInline && (idx === hoverIdx || idx === revealIdx);
 
             const iconSize = 26;
-            const iconGutter = isInline ? iconSize + 14 : 0; // reserve space so text never sits under the icon
+            const iconGutter = isInline ? iconSize + 18 : 0; // reserve space so text never sits under the icon
 
             return (
               <div
@@ -480,16 +480,17 @@ export default function LyricsOverlay(props: {
                   }}
                   style={{
                     position: "absolute",
-                    right: 6, // a tiny inset from the scroller edge
+                    right: 0, // a tiny inset from the scroller edge
                     top: "50%",
                     transform: `translateY(-50%) ${showDiscourse ? "scale(1)" : "scale(0.98)"}`,
                     width: iconSize,
                     height: iconSize,
-                    borderRadius: 999,
-                    border: "1px solid rgba(255,255,255,0.14)",
-                    background: "rgba(0,0,0,0.22)",
+                    borderRadius: 0,
+                    border: 0,
+                    background: "transparent",
                     color: "rgba(255,255,255,0.86)",
                     placeItems: "center",
+                    lineHeight: 0,
                     cursor: trackId ? "pointer" : "default",
                     pointerEvents: trackId ? "auto" : "none",
                     zIndex: 3,
@@ -498,9 +499,34 @@ export default function LyricsOverlay(props: {
                     transition: "opacity 140ms ease, transform 140ms ease",
                   }}
                 >
-                  <span aria-hidden style={{ fontSize: isInline ? 14 : 15 }}>
-                    💬
-                  </span>
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 512 512"
+                    width={isInline ? 16 : 18}
+                    height={isInline ? 16 : 18}
+                    style={{ display: "block" }}
+                  >
+                    <g>
+                      <path
+                        fill="currentColor"
+                        d="M443.245,152.171h-87.072v-42.546c-0.008-37.98-30.774-68.746-68.754-68.754H68.755
+      C30.774,40.879,0.008,71.644,0,109.625v163.01c0.008,37.581,30.146,68.053,67.581,68.697L55.98,399.333
+      c-1.353,6.774,1.565,13.63,7.378,17.348c5.821,3.717,13.264,3.481,18.84-0.587l102.227-74.706h27.236
+      c1.842,36.342,31.776,65.241,68.575,65.249h75.318l83.844,61.271c5.576,4.068,13.019,4.305,18.839,0.587
+      c5.812-3.717,8.731-10.573,7.378-17.348l-9.163-45.806c31.662-6.171,55.54-34.002,55.548-67.458V220.925
+      C511.992,182.953,481.234,152.179,443.245,152.171z M178.97,307.998c-3.57,0-6.97,1.108-9.847,3.212l-71.992,52.613l7.166-35.852
+      c0.987-4.916-0.286-9.986-3.456-13.859c-3.18-3.88-7.9-6.114-12.913-6.114H68.755c-9.816-0.008-18.554-3.93-25.011-10.361
+      c-6.424-6.449-10.345-15.188-10.353-25.002v-163.01c0.008-9.815,3.93-18.554,10.353-25.011
+      c6.457-6.424,15.195-10.344,25.011-10.353h218.664c9.814,0.008,18.554,3.929,25.002,10.353
+      c6.432,6.457,10.353,15.196,10.361,25.011v42.546h-42.546c-37.98,0.008-68.747,30.774-68.754,68.754v87.073H178.97z
+      M478.609,337.883c-0.008,9.823-3.929,18.554-10.354,25.011c-6.456,6.424-15.187,10.344-25.01,10.353h-6.896
+      c-5.014,0-9.734,2.234-12.913,6.114c-3.18,3.873-4.443,8.943-3.457,13.859l4.484,22.418l-53.608-39.178
+      c-2.878-2.104-6.278-3.212-9.848-3.212h-80.771c-9.815-0.008-18.554-3.929-25.011-10.361c-6.424-6.449-10.345-15.188-10.353-25.002
+      v-13.19V220.925c0.008-9.823,3.929-18.554,10.353-25.002c6.456-6.432,15.196-10.353,25.011-10.361h59.241h103.768
+      c9.824,0.008,18.554,3.929,25.01,10.353c6.425,6.457,10.346,15.188,10.354,25.011V337.883z"
+                      />
+                    </g>
+                  </svg>
                 </button>
 
                 {/* The seek button (default interaction) */}
