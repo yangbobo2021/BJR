@@ -4,6 +4,7 @@ import React from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
+import type { JSONContent } from "@tiptap/core";
 
 export type TipTapDoc = {
   type: "doc";
@@ -27,11 +28,146 @@ function makeLinkSafe(href: string): string | null {
   }
 }
 
-import type { JSONContent } from "@tiptap/core";
-
 function isJsonDoc(v: unknown): v is JSONContent {
   return (
     !!v && typeof v === "object" && (v as { type?: unknown }).type === "doc"
+  );
+}
+
+function ToolbarBtn(props: {
+  title: string;
+  onClick: () => void;
+  active?: boolean;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      title={props.title}
+      disabled={props.disabled}
+      onClick={props.onClick}
+      className={[
+        "rounded-md px-2 py-1 text-xs transition",
+        props.active ? "bg-white/15" : "bg-white/5 hover:bg-white/10",
+        props.disabled ? "opacity-40" : "",
+      ].join(" ")}
+    >
+      {props.children}
+    </button>
+  );
+}
+
+function TipTapToolbar(props: {
+  editor: ReturnType<typeof useEditor>;
+  disabled?: boolean;
+}) {
+  const editor = props.editor;
+  if (!editor) return null;
+
+  const disabled = Boolean(props.disabled);
+
+  return (
+    <div className="mb-2 flex flex-wrap items-center gap-1">
+      <ToolbarBtn
+        title="Bold"
+        disabled={disabled}
+        active={editor.isActive("bold")}
+        onClick={() => editor.chain().focus().toggleBold().run()}
+      >
+        B
+      </ToolbarBtn>
+
+      <ToolbarBtn
+        title="Italic"
+        disabled={disabled}
+        active={editor.isActive("italic")}
+        onClick={() => editor.chain().focus().toggleItalic().run()}
+      >
+        I
+      </ToolbarBtn>
+
+      <ToolbarBtn
+        title="Strike"
+        disabled={disabled}
+        active={editor.isActive("strike")}
+        onClick={() => editor.chain().focus().toggleStrike().run()}
+      >
+        S
+      </ToolbarBtn>
+
+      <ToolbarBtn
+        title="Inline code"
+        disabled={disabled}
+        active={editor.isActive("code")}
+        onClick={() => editor.chain().focus().toggleCode().run()}
+      >
+        {"</>"}
+      </ToolbarBtn>
+
+      <ToolbarBtn
+        title="Bullet list"
+        disabled={disabled}
+        active={editor.isActive("bulletList")}
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+      >
+        • List
+      </ToolbarBtn>
+
+      <ToolbarBtn
+        title="Numbered list"
+        disabled={disabled}
+        active={editor.isActive("orderedList")}
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+      >
+        1. List
+      </ToolbarBtn>
+
+      <ToolbarBtn
+        title="Blockquote"
+        disabled={disabled}
+        active={editor.isActive("blockquote")}
+        onClick={() => editor.chain().focus().toggleBlockquote().run()}
+      >
+        “Quote”
+      </ToolbarBtn>
+
+      <ToolbarBtn
+        title="Add/edit link"
+        disabled={disabled}
+        active={editor.isActive("link")}
+        onClick={() => {
+          const prev = (editor.getAttributes("link")?.href ?? "").trim();
+          const raw = window.prompt("Link URL:", prev);
+          if (raw === null) return;
+
+          const safe = makeLinkSafe(raw);
+          if (!safe) {
+            editor.chain().focus().extendMarkRange("link").unsetLink().run();
+            return;
+          }
+
+          editor
+            .chain()
+            .focus()
+            .extendMarkRange("link")
+            .setLink({ href: safe })
+            .run();
+        }}
+      >
+        Link
+      </ToolbarBtn>
+
+      <ToolbarBtn
+        title="Remove formatting"
+        disabled={disabled}
+        onClick={() =>
+          editor.chain().focus().unsetAllMarks().clearNodes().run()
+        }
+      >
+        Clear
+      </ToolbarBtn>
+    </div>
   );
 }
 
@@ -39,10 +175,17 @@ export default function TipTapEditor(props: {
   valuePlain: string;
   valueDoc?: unknown | null; // NEW
   disabled?: boolean;
+  showToolbar?: boolean; // NEW
   onChangePlain: (plain: string) => void;
   onChangeDoc: (doc: TipTapDoc) => void;
 }) {
-  const { valuePlain, disabled, onChangePlain, onChangeDoc } = props;
+  const {
+    valuePlain,
+    disabled,
+    showToolbar = true,
+    onChangePlain,
+    onChangeDoc,
+  } = props;
 
   const editor = useEditor({
     editable: !disabled,
@@ -54,7 +197,8 @@ export default function TipTapEditor(props: {
         link: false, // IMPORTANT: prevent duplicate 'link' extension name
       }),
       Link.configure({
-        openOnClick: true,
+        // better compose UX (don’t hijack taps); readonly renderer can still open links
+        openOnClick: false,
         linkOnPaste: true,
         autolink: true,
         HTMLAttributes: {
@@ -77,7 +221,6 @@ export default function TipTapEditor(props: {
     },
     onUpdate: ({ editor }) => {
       const plain = (editor.getText({ blockSeparator: "\n" }) ?? "").trim();
-      // preserve your existing UX: show char count based on trimmed text
       onChangePlain(plain);
       onChangeDoc(editor.getJSON() as TipTapDoc);
     },
@@ -106,5 +249,12 @@ export default function TipTapEditor(props: {
     editor.commands.setContent(next, { emitUpdate: false });
   }, [editor, valuePlain, props.valueDoc]);
 
-  return <EditorContent editor={editor} />;
+  return (
+    <div>
+      {showToolbar ? (
+        <TipTapToolbar editor={editor} disabled={disabled} />
+      ) : null}
+      <EditorContent editor={editor} />
+    </div>
+  );
 }

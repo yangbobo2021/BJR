@@ -272,6 +272,53 @@ export default function ExegesisTrackClient(props: {
   const canClaimName =
     thread?.viewer?.kind === "member" ? thread.viewer.cap.canClaimName : false;
 
+  const Composer = (
+    <div className="mt-3 rounded-lg border border-white/10 bg-white/6 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-sm opacity-80">Add a comment</div>
+        {!canPost ? (
+          <div className="text-xs opacity-60">Patron/Partner required</div>
+        ) : isLocked ? (
+          <div className="text-xs opacity-60">Locked</div>
+        ) : null}
+      </div>
+
+      <div className="mt-2">
+        <TipTapEditor
+          valuePlain={draft}
+          valueDoc={draftDoc}
+          disabled={!canPost || isLocked}
+          showToolbar
+          onChangePlain={(plain) => setDraft(plain)}
+          onChangeDoc={(doc) => setDraftDoc(doc)}
+        />
+      </div>
+
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <div className="text-xs opacity-60">{draft.trim().length}/5000</div>
+        <button
+          className="rounded-md bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15 disabled:opacity-40"
+          disabled={
+            !canPost || isLocked || !selected || !draft.trim() || posting
+          }
+          onClick={() => void postComment()}
+        >
+          {posting ? "Posting…" : "Post"}
+        </button>
+      </div>
+
+      {thread?.viewer.kind === "anon" ? (
+        <div className="mt-2 text-xs opacity-60">
+          Tip: sign in to vote; upgrade to post.
+        </div>
+      ) : !canPost ? (
+        <div className="mt-2 text-xs opacity-60">
+          Posting requires Patron or Partner.
+        </div>
+      ) : null}
+    </div>
+  );
+
   function openReport(commentId: string) {
     if (!canReport) return;
     setReportByCommentId((prev) => {
@@ -1037,15 +1084,15 @@ export default function ExegesisTrackClient(props: {
       <div className="mt-6 grid gap-6 md:grid-cols-[1fr_420px]">
         <div className="rounded-xl bg-white/5 p-4">
           <div className="text-sm opacity-70">Lyrics</div>
-          <div className="mt-3 space-y-1">
+          <div className="mt-3 space-y-0.5">
             {(lyrics.cues ?? []).map((c) => {
               const active = selected?.lineKey === c.lineKey;
+
               return (
                 <button
                   key={c.lineKey}
-                  className={`w-full rounded-md px-3 py-2 text-left text-sm transition ${
-                    active ? "bg-white/10" : "bg-transparent hover:bg-white/5"
-                  }`}
+                  type="button"
+                  className="block w-full text-left"
                   onClick={() => {
                     setSelected({
                       lineKey: c.lineKey,
@@ -1055,7 +1102,16 @@ export default function ExegesisTrackClient(props: {
                     setHash({ lineKey: c.lineKey });
                   }}
                 >
-                  <div className="mt-0.5 opacity-90">{c.text}</div>
+                  <span
+                    className={[
+                      "inline-block rounded px-1.5 py-0.5 text-sm leading-snug transition",
+                      active
+                        ? "bg-white/15"
+                        : "bg-transparent hover:bg-white/8",
+                    ].join(" ")}
+                  >
+                    <span className="opacity-90">{c.text}</span>
+                  </span>
                 </button>
               );
             })}
@@ -1159,6 +1215,8 @@ export default function ExegesisTrackClient(props: {
               {threadErr}
             </div>
           ) : null}
+
+          {Composer}
 
           <div
             ref={threadScrollRef}
@@ -1316,6 +1374,7 @@ export default function ExegesisTrackClient(props: {
                                   }
                                   valueDoc={editByCommentId[c.id]?.doc ?? null}
                                   disabled={editByCommentId[c.id]?.posting}
+                                  showToolbar
                                   onChangePlain={(plain) =>
                                     setEditByCommentId((prev) => ({
                                       ...prev,
@@ -1389,6 +1448,7 @@ export default function ExegesisTrackClient(props: {
                                     replyByCommentId[c.id]?.plain ?? ""
                                   }
                                   disabled={replyByCommentId[c.id]?.posting}
+                                  showToolbar
                                   onChangePlain={(plain) =>
                                     setReplyByCommentId((prev) => ({
                                       ...prev,
@@ -1558,38 +1618,6 @@ export default function ExegesisTrackClient(props: {
             </div>
           </div>
 
-          <div className="mt-4">
-            <TipTapEditor
-              valuePlain={draft}
-              disabled={!canPost || isLocked}
-              onChangePlain={(plain) => setDraft(plain)}
-              onChangeDoc={(doc) => setDraftDoc(doc)}
-            />
-            <div className="mt-2 flex items-center justify-between gap-3">
-              <div className="text-xs opacity-60">
-                {draft.trim().length}/5000
-              </div>
-              <button
-                className="rounded-md bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15 disabled:opacity-40"
-                disabled={
-                  !canPost || isLocked || !selected || !draft.trim() || posting
-                }
-                onClick={() => void postComment()}
-              >
-                {posting ? "Posting…" : "Post"}
-              </button>
-            </div>
-
-            {thread?.viewer.kind === "anon" ? (
-              <div className="mt-2 text-xs opacity-60">
-                Tip: sign in to vote; upgrade to post.
-              </div>
-            ) : !canPost ? (
-              <div className="mt-2 text-xs opacity-60">
-                Posting requires Patron or Partner.
-              </div>
-            ) : null}
-          </div>
         </div>
       </div>
     </div>
