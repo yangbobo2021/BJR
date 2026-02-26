@@ -51,24 +51,6 @@ export function PortalViewerProvider(props: {
       : null,
   );
 
-  // If the server/runtime changes the initial values between navigations, sync once.
-  // This is safe because it only updates when the incoming prop changes.
-  React.useEffect(() => {
-    setPortalTabId(
-      (props.initialPortalTabId ?? null)
-        ? String(props.initialPortalTabId)
-        : null,
-    );
-  }, [props.initialPortalTabId]);
-
-  React.useEffect(() => {
-    setExegesisTrackId(
-      (props.initialExegesisTrackId ?? null)
-        ? String(props.initialExegesisTrackId)
-        : null,
-    );
-  }, [props.initialExegesisTrackId]);
-
   const ctxValue: ViewerCtx = React.useMemo(
     () => ({
       ...props.value,

@@ -78,7 +78,7 @@ export default function PortalExegesis(props: { title?: string }) {
   const { exegesisTrackId, setExegesisTrackId } = usePortalViewer();
 
   const trackIdFromPath = extractTrackIdFromPath(pathname);
-  const trackId = (exegesisTrackId ?? trackIdFromPath ?? "").trim() || null;
+  const trackId = (trackIdFromPath ?? exegesisTrackId ?? "").trim() || null;
 
   // If we had to fall back to pathname parsing, persist it into context so other
   // components (and subsequent renders) have a stable single source of truth.
@@ -259,7 +259,6 @@ export default function PortalExegesis(props: { title?: string }) {
                       <Link
                         key={tid}
                         href={`/exegesis/${encodeURIComponent(tid)}${search}`}
-                        onClick={() => setExegesisTrackId(tid)}
                         className="rounded-md bg-black/20 px-3 py-2 text-sm hover:bg-white/10"
                         title={tid}
                       >
