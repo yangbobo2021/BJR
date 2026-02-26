@@ -141,7 +141,7 @@ export default function PortalExegesis(props: { title?: string }) {
   const { exegesisTrackId, setExegesisTrackId } = usePortalViewer();
 
   const trackIdFromPath = extractTrackIdFromPath(pathname);
-  const trackId = (trackIdFromPath ?? exegesisTrackId ?? "").trim() || null;
+  const trackId = (exegesisTrackId ?? trackIdFromPath ?? "").trim() || null;
 
   // If we had to fall back to pathname parsing, persist it into context so other
   // components (and subsequent renders) have a stable single source of truth.

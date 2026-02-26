@@ -3,16 +3,11 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { client } from "@/sanity/lib/client";
 
-// If you want this to be extremely fast in prod, you want CDN caching.
-// This route is “browse metadata”, not per-user, not sensitive.
 export const runtime = "nodejs";
-
-// Optional: helps Next understand it can cache.
-// (Even with explicit Cache-Control below, this is still useful metadata.)
 export const revalidate = 300;
 
 type CatalogueTrack = {
-  trackId: string;
+  trackId: string; // the id we will link with (legacy id OR catalogueId — whichever has lyrics)
   title: string | null;
   artist: string | null;
   trackCatalogueId: string | null;
@@ -24,23 +19,24 @@ type CatalogueAlbum = {
   albumTitle: string | null;
   albumCatalogueId: string | null;
   tracks: CatalogueTrack[];
-  trackIds: string[]; // legacy
+  trackIds: string[]; // legacy-ish surface: list of returned trackId values
 };
 
 type CatalogueOk = { ok: true; albums: CatalogueAlbum[] };
 type CatalogueErr = { ok: false; error: string };
 
 type CatalogueQueryResult = {
+  lyricIds?: unknown;
   albums?: Array<{
     albumId?: string;
     albumSlug?: string | null;
     albumTitle?: string | null;
     albumCatalogueId?: string | null;
     tracks?: Array<{
-      trackId?: string;
+      id?: string | null; // legacy
+      catalogueId?: string | null; // canonical
       title?: string | null;
       artist?: string | null;
-      trackCatalogueId?: string | null;
     }>;
   }>;
 };
@@ -64,11 +60,6 @@ function uniqNonEmpty(ids: string[]): string[] {
 
 export async function GET() {
   try {
-    // One fetch:
-    // - Build lyric track ids
-    // - Pull albums
-    // - Filter tracks to only those with lyrics
-    // - Drop albums with zero eligible tracks
     const q = `
       {
         "lyricIds": *[_type == "lyrics" && defined(trackId)].trackId,
@@ -78,55 +69,70 @@ export async function GET() {
             "albumTitle": title,
             "albumSlug": slug.current,
             "albumCatalogueId": catalogueId,
-            "tracks": tracks[id in ^.^.lyricIds]{
-              "trackId": id,
+            "tracks": tracks[]{
+              id,
+              catalogueId,
               title,
-              artist,
-              "trackCatalogueId": catalogueId
+              artist
             }
-          }[count(tracks) > 0]
+          }
       }
     `;
 
     const bundle = await client.fetch<CatalogueQueryResult | null>(q);
 
-    const albumsRaw = bundle?.albums ?? [];
+    const lyricIdsArr = Array.isArray(bundle?.lyricIds)
+      ? (bundle?.lyricIds as unknown[])
+      : [];
 
-    const albums: CatalogueAlbum[] = albumsRaw.map((a) => {
-      const tracksRaw = Array.isArray(a.tracks) ? a.tracks : [];
+    const lyricIdSet = new Set(
+      uniqNonEmpty(lyricIdsArr.map((x) => asTrimmedString(x))),
+    );
 
-      // Normalize + de-dupe by trackId (preserve order)
-      const normTracks: CatalogueTrack[] = [];
-      const seen = new Set<string>();
+    const albumsRaw = Array.isArray(bundle?.albums) ? bundle!.albums! : [];
 
-      for (const t of tracksRaw) {
-        const tid = asTrimmedString(t?.trackId);
-        if (!tid || seen.has(tid)) continue;
-        seen.add(tid);
+    const albums: CatalogueAlbum[] = albumsRaw
+      .map((a) => {
+        const tracksRaw = Array.isArray(a.tracks) ? a.tracks : [];
 
-        normTracks.push({
-          trackId: tid,
-          title: asTrimmedString(t?.title) || null,
-          artist: asTrimmedString(t?.artist) || null,
-          trackCatalogueId: asTrimmedString(t?.trackCatalogueId) || null,
-        });
-      }
+        const normTracks: CatalogueTrack[] = [];
+        const seen = new Set<string>();
 
-      const legacyTrackIds = uniqNonEmpty(normTracks.map((t) => t.trackId));
+        for (const t of tracksRaw) {
+          const legacyId = asTrimmedString(t?.id);
+          const catId = asTrimmedString(t?.catalogueId);
 
-      return {
-        albumId: asTrimmedString(a?.albumId),
-        albumSlug: asTrimmedString(a?.albumSlug) || null,
-        albumTitle: asTrimmedString(a?.albumTitle) || null,
-        albumCatalogueId: asTrimmedString(a?.albumCatalogueId) || null,
-        tracks: normTracks,
-        trackIds: legacyTrackIds, // keep legacy surface if anything still reads it
-      };
-    });
+          // Pick whichever identifier actually has lyrics
+          const picked =
+            (legacyId && lyricIdSet.has(legacyId) ? legacyId : "") ||
+            (catId && lyricIdSet.has(catId) ? catId : "");
 
-    // ✅ Cache: fast “browse” endpoint.
-    // - s-maxage: CDN cache
-    // - stale-while-revalidate: serve instantly while refreshing in background
+          if (!picked) continue;
+          if (seen.has(picked)) continue;
+          seen.add(picked);
+
+          normTracks.push({
+            trackId: picked,
+            title: asTrimmedString(t?.title) || null,
+            artist: asTrimmedString(t?.artist) || null,
+            trackCatalogueId: catId || null,
+          });
+        }
+
+        const trackIds = uniqNonEmpty(normTracks.map((t) => t.trackId));
+
+        return {
+          albumId: asTrimmedString(a?.albumId),
+          albumSlug: asTrimmedString(a?.albumSlug) || null,
+          albumTitle: asTrimmedString(a?.albumTitle) || null,
+          albumCatalogueId: asTrimmedString(a?.albumCatalogueId) || null,
+          tracks: normTracks,
+          trackIds,
+        };
+      })
+      // drop albums that ended up with zero eligible tracks
+      .filter((g) => g.tracks.length > 0);
+
     return NextResponse.json<CatalogueOk>(
       { ok: true, albums },
       {
