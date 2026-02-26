@@ -344,10 +344,6 @@ export default function ExegesisTrackClient(props: {
     setComposerMountKey((n) => n + 1);
   }
 
-  function collapseComposer() {
-    setComposerStage("collapsed");
-  }
-
   type MiniStage = "basic" | "full";
 
   type ReplyDraft = {
@@ -406,12 +402,19 @@ export default function ExegesisTrackClient(props: {
   const canClaimName =
     thread?.viewer?.kind === "member" ? thread.viewer.cap.canClaimName : false;
 
+  // --- outside-click close refs (main + per-reply/edit) ---
+  const composerWrapRef = React.useRef<HTMLDivElement | null>(null);
+
   const Composer = (
-    <div className="mt-3 rounded-lg border border-white/10 bg-white/6 p-3">
+    <div
+      ref={composerWrapRef}
+      className="mt-3 rounded-lg border border-white/10 bg-white/6 p-3"
+    >
       <div className="flex items-center justify-between gap-3">
-        <div className="text-sm opacity-80">Add a comment</div>
         {!canPost ? (
-          <div className="text-xs opacity-60">Patron/Partner required</div>
+          <div className="text-xs opacity-60">
+            Posting exclusive to Patrons.
+          </div>
         ) : isLocked ? (
           <div className="text-xs opacity-60">Locked</div>
         ) : null}
@@ -448,30 +451,19 @@ export default function ExegesisTrackClient(props: {
 
           {/* bottom ribbon: exactly two buttons */}
           <div className="mt-2 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40"
-                disabled={!canPost || isLocked}
-                onClick={() =>
-                  setComposerStage((s) => (s === "full" ? "basic" : "full"))
-                }
-                title={
-                  composerStage === "full" ? "Hide formatting" : "Formatting"
-                }
-              >
-                Aa
-              </button>
-
-              <button
-                type="button"
-                className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
-                onClick={() => collapseComposer()}
-                title="Close"
-              >
-                Close
-              </button>
-            </div>
+            <button
+              type="button"
+              className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40"
+              disabled={!canPost || isLocked}
+              onClick={() =>
+                setComposerStage((s) => (s === "full" ? "basic" : "full"))
+              }
+              title={
+                composerStage === "full" ? "Hide formatting" : "Formatting"
+              }
+            >
+              Aa
+            </button>
 
             <div className="text-xs opacity-60">{draft.trim().length}/5000</div>
           </div>
@@ -502,6 +494,33 @@ export default function ExegesisTrackClient(props: {
       ) : null}
     </div>
   );
+
+  // store DOM nodes for reply/edit containers keyed by commentId
+  const replyWrapByIdRef = React.useRef<Record<string, HTMLDivElement | null>>(
+    {},
+  );
+  const editWrapByIdRef = React.useRef<Record<string, HTMLDivElement | null>>(
+    {},
+  );
+
+  // --- keep latest draft state in refs to avoid re-binding listeners ---
+  const draftRef = React.useRef(draft);
+  const replyDraftsRef = React.useRef(replyByCommentId);
+  const editDraftsRef = React.useRef(editByCommentId);
+
+  React.useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+
+  React.useEffect(() => {
+    replyDraftsRef.current = replyByCommentId;
+  }, [replyByCommentId]);
+
+  React.useEffect(() => {
+    editDraftsRef.current = editByCommentId;
+  }, [editByCommentId]);
+
+
   function openReport(commentId: string) {
     if (!canReport) return;
     setReportByCommentId((prev) => {
@@ -527,14 +546,6 @@ export default function ExegesisTrackClient(props: {
     });
   }
 
-  function closeReport(commentId: string) {
-    setReportByCommentId((prev) => {
-      const cur = prev[commentId];
-      if (!cur) return prev;
-      return { ...prev, [commentId]: { ...cur, open: false, err: "" } };
-    });
-  }
-
   function openReply(commentId: string) {
     if (!canPost || isLocked) return;
     setReplyMountKey((n) => n + 1);
@@ -554,16 +565,7 @@ export default function ExegesisTrackClient(props: {
       };
     });
   }
-
-  function closeReply(commentId: string) {
-    setReplyByCommentId((prev) => {
-      if (!prev[commentId]) return prev;
-      const next = { ...prev };
-      delete next[commentId];
-      return next;
-    });
-  }
-
+  
   function openEdit(c: CommentDTO) {
     if (!canPost || isLocked) return;
     if (!viewerMemberId) return;
@@ -695,6 +697,63 @@ export default function ExegesisTrackClient(props: {
       });
     }
   }
+
+  React.useEffect(() => {
+    function onMouseDown(e: MouseEvent) {
+      const t = e.target as Node | null;
+      if (!t) return;
+
+      // always read latest state from refs
+      const draft = draftRef.current;
+      const replyById = replyDraftsRef.current;
+      const editById = editDraftsRef.current;
+
+      // 1) Main composer
+      const composerEl = composerWrapRef.current;
+      const clickedInComposer = !!composerEl && composerEl.contains(t);
+
+      if (!clickedInComposer) {
+        if (!(draft ?? "").trim()) {
+          setComposerStage("collapsed");
+        }
+      }
+
+      // 2) Replies
+      for (const [commentId, d] of Object.entries(replyById)) {
+        if (!d?.open) continue;
+        const el = replyWrapByIdRef.current[commentId];
+        if (!el) continue;
+
+        if (!el.contains(t) && !(d.plain ?? "").trim()) {
+          setReplyByCommentId((prev) => {
+            if (!prev[commentId]) return prev;
+            const next = { ...prev };
+            delete next[commentId];
+            return next;
+          });
+        }
+      }
+
+      // 3) Edits
+      for (const [commentId, d] of Object.entries(editById)) {
+        if (!d?.open) continue;
+        const el = editWrapByIdRef.current[commentId];
+        if (!el) continue;
+
+        if (!el.contains(t) && !(d.plain ?? "").trim()) {
+          setEditByCommentId((prev) => {
+            if (!prev[commentId]) return prev;
+            const next = { ...prev };
+            delete next[commentId];
+            return next;
+          });
+        }
+      }
+    }
+
+    document.addEventListener("mousedown", onMouseDown, true);
+    return () => document.removeEventListener("mousedown", onMouseDown, true);
+  }, []);
 
   async function submitReport(commentId: string) {
     if (!canReport) return;
@@ -1584,15 +1643,14 @@ export default function ExegesisTrackClient(props: {
                           !isLocked &&
                           canEdit &&
                           editByCommentId[c.id]?.open ? (
-                            <div className="mt-2 rounded-md bg-black/25 p-3">
+                            <div
+                              ref={(el) => {
+                                editWrapByIdRef.current[c.id] = el;
+                              }}
+                              className="mt-2 rounded-md bg-black/25 p-3"
+                            >
                               <div className="flex items-center justify-between gap-3">
                                 <div className="text-xs opacity-70">Edit</div>
-                                <button
-                                  className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
-                                  onClick={() => closeEdit(c.id)}
-                                >
-                                  Close
-                                </button>
                               </div>
 
                               <div className="mt-2">
@@ -1633,44 +1691,31 @@ export default function ExegesisTrackClient(props: {
                               </div>
 
                               <div className="mt-2 flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    type="button"
-                                    className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40"
-                                    disabled={editByCommentId[c.id]?.posting}
-                                    onClick={() =>
-                                      setEditByCommentId((prev) => ({
-                                        ...prev,
-                                        [c.id]: {
-                                          ...(prev[c.id] as EditDraft),
-                                          ui:
-                                            (prev[c.id]?.ui ?? "basic") ===
-                                            "full"
-                                              ? "basic"
-                                              : "full",
-                                        },
-                                      }))
-                                    }
-                                    title={
-                                      (editByCommentId[c.id]?.ui ?? "basic") ===
-                                      "full"
-                                        ? "Hide formatting"
-                                        : "Formatting"
-                                    }
-                                  >
-                                    Aa
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40"
-                                    disabled={editByCommentId[c.id]?.posting}
-                                    onClick={() => closeEdit(c.id)}
-                                    title="Close"
-                                  >
-                                    Close
-                                  </button>
-                                </div>
+                                <button
+                                  type="button"
+                                  className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40"
+                                  disabled={editByCommentId[c.id]?.posting}
+                                  onClick={() =>
+                                    setEditByCommentId((prev) => ({
+                                      ...prev,
+                                      [c.id]: {
+                                        ...(prev[c.id] as EditDraft),
+                                        ui:
+                                          (prev[c.id]?.ui ?? "basic") === "full"
+                                            ? "basic"
+                                            : "full",
+                                      },
+                                    }))
+                                  }
+                                  title={
+                                    (editByCommentId[c.id]?.ui ?? "basic") ===
+                                    "full"
+                                      ? "Hide formatting"
+                                      : "Formatting"
+                                  }
+                                >
+                                  Aa
+                                </button>
 
                                 <div className="text-xs opacity-60">
                                   {
@@ -1707,15 +1752,14 @@ export default function ExegesisTrackClient(props: {
                           {canPost &&
                           !isLocked &&
                           replyByCommentId[c.id]?.open ? (
-                            <div className="mt-2 rounded-md bg-black/25 p-3">
+                            <div
+                              ref={(el) => {
+                                replyWrapByIdRef.current[c.id] = el;
+                              }}
+                              className="mt-2 rounded-md bg-black/25 p-3"
+                            >
                               <div className="flex items-center justify-between gap-3">
                                 <div className="text-xs opacity-70">Reply</div>
-                                <button
-                                  className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
-                                  onClick={() => closeReply(c.id)}
-                                >
-                                  Close
-                                </button>
                               </div>
 
                               <div className="mt-2">
@@ -1756,44 +1800,31 @@ export default function ExegesisTrackClient(props: {
                               </div>
 
                               <div className="mt-2 flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    type="button"
-                                    className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40"
-                                    disabled={replyByCommentId[c.id]?.posting}
-                                    onClick={() =>
-                                      setReplyByCommentId((prev) => ({
-                                        ...prev,
-                                        [c.id]: {
-                                          ...(prev[c.id] as ReplyDraft),
-                                          ui:
-                                            (prev[c.id]?.ui ?? "basic") ===
-                                            "full"
-                                              ? "basic"
-                                              : "full",
-                                        },
-                                      }))
-                                    }
-                                    title={
-                                      (replyByCommentId[c.id]?.ui ??
-                                        "basic") === "full"
-                                        ? "Hide formatting"
-                                        : "Formatting"
-                                    }
-                                  >
-                                    Aa
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40"
-                                    disabled={replyByCommentId[c.id]?.posting}
-                                    onClick={() => closeReply(c.id)}
-                                    title="Close"
-                                  >
-                                    Close
-                                  </button>
-                                </div>
+                                <button
+                                  type="button"
+                                  className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40"
+                                  disabled={replyByCommentId[c.id]?.posting}
+                                  onClick={() =>
+                                    setReplyByCommentId((prev) => ({
+                                      ...prev,
+                                      [c.id]: {
+                                        ...(prev[c.id] as ReplyDraft),
+                                        ui:
+                                          (prev[c.id]?.ui ?? "basic") === "full"
+                                            ? "basic"
+                                            : "full",
+                                      },
+                                    }))
+                                  }
+                                  title={
+                                    (replyByCommentId[c.id]?.ui ?? "basic") ===
+                                    "full"
+                                      ? "Hide formatting"
+                                      : "Formatting"
+                                  }
+                                >
+                                  Aa
+                                </button>
 
                                 <div className="text-xs opacity-60">
                                   {
@@ -1842,12 +1873,6 @@ export default function ExegesisTrackClient(props: {
                                     <div className="text-xs opacity-70">
                                       Report this comment
                                     </div>
-                                    <button
-                                      className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
-                                      onClick={() => closeReport(c.id)}
-                                    >
-                                      Close
-                                    </button>
                                   </div>
 
                                   <div className="mt-2 grid gap-2">
