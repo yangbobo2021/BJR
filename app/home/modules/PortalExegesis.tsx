@@ -69,7 +69,7 @@ function getTrackMeta(
   return { title: null, artist: null };
 }
 
-export default function PortalExegesis() {
+export default function PortalExegesis(props: { title?: string }) {
   const pathname = usePathname() ?? "";
   const router = useRouter();
   const sp = useSearchParams();
