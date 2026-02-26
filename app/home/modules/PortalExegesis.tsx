@@ -207,9 +207,8 @@ export default function PortalExegesis(props: { title?: string }) {
   return (
     <div className="mx-auto max-w-5xl px-4 py-6">
       <div className="text-xs opacity-60 tracking-[0.14em]">EXEGESIS</div>
-      <h1 className="mt-1 text-xl font-semibold">{title}</h1>
       <div className="mt-1 text-sm opacity-70">
-        Choose a track to read lyrics and discuss line-by-line.
+        Choose a track to read and discuss lyrics.
       </div>
 
       {catalogueLoading ? (
