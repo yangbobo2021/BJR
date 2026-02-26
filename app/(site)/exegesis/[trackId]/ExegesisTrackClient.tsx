@@ -329,8 +329,30 @@ export default function ExegesisTrackClient(props: {
   const [draftDoc, setDraftDoc] = React.useState<unknown | null>(null);
   const [posting, setPosting] = React.useState<boolean>(false);
 
+  type ComposerStage = "collapsed" | "basic" | "full";
+  const [composerStage, setComposerStage] =
+    React.useState<ComposerStage>("collapsed");
+
+  // used to force-remount TipTap so autofocus is reliable when opening
+  const [composerMountKey, setComposerMountKey] = React.useState<number>(0);
+  const [replyMountKey, setReplyMountKey] = React.useState<number>(0);
+  const [editMountKey, setEditMountKey] = React.useState<number>(0);
+
+  function openComposer(stage: ComposerStage) {
+    if (!canPost || isLocked) return;
+    setComposerStage(stage);
+    setComposerMountKey((n) => n + 1);
+  }
+
+  function collapseComposer() {
+    setComposerStage("collapsed");
+  }
+
+  type MiniStage = "basic" | "full";
+
   type ReplyDraft = {
     open: boolean;
+    ui: MiniStage;
     plain: string;
     doc: unknown | null;
     posting: boolean;
@@ -339,6 +361,7 @@ export default function ExegesisTrackClient(props: {
 
   type EditDraft = {
     open: boolean;
+    ui: MiniStage;
     plain: string;
     doc: unknown | null;
     posting: boolean;
@@ -394,42 +417,91 @@ export default function ExegesisTrackClient(props: {
         ) : null}
       </div>
 
-      <div className="mt-2">
-        <TipTapEditor
-          valuePlain={draft}
-          valueDoc={draftDoc}
-          disabled={!canPost || isLocked}
-          showToolbar
-          onChangePlain={(plain) => setDraft(plain)}
-          onChangeDoc={(doc) => setDraftDoc(doc)}
-        />
-      </div>
-
-      <div className="mt-2 flex items-center justify-between gap-3">
-        <div className="text-xs opacity-60">{draft.trim().length}/5000</div>
+      {/* Stage 1: collapsed single-line affordance */}
+      {composerStage === "collapsed" ? (
         <button
-          className="rounded-md bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15 disabled:opacity-40"
-          disabled={
-            !canPost || isLocked || !selected || !draft.trim() || posting
-          }
-          onClick={() => void postComment()}
+          type="button"
+          className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-left text-sm text-white/50 hover:bg-black/25 disabled:opacity-40"
+          disabled={!canPost || isLocked}
+          onClick={() => openComposer("basic")}
         >
-          {posting ? "Posting…" : "Post"}
+          Join the conversation
         </button>
-      </div>
+      ) : null}
 
-      {thread?.viewer.kind === "anon" ? (
-        <div className="mt-2 text-xs opacity-60">
-          Tip: sign in to vote; upgrade to post.
-        </div>
-      ) : !canPost ? (
-        <div className="mt-2 text-xs opacity-60">
-          Posting requires Patron or Partner.
-        </div>
+      {/* Stage 2/3: editor + bottom mini ribbon (two buttons) */}
+      {composerStage !== "collapsed" ? (
+        <>
+          <div className="mt-2">
+            <TipTapEditor
+              key={`composer-${composerMountKey}-${composerStage}`}
+              valuePlain={draft}
+              valueDoc={draftDoc}
+              disabled={!canPost || isLocked}
+              showToolbar={composerStage === "full"}
+              autofocus
+              placeholder="Join the conversation"
+              onChangePlain={(plain) => setDraft(plain)}
+              onChangeDoc={(doc) => setDraftDoc(doc)}
+            />
+          </div>
+
+          {/* bottom ribbon: exactly two buttons */}
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40"
+                disabled={!canPost || isLocked}
+                onClick={() =>
+                  setComposerStage((s) => (s === "full" ? "basic" : "full"))
+                }
+                title={
+                  composerStage === "full" ? "Hide formatting" : "Formatting"
+                }
+              >
+                Aa
+              </button>
+
+              <button
+                type="button"
+                className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
+                onClick={() => collapseComposer()}
+                title="Close"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="text-xs opacity-60">{draft.trim().length}/5000</div>
+          </div>
+
+          {/* your existing Post row stays (Reddit-style: separate action area) */}
+          <div className="mt-2 flex items-center justify-end gap-3">
+            <button
+              className="rounded-md bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15 disabled:opacity-40"
+              disabled={
+                !canPost || isLocked || !selected || !draft.trim() || posting
+              }
+              onClick={() => void postComment()}
+            >
+              {posting ? "Posting…" : "Post"}
+            </button>
+          </div>
+
+          {thread?.viewer.kind === "anon" ? (
+            <div className="mt-2 text-xs opacity-60">
+              Tip: sign in to vote; upgrade to post.
+            </div>
+          ) : !canPost ? (
+            <div className="mt-2 text-xs opacity-60">
+              Posting requires Patron or Partner.
+            </div>
+          ) : null}
+        </>
       ) : null}
     </div>
   );
-
   function openReport(commentId: string) {
     if (!canReport) return;
     setReportByCommentId((prev) => {
@@ -465,10 +537,12 @@ export default function ExegesisTrackClient(props: {
 
   function openReply(commentId: string) {
     if (!canPost || isLocked) return;
+    setReplyMountKey((n) => n + 1);
     setReplyByCommentId((prev) => {
       const cur = prev[commentId];
       const base: ReplyDraft = cur ?? {
         open: true,
+        ui: "basic",
         plain: "",
         doc: null,
         posting: false,
@@ -495,11 +569,12 @@ export default function ExegesisTrackClient(props: {
     if (!viewerMemberId) return;
     if (c.createdByMemberId !== viewerMemberId) return;
     if (c.status !== "live") return;
-
+    setEditMountKey((n) => n + 1);
     setEditByCommentId((prev) => {
       const cur = prev[c.id];
       const base: EditDraft = cur ?? {
         open: true,
+        ui: "basic",
         plain: c.bodyPlain ?? "",
         doc: isTipTapDoc(c.bodyRich) ? c.bodyRich : null,
         posting: false,
@@ -510,7 +585,6 @@ export default function ExegesisTrackClient(props: {
         [c.id]: {
           ...base,
           open: true,
-          // refresh from current comment snapshot when opening
           plain: c.bodyPlain ?? base.plain,
           doc: isTipTapDoc(c.bodyRich) ? c.bodyRich : base.doc,
           err: "",
@@ -1155,56 +1229,33 @@ export default function ExegesisTrackClient(props: {
 
   return (
     <div className="w-full max-w-none px-4 py-6">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="mt-1 text-xl font-semibold">
-            <span className="opacity-90">
-              {(props.trackTitle ?? "").trim() || lyrics.trackId}
-            </span>
-          </h1>
-          {(props.trackArtist ?? "").trim() ? (
-            <div className="mt-1 text-sm opacity-70">{props.trackArtist}</div>
-          ) : null}
-          {lyrics.geniusUrl ? (
-            <a
-              href={lyrics.geniusUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center rounded-md p-1 text-[#fefe63] opacity-70 hover:opacity-100"
-              title="Open on Genius"
-              aria-label="Open on Genius"
-            >
-              <GeniusIcon className="h-7 w-auto" />
-            </a>
-          ) : null}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            className={`rounded-md px-3 py-1.5 text-sm ${
-              sort === "top" ? "bg-white/10" : "bg-white/5"
-            }`}
-            onClick={() => setSort("top")}
+      <div>
+        <h1 className="mt-1 text-xl font-semibold">
+          <span className="opacity-90">
+            {(props.trackTitle ?? "").trim() || lyrics.trackId}
+          </span>
+        </h1>
+        {(props.trackArtist ?? "").trim() ? (
+          <div className="mt-1 text-sm opacity-70">{props.trackArtist}</div>
+        ) : null}
+        {lyrics.geniusUrl ? (
+          <a
+            href={lyrics.geniusUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center rounded-md p-1 text-[#fefe63] opacity-70 hover:opacity-100"
+            title="Open on Genius"
+            aria-label="Open on Genius"
           >
-            Top
-          </button>
-          <button
-            className={`rounded-md px-3 py-1.5 text-sm ${
-              sort === "recent" ? "bg-white/10" : "bg-white/5"
-            }`}
-            onClick={() => setSort("recent")}
-          >
-            Recent
-          </button>
-        </div>
+            <GeniusIcon className="h-7 w-auto" />
+          </a>
+        ) : null}
       </div>
 
       <div className="mt-6 grid gap-6 md:grid-cols-[1fr_520px]">
         <div className="rounded-xl bg-white/5 p-4">
           <div className="mt-3 space-y-0.5">
             {(lyrics.cues ?? []).map((c) => {
-              const active = selected?.lineKey === c.lineKey;
-
               const gk = (
                 c.canonicalGroupKey ??
                 cueGroupKey(lyrics, c.lineKey) ??
@@ -1249,11 +1300,9 @@ export default function ExegesisTrackClient(props: {
                   <span
                     className={[
                       "inline-block rounded px-1.5 py-0.5 text-sm leading-snug transition",
-                      active
-                        ? "bg-violet-700/60"
-                        : inPreviewGroup
-                          ? "bg-violet-900/50 hover:bg-violet-900/60"
-                          : "bg-transparent hover:bg-violet-900/40",
+                      inPreviewGroup
+                        ? "bg-violet-900/50 hover:bg-violet-900/60"
+                        : "bg-transparent hover:bg-violet-900/40",
                     ].join(" ")}
                   >
                     <span className="opacity-90">{c.text}</span>
@@ -1376,6 +1425,25 @@ export default function ExegesisTrackClient(props: {
 
           {Composer}
 
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <button
+              className={`rounded-md px-3 py-1.5 text-sm ${
+                sort === "top" ? "bg-white/10" : "bg-white/5"
+              }`}
+              onClick={() => setSort("top")}
+            >
+              Top
+            </button>
+            <button
+              className={`rounded-md px-3 py-1.5 text-sm ${
+                sort === "recent" ? "bg-white/10" : "bg-white/5"
+              }`}
+              onClick={() => setSort("recent")}
+            >
+              Recent
+            </button>
+          </div>
+
           <div
             ref={threadScrollRef}
             className="mt-3 space-y-3"
@@ -1387,7 +1455,9 @@ export default function ExegesisTrackClient(props: {
           >
             <div className="mt-3 space-y-3">
               {(thread?.roots ?? []).length === 0 ? (
-                <div className="text-sm opacity-60">No comments yet.</div>
+                <div className="text-sm opacity-60">
+                  Be the first to comment.
+                </div>
               ) : (
                 (rootsForRender ?? []).map((root) => (
                   <div key={root.rootId} className="rounded-md bg-black/20 p-3">
@@ -1527,12 +1597,18 @@ export default function ExegesisTrackClient(props: {
 
                               <div className="mt-2">
                                 <TipTapEditor
+                                  key={`edit-${c.id}-${editMountKey}-${editByCommentId[c.id]?.ui ?? "basic"}`}
                                   valuePlain={
                                     editByCommentId[c.id]?.plain ?? ""
                                   }
                                   valueDoc={editByCommentId[c.id]?.doc ?? null}
                                   disabled={editByCommentId[c.id]?.posting}
-                                  showToolbar
+                                  showToolbar={
+                                    (editByCommentId[c.id]?.ui ?? "basic") ===
+                                    "full"
+                                  }
+                                  autofocus
+                                  placeholder="Edit your comment…"
                                   onChangePlain={(plain) =>
                                     setEditByCommentId((prev) => ({
                                       ...prev,
@@ -1556,13 +1632,46 @@ export default function ExegesisTrackClient(props: {
                                 />
                               </div>
 
-                              {editByCommentId[c.id]?.err ? (
-                                <div className="mt-2 text-xs opacity-75">
-                                  {editByCommentId[c.id]?.err}
-                                </div>
-                              ) : null}
+                              <div className="mt-2 flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40"
+                                    disabled={editByCommentId[c.id]?.posting}
+                                    onClick={() =>
+                                      setEditByCommentId((prev) => ({
+                                        ...prev,
+                                        [c.id]: {
+                                          ...(prev[c.id] as EditDraft),
+                                          ui:
+                                            (prev[c.id]?.ui ?? "basic") ===
+                                            "full"
+                                              ? "basic"
+                                              : "full",
+                                        },
+                                      }))
+                                    }
+                                    title={
+                                      (editByCommentId[c.id]?.ui ?? "basic") ===
+                                      "full"
+                                        ? "Hide formatting"
+                                        : "Formatting"
+                                    }
+                                  >
+                                    Aa
+                                  </button>
 
-                              <div className="mt-2 flex items-center justify-between">
+                                  <button
+                                    type="button"
+                                    className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40"
+                                    disabled={editByCommentId[c.id]?.posting}
+                                    onClick={() => closeEdit(c.id)}
+                                    title="Close"
+                                  >
+                                    Close
+                                  </button>
+                                </div>
+
                                 <div className="text-xs opacity-60">
                                   {
                                     (editByCommentId[c.id]?.plain ?? "").trim()
@@ -1570,6 +1679,15 @@ export default function ExegesisTrackClient(props: {
                                   }
                                   /5000
                                 </div>
+                              </div>
+
+                              {editByCommentId[c.id]?.err ? (
+                                <div className="mt-2 text-xs opacity-75">
+                                  {editByCommentId[c.id]?.err}
+                                </div>
+                              ) : null}
+
+                              <div className="mt-2 flex items-center justify-between">
                                 <button
                                   className="rounded-md bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15 disabled:opacity-40"
                                   disabled={
@@ -1602,11 +1720,18 @@ export default function ExegesisTrackClient(props: {
 
                               <div className="mt-2">
                                 <TipTapEditor
+                                  key={`reply-${c.id}-${replyMountKey}-${replyByCommentId[c.id]?.ui ?? "basic"}`}
                                   valuePlain={
                                     replyByCommentId[c.id]?.plain ?? ""
                                   }
+                                  valueDoc={replyByCommentId[c.id]?.doc ?? null}
                                   disabled={replyByCommentId[c.id]?.posting}
-                                  showToolbar
+                                  showToolbar={
+                                    (replyByCommentId[c.id]?.ui ?? "basic") ===
+                                    "full"
+                                  }
+                                  autofocus
+                                  placeholder="Write a reply…"
                                   onChangePlain={(plain) =>
                                     setReplyByCommentId((prev) => ({
                                       ...prev,
@@ -1630,13 +1755,46 @@ export default function ExegesisTrackClient(props: {
                                 />
                               </div>
 
-                              {replyByCommentId[c.id]?.err ? (
-                                <div className="mt-2 text-xs opacity-75">
-                                  {replyByCommentId[c.id]?.err}
-                                </div>
-                              ) : null}
+                              <div className="mt-2 flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40"
+                                    disabled={replyByCommentId[c.id]?.posting}
+                                    onClick={() =>
+                                      setReplyByCommentId((prev) => ({
+                                        ...prev,
+                                        [c.id]: {
+                                          ...(prev[c.id] as ReplyDraft),
+                                          ui:
+                                            (prev[c.id]?.ui ?? "basic") ===
+                                            "full"
+                                              ? "basic"
+                                              : "full",
+                                        },
+                                      }))
+                                    }
+                                    title={
+                                      (replyByCommentId[c.id]?.ui ??
+                                        "basic") === "full"
+                                        ? "Hide formatting"
+                                        : "Formatting"
+                                    }
+                                  >
+                                    Aa
+                                  </button>
 
-                              <div className="mt-2 flex items-center justify-between">
+                                  <button
+                                    type="button"
+                                    className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40"
+                                    disabled={replyByCommentId[c.id]?.posting}
+                                    onClick={() => closeReply(c.id)}
+                                    title="Close"
+                                  >
+                                    Close
+                                  </button>
+                                </div>
+
                                 <div className="text-xs opacity-60">
                                   {
                                     (replyByCommentId[c.id]?.plain ?? "").trim()
@@ -1644,6 +1802,15 @@ export default function ExegesisTrackClient(props: {
                                   }
                                   /5000
                                 </div>
+                              </div>
+
+                              {replyByCommentId[c.id]?.err ? (
+                                <div className="mt-2 text-xs opacity-75">
+                                  {replyByCommentId[c.id]?.err}
+                                </div>
+                              ) : null}
+
+                              <div className="mt-2 flex items-center justify-between">
                                 <button
                                   className="rounded-md bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15 disabled:opacity-40"
                                   disabled={

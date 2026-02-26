@@ -4,6 +4,7 @@ import React from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
+import Placeholder from "@tiptap/extension-placeholder";
 import type { JSONContent } from "@tiptap/core";
 
 export type TipTapDoc = {
@@ -15,7 +16,6 @@ function makeLinkSafe(href: string): string | null {
   const h = (href ?? "").trim();
   if (!h) return null;
 
-  // allow anchors and relative URLs
   if (h.startsWith("#") || h.startsWith("/")) return h;
 
   try {
@@ -173,9 +173,11 @@ function TipTapToolbar(props: {
 
 export default function TipTapEditor(props: {
   valuePlain: string;
-  valueDoc?: unknown | null; // NEW
+  valueDoc?: unknown | null;
   disabled?: boolean;
-  showToolbar?: boolean; // NEW
+  showToolbar?: boolean;
+  placeholder?: string;
+  autofocus?: boolean;
   onChangePlain: (plain: string) => void;
   onChangeDoc: (doc: TipTapDoc) => void;
 }) {
@@ -183,29 +185,33 @@ export default function TipTapEditor(props: {
     valuePlain,
     disabled,
     showToolbar = true,
+    placeholder = "",
+    autofocus = false,
     onChangePlain,
     onChangeDoc,
   } = props;
 
   const editor = useEditor({
     editable: !disabled,
+    autofocus: autofocus ? "end" : false,
     extensions: [
       StarterKit.configure({
         heading: false,
         codeBlock: false,
         horizontalRule: false,
-        link: false, // IMPORTANT: prevent duplicate 'link' extension name
+        link: false,
       }),
       Link.configure({
-        // better compose UX (don’t hijack taps); readonly renderer can still open links
         openOnClick: false,
         linkOnPaste: true,
         autolink: true,
-        HTMLAttributes: {
-          rel: "noopener noreferrer",
-          target: "_blank",
-        },
+        HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" },
         validate: (href) => Boolean(makeLinkSafe(href)),
+      }),
+      Placeholder.configure({
+        placeholder,
+        emptyEditorClass:
+          "before:content-[attr(data-placeholder)] before:float-left before:text-white/40 before:pointer-events-none before:h-0",
       }),
     ],
     content: isJsonDoc(props.valueDoc)
@@ -215,6 +221,7 @@ export default function TipTapEditor(props: {
         : "",
     editorProps: {
       attributes: {
+        "data-placeholder": placeholder,
         class:
           "min-h-[90px] w-full rounded-md bg-black/20 p-3 text-sm outline-none disabled:opacity-50",
       },
@@ -226,13 +233,11 @@ export default function TipTapEditor(props: {
     },
   });
 
-  // Keep editor editable flag in sync
   React.useEffect(() => {
     if (!editor) return;
     editor.setEditable(!disabled);
   }, [editor, disabled]);
 
-  // If external value changes (rare), update editor content
   React.useEffect(() => {
     if (!editor) return;
 
@@ -251,9 +256,7 @@ export default function TipTapEditor(props: {
 
   return (
     <div>
-      {showToolbar ? (
-        <TipTapToolbar editor={editor} disabled={disabled} />
-      ) : null}
+      {showToolbar ? <TipTapToolbar editor={editor} disabled={disabled} /> : null}
       <EditorContent editor={editor} />
     </div>
   );
