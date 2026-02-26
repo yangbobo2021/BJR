@@ -1525,7 +1525,13 @@ export default function ExegesisTrackClient(props: {
 
         {(() => {
           const DiscoursePanel = (
-            <div className="rounded-xl bg-white/5 p-4">
+            <div
+              className={
+                isMobile
+                  ? "h-full bg-black p-4" // solid on mobile
+                  : "rounded-xl bg-white/5 p-4" // existing desktop look
+              }
+            >
               {isLocked ? (
                 <div className="mt-2 rounded-md bg-white/5 p-3 text-sm">
                   <div className="opacity-80">This thread is locked.</div>
@@ -2171,11 +2177,17 @@ export default function ExegesisTrackClient(props: {
                 </div>
               </div>
 
-              {/* Mobile: drawer rendered outside the grid so it doesn't sit under lyrics */}
-              {isMobile && drawerOpen ? (
+              {/* Mobile: overlay + sliding drawer (always mounted for exit animation) */}
+              {isMobile ? (
                 <>
-                  {/* Overlay (including the left sliver area) */}
-                  <div className="fixed inset-0 z-[60] bg-black/70 md:hidden">
+                  {/* Overlay */}
+                  <div
+                    className={`fixed inset-0 z-[60] md:hidden bg-black/70 transition-opacity duration-200 ease-out ${
+                      drawerOpen
+                        ? "opacity-100"
+                        : "opacity-0 pointer-events-none"
+                    }`}
+                  >
                     {/* Left sliver tap target */}
                     <button
                       type="button"
@@ -2190,10 +2202,13 @@ export default function ExegesisTrackClient(props: {
                     className="fixed right-0 top-0 z-[61] h-[100dvh] md:hidden will-change-transform transition-transform duration-200 ease-out"
                     style={{
                       width: "calc(100vw - 56px)",
-                      transform: "translateX(0)",
+                      transform: drawerOpen
+                        ? "translateX(0)"
+                        : "translateX(100%)",
+                      pointerEvents: drawerOpen ? "auto" : "none",
                     }}
                   >
-                    <div className="h-full overflow-hidden">
+                    <div className="h-full overflow-hidden border-l border-white/10 shadow-2xl">
                       {DiscoursePanel}
                     </div>
                   </div>
