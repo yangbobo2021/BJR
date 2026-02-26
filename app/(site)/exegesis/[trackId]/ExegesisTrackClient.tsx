@@ -1830,8 +1830,6 @@ export default function ExegesisTrackClient(props: {
 
                       {!viewerIdentity?.publicName ? (
                         <div className="mt-1 text-xs opacity-60">
-                          Progress: {viewerIdentity?.contributionCount ?? 0}/5
-                          contributions
                           {canClaimName ? " · Unlocked" : ""}
                         </div>
                       ) : null}

@@ -79,22 +79,36 @@ async function lookupStripeCustomerIdByClerkUserId(
   return (r.rows[0]?.stripe_customer_id as string | null | undefined) ?? null;
 }
 
+function unwrapStripeResponse<T>(res: T | Stripe.Response<T>): T {
+  if (res && typeof res === "object") {
+    const r = res as unknown as { data?: T; lastResponse?: unknown };
+    if (r.lastResponse && r.data !== undefined) return r.data;
+  }
+  return res as T;
+}
+
 async function customerHasActiveSubscription(
   stripe: Stripe,
   customerId: string,
 ): Promise<boolean> {
-  // Avoid accidentally creating a second sub for an already-paying member.
-  const subs = await stripe.subscriptions.list({
+  const subsRes = await stripe.subscriptions.list({
     customer: customerId,
     status: "all",
     limit: 10,
   });
 
-  return subs.data.some(
+  const subs = unwrapStripeResponse(subsRes);
+
+  const list = Array.isArray((subs as Stripe.ApiList<Stripe.Subscription>).data)
+    ? (subs as Stripe.ApiList<Stripe.Subscription>).data
+    : [];
+
+  return list.some(
     (s) =>
       s.status === "active" ||
       s.status === "trialing" ||
-      s.status === "past_due",
+      s.status === "past_due" ||
+      s.status === "unpaid",
   );
 }
 

@@ -480,7 +480,9 @@ export async function POST(req: Request) {
 
     if (session.mode === "subscription") {
       if (typeof session.subscription === "string" && session.subscription) {
-        const sub = await stripe.subscriptions.retrieve(session.subscription);
+        const sub = await stripe.subscriptions.retrieve(session.subscription, {
+          expand: ["latest_invoice.payment_intent"],
+        });
         await reconcileStripeSubscription({ stripe, subscription: sub });
       }
       return NextResponse.json({ ok: true });
@@ -489,7 +491,9 @@ export async function POST(req: Request) {
     const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
       limit: 100,
     });
-    const priceIds = lineItems.data
+
+    const items = Array.isArray(lineItems?.data) ? lineItems.data : [];
+    const priceIds = items
       .map((li) => li.price?.id)
       .filter((v): v is string => !!v);
     if (priceIds.length === 0) return NextResponse.json({ ok: true });

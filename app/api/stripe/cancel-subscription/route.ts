@@ -51,10 +51,15 @@ function sameOriginOrAllowed(req: Request): boolean {
   return false;
 }
 
-// Stripe SDK typings sometimes wrap responses
+// Stripe SDK sometimes returns either a plain object (e.g. ApiList) OR a Stripe.Response<T> wrapper.
+// Do NOT treat "has a .data field" as "is wrapped", because many real Stripe objects also have .data.
 function unwrapStripeResponse<T>(res: T | Stripe.Response<T>): T {
-  const maybe = res as unknown as { data?: T };
-  return maybe.data ?? (res as T);
+  if (res && typeof res === "object") {
+    const r = res as unknown as { data?: T; lastResponse?: unknown };
+    // Stripe.Response<T> includes `lastResponse`; plain payloads (ApiList, Subscription, etc.) do not.
+    if (r.lastResponse && r.data !== undefined) return r.data;
+  }
+  return res as T;
 }
 
 // Safe “read number prop” without `any`
