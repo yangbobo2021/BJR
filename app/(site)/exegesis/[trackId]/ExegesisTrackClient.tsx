@@ -321,6 +321,7 @@ export default function ExegesisTrackClient(props: {
 
   const [selected, setSelected] = React.useState<SelectedLine | null>(null);
   const [hoverGroupKey, setHoverGroupKey] = React.useState<string>("");
+  const [hoverLineKey, setHoverLineKey] = React.useState<string>("");
 
   const [thread, setThread] = React.useState<ThreadApiOk | null>(null);
   const [threadErr, setThreadErr] = React.useState<string>("");
@@ -1333,23 +1334,40 @@ export default function ExegesisTrackClient(props: {
 
               const selectedGk = (selected?.groupKey ?? "").trim();
               const hoverGk = (hoverGroupKey ?? "").trim();
+              const hoverLk = (hoverLineKey ?? "").trim();
 
-              const inSelectedGroup = isSameGroup(gk, selectedGk);
-              const inHoverGroup = isSameGroup(gk, hoverGk);
-              const inPreviewGroup =
-                inSelectedGroup ||
-                (!selectedGk && inHoverGroup) ||
-                inHoverGroup;
+              const isGrouped = !!gk;
+
+              const inSelectedGroup = isGrouped && isSameGroup(gk, selectedGk);
+              const inHoverGroup = isGrouped && isSameGroup(gk, hoverGk);
+
+              // ungrouped hover applies only to the hovered line
+              const inHoverLine = !isGrouped && hoverLk === c.lineKey;
+
+              const inPreview =
+                isSelected || inSelectedGroup || inHoverGroup || inHoverLine;
 
               return (
                 <button
                   key={c.lineKey}
                   type="button"
                   className="block w-full text-left"
-                  onMouseEnter={() => setHoverGroupKey(gk)}
-                  onMouseLeave={() => setHoverGroupKey("")}
-                  onFocus={() => setHoverGroupKey(gk)}
-                  onBlur={() => setHoverGroupKey("")}
+                  onMouseEnter={() => {
+                    setHoverGroupKey(gk);
+                    setHoverLineKey(c.lineKey);
+                  }}
+                  onMouseLeave={() => {
+                    setHoverGroupKey("");
+                    setHoverLineKey("");
+                  }}
+                  onFocus={() => {
+                    setHoverGroupKey(gk);
+                    setHoverLineKey(c.lineKey);
+                  }}
+                  onBlur={() => {
+                    setHoverGroupKey("");
+                    setHoverLineKey("");
+                  }}
                   onClick={() => {
                     const nextGroupKey = (
                       c.canonicalGroupKey ??
@@ -1372,7 +1390,7 @@ export default function ExegesisTrackClient(props: {
                     style={{
                       backgroundColor: isSelected
                         ? "var(--lxSelected)"
-                        : inPreviewGroup
+                        : inPreview
                           ? "var(--lxHover)"
                           : "var(--lxRow)",
                     }}
@@ -1404,7 +1422,7 @@ export default function ExegesisTrackClient(props: {
 
                 const lines = (lyrics.cues ?? [])
                   .filter((c) =>
-                    isSameGroup((c.canonicalGroupKey ?? "").trim(), gk),
+                    isSameGroup(cueGroupKey(lyrics, c.lineKey), gk),
                   )
                   .map((c) => c.text);
 
