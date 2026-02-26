@@ -21,6 +21,6 @@ export async function generateMetadata(props: {
 
 export default function ExegesisTrackCanonicalPage() {
   // Canonical URL surface only.
-  // Render happens in /(session)/@runtime/exegesis/[trackId]/page.tsx
+  // Actual render happens in /(session)/@runtime/exegesis/[trackId]/page.tsx.
   return null;
 }

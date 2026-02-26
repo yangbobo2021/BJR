@@ -2,10 +2,17 @@
 import React from "react";
 import SessionRuntime from "../SessionRuntime";
 
-export const dynamic = "force-dynamic";
+// Let SessionRuntime decide whether it must be dynamic.
+// (You can re-introduce force-dynamic later if you prove it’s required.)
+export const dynamic = "auto";
 export const revalidate = 0;
-export const fetchCache = "force-no-store";
 
 export default async function PortalExegesisIndexRuntimePage() {
-  return <SessionRuntime albumSlugOverride={null} />;
+  return (
+    <SessionRuntime
+      albumSlugOverride={null}
+      initialPortalTabId="exegesis"
+      initialExegesisTrackId={null}
+    />
+  );
 }

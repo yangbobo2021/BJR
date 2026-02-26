@@ -5,6 +5,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ExegesisTrackClient from "@/app/(site)/exegesis/[trackId]/ExegesisTrackClient";
+import { usePortalViewer } from "@/app/home/PortalViewerProvider";
 
 type CatalogueOk = {
   ok: true;
@@ -68,15 +69,24 @@ function getTrackMeta(
   return { title: null, artist: null };
 }
 
-export default function PortalExegesis(props: { title?: string }) {
-  const title = props.title ?? "Exegesis";
-
+export default function PortalExegesis() {
   const pathname = usePathname() ?? "";
   const router = useRouter();
   const sp = useSearchParams();
   const search = sp?.toString() ? `?${sp.toString()}` : "";
 
-  const trackId = extractTrackIdFromPath(pathname);
+  const { exegesisTrackId, setExegesisTrackId } = usePortalViewer();
+
+  const trackIdFromPath = extractTrackIdFromPath(pathname);
+  const trackId = (exegesisTrackId ?? trackIdFromPath ?? "").trim() || null;
+
+  // If we had to fall back to pathname parsing, persist it into context so other
+  // components (and subsequent renders) have a stable single source of truth.
+  React.useEffect(() => {
+    if (!exegesisTrackId && trackIdFromPath) {
+      setExegesisTrackId(trackIdFromPath);
+    }
+  }, [exegesisTrackId, trackIdFromPath, setExegesisTrackId]);
 
   // -------- index state --------
   const [catalogue, setCatalogue] = React.useState<CatalogueOk | null>(null);
@@ -160,48 +170,53 @@ export default function PortalExegesis(props: { title?: string }) {
 
   // -------- render --------
   if (trackId) {
-  const meta = getTrackMeta(catalogue, trackId);
+    const meta = getTrackMeta(catalogue, trackId);
 
-  const noCatalogueYet = !catalogue && catalogueLoading; // still fetching
-  const resolvedTitle = (meta.title ?? "").trim();
+    const noCatalogueYet = !catalogue && catalogueLoading; // still fetching
+    const resolvedTitle = (meta.title ?? "").trim();
 
-  return (
-    <div style={{ minWidth: 0 }}>
-      <div className="mx-auto max-w-5xl px-4 pt-6">
-        <button
-          className="text-sm opacity-70 hover:opacity-100 underline underline-offset-4"
-          onClick={() => router.push(`/exegesis${search}`)}
-        >
-          ← Back to all tracks
-        </button>
-      </div>
-
-      {lyricsLoading ? (
-        <div className="mx-auto max-w-5xl px-4 py-6 text-sm opacity-75">Loading…</div>
-      ) : lyricsErr ? (
-        <div className="mx-auto max-w-5xl px-4 py-6">
-          <div className="rounded-md bg-white/5 p-3 text-sm">{lyricsErr}</div>
+    return (
+      <div style={{ minWidth: 0 }}>
+        <div className="mx-auto max-w-5xl px-4 pt-6">
+          <button
+            className="text-sm opacity-70 hover:opacity-100 underline underline-offset-4"
+            onClick={() => {
+              setExegesisTrackId(null);
+              router.push(`/exegesis${search}`);
+            }}
+          >
+            ← Back to all tracks
+          </button>
         </div>
-      ) : lyrics ? (
-        // ✅ Gate: if catalogue is still loading, show a tiny header skeleton instead of flashing trackId
-        noCatalogueYet ? (
-          <div className="mx-auto max-w-5xl px-4 py-6">
-            <div className="h-6 w-72 rounded bg-white/10 animate-pulse" />
-            <div className="mt-2 h-4 w-40 rounded bg-white/5 animate-pulse" />
+
+        {lyricsLoading ? (
+          <div className="mx-auto max-w-5xl px-4 py-6 text-sm opacity-75">
+            Loading…
           </div>
-        ) : (
-          <ExegesisTrackClient
-            trackId={lyrics.trackId}
-            trackTitle={resolvedTitle || null}
-            trackArtist={meta.artist}
-            lyrics={lyrics}
-            canonicalPath={`/exegesis/${encodeURIComponent(lyrics.trackId)}`}
-          />
-        )
-      ) : null}
-    </div>
-  );
-}
+        ) : lyricsErr ? (
+          <div className="mx-auto max-w-5xl px-4 py-6">
+            <div className="rounded-md bg-white/5 p-3 text-sm">{lyricsErr}</div>
+          </div>
+        ) : lyrics ? (
+          // ✅ Gate: if catalogue is still loading, show a tiny header skeleton instead of flashing trackId
+          noCatalogueYet ? (
+            <div className="mx-auto max-w-5xl px-4 py-6">
+              <div className="h-6 w-72 rounded bg-white/10 animate-pulse" />
+              <div className="mt-2 h-4 w-40 rounded bg-white/5 animate-pulse" />
+            </div>
+          ) : (
+            <ExegesisTrackClient
+              trackId={lyrics.trackId}
+              trackTitle={resolvedTitle || null}
+              trackArtist={meta.artist}
+              lyrics={lyrics}
+              canonicalPath={`/exegesis/${encodeURIComponent(lyrics.trackId)}`}
+            />
+          )
+        ) : null}
+      </div>
+    );
+  }
 
   // index
   return (
@@ -244,6 +259,7 @@ export default function PortalExegesis(props: { title?: string }) {
                       <Link
                         key={tid}
                         href={`/exegesis/${encodeURIComponent(tid)}${search}`}
+                        onClick={() => setExegesisTrackId(tid)}
                         className="rounded-md bg-black/20 px-3 py-2 text-sm hover:bg-white/10"
                         title={tid}
                       >

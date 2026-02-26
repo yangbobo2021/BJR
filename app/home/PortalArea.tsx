@@ -641,6 +641,8 @@ export default function PortalArea(props: {
   portalPanel: React.ReactNode;
   topLogoUrl?: string | null;
   topLogoHeight?: number | null;
+  initialPortalTabId?: string | null;
+  initialExegesisTrackId?: string | null;
   albumSlug: string;
   album: AlbumInfo | null;
   tracks: PlayerTrack[];
@@ -648,7 +650,7 @@ export default function PortalArea(props: {
   attentionMessage?: string | null;
   tier?: string | null;
   isPatron?: boolean;
-  // ✅ isAdmin is owned at /(site)/layout.tsx via AdminDebugBar.
+  // isAdmin is owned at /(site)/layout.tsx via AdminDebugBar.
   // PortalArea should not take it as input.
   canManageBilling?: boolean;
 }) {
@@ -1218,6 +1220,8 @@ export default function PortalArea(props: {
       >
         <MembershipModalProvider>
           <PortalViewerProvider
+            initialPortalTabId={props.initialPortalTabId ?? null}
+            initialExegesisTrackId={props.initialExegesisTrackId ?? null}
             value={{
               viewerTier,
               rawTier: tier,

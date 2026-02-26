@@ -45,8 +45,9 @@ const shadowHomeQuery = `
 export default async function SessionRuntime(props: {
   // When present, this is the “player album” canonical slug for /album/:slug routes.
   albumSlugOverride?: string | null;
+  initialPortalTabId?: string | null;
+  initialExegesisTrackId?: string | null;
 }) {
-
   const { userId } = await auth();
   const user = userId ? await currentUser() : null;
   const email =
@@ -148,6 +149,8 @@ export default async function SessionRuntime(props: {
       canManageBilling={!!member}
       topLogoUrl={page?.topLogoUrl ?? null}
       topLogoHeight={page?.topLogoHeight ?? null}
+      initialPortalTabId={props.initialPortalTabId ?? null}
+      initialExegesisTrackId={props.initialExegesisTrackId ?? null}
     />
   );
 }

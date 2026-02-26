@@ -2,12 +2,23 @@
 import React from "react";
 import SessionRuntime from "../../SessionRuntime";
 
-export const dynamic = "force-dynamic";
+export const dynamic = "auto";
 export const revalidate = 0;
-export const fetchCache = "force-no-store";
 
-export default async function PortalExegesisTrackRuntimePage() {
-  // Server doesn’t need trackId; PortalExegesis module reads it from pathname
-  // and pins via your followPlayer={false} portal route handler logic.
-  return <SessionRuntime albumSlugOverride={null} />;
+export default async function PortalExegesisTrackRuntimePage(props: {
+  params: Promise<{ trackId: string }>;
+}) {
+  const { trackId } = await props.params;
+
+  // Decode once, here, on the server — so the client doesn’t “discover” it later.
+  const raw = decodeURIComponent(trackId ?? "").trim();
+  const resolvedTrackId = raw || trackId;
+
+  return (
+    <SessionRuntime
+      albumSlugOverride={null}
+      initialPortalTabId="exegesis"
+      initialExegesisTrackId={resolvedTrackId}
+    />
+  );
 }

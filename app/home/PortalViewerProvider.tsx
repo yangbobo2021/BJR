@@ -5,11 +5,19 @@ import React from "react";
 import type { Tier } from "@/lib/types";
 
 type ViewerCtx = {
-  viewerTier: Tier;        // "none" | "friend" | "patron" | "partner"
-  rawTier: string | null;  // whatever was passed from server (for display/debug if needed)
+  viewerTier: Tier; // "none" | "friend" | "patron" | "partner"
+  rawTier: string | null; // whatever was passed from server (for display/debug if needed)
   isSignedIn: boolean;
   isPatron: boolean;
   isPartner: boolean;
+
+  // ✅ portal navigation state (client-owned, seeded from server/runtime)
+  portalTabId: string | null;
+  setPortalTabId: (next: string | null) => void;
+
+  // ✅ exegesis pin state (client-owned, seeded from server/runtime)
+  exegesisTrackId: string | null;
+  setExegesisTrackId: (next: string | null) => void;
 };
 
 const PortalViewerContext = React.createContext<ViewerCtx | null>(null);
@@ -23,11 +31,57 @@ export function usePortalViewer(): ViewerCtx {
 }
 
 export function PortalViewerProvider(props: {
-  value: ViewerCtx;
+  value: Omit<
+    ViewerCtx,
+    "portalTabId" | "setPortalTabId" | "exegesisTrackId" | "setExegesisTrackId"
+  >;
   children: React.ReactNode;
+  initialPortalTabId?: string | null;
+  initialExegesisTrackId?: string | null;
 }) {
+  const [portalTabId, setPortalTabId] = React.useState<string | null>(
+    (props.initialPortalTabId ?? null)
+      ? String(props.initialPortalTabId)
+      : null,
+  );
+
+  const [exegesisTrackId, setExegesisTrackId] = React.useState<string | null>(
+    (props.initialExegesisTrackId ?? null)
+      ? String(props.initialExegesisTrackId)
+      : null,
+  );
+
+  // If the server/runtime changes the initial values between navigations, sync once.
+  // This is safe because it only updates when the incoming prop changes.
+  React.useEffect(() => {
+    setPortalTabId(
+      (props.initialPortalTabId ?? null)
+        ? String(props.initialPortalTabId)
+        : null,
+    );
+  }, [props.initialPortalTabId]);
+
+  React.useEffect(() => {
+    setExegesisTrackId(
+      (props.initialExegesisTrackId ?? null)
+        ? String(props.initialExegesisTrackId)
+        : null,
+    );
+  }, [props.initialExegesisTrackId]);
+
+  const ctxValue: ViewerCtx = React.useMemo(
+    () => ({
+      ...props.value,
+      portalTabId,
+      setPortalTabId,
+      exegesisTrackId,
+      setExegesisTrackId,
+    }),
+    [props.value, portalTabId, exegesisTrackId],
+  );
+
   return (
-    <PortalViewerContext.Provider value={props.value}>
+    <PortalViewerContext.Provider value={ctxValue}>
       {props.children}
     </PortalViewerContext.Provider>
   );

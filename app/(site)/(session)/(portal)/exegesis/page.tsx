@@ -1,7 +1,6 @@
 // web/app/(site)/(session)/(portal)/exegesis/page.tsx
 export default function ExegesisIndexCanonicalPage() {
   // Canonical URL surface only.
-  // Render happens in /(session)/@runtime/[tab]/page.tsx (tab = "exegesis")
-  // or in your dedicated runtime route(s).
+  // Actual render happens in /(session)/@runtime/exegesis/page.tsx.
   return null;
 }
