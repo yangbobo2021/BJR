@@ -304,18 +304,27 @@ function AlbumCard(props: {
         {/* Background texture (full-bleed, oversized artwork) */}
         {a.coverUrl ? (
           <div
-            className="absolute inset-0 scale-150"
+            className="absolute inset-0 scale-125"
             style={{
-              background: `url(${a.coverUrl}) center/cover no-repeat`,
-              filter: "blur(18px)",
-              opacity: 0.35,
+              backgroundImage: `url(${a.coverUrl})`,
+              backgroundPosition: "center",
+              backgroundSize: "cover",
+              filter: "blur(24px)",
+              opacity: 0.55,
             }}
             aria-hidden="true"
           />
         ) : null}
 
-        {/* Dark overlay for legibility */}
-        <div className="absolute inset-0 bg-black/60" aria-hidden="true" />
+        {/* Gradient darkening (bottom-weighted instead of full black) */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0.75))",
+          }}
+          aria-hidden="true"
+        />
 
         {/* Foreground content */}
         <div className="relative flex items-center gap-5 p-5">
