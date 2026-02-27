@@ -62,7 +62,6 @@ function unwrapStripeResponse<T>(res: T | Stripe.Response<T>): T {
   return res as T;
 }
 
-// Safe “read number prop” without `any`
 function readNumberProp(obj: unknown, key: string): number | null {
   if (!obj || typeof obj !== "object") return null;
   if (!(key in obj)) return null;
@@ -70,11 +69,30 @@ function readNumberProp(obj: unknown, key: string): number | null {
   return typeof v === "number" ? v : null;
 }
 
+function safeErrMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
 type MemberStripeRow = { member_id: string; stripe_customer_id: string | null };
+
+function isDebug(req: Request): boolean {
+  // enable with /api/stripe/cancel-subscription?debug=1
+  // or curl -H "x-debug: 1"
+  try {
+    const u = new URL(req.url);
+    if (u.searchParams.get("debug") === "1") return true;
+  } catch {
+    // ignore
+  }
+  return (req.headers.get("x-debug") ?? "") === "1";
+}
 
 export async function POST(req: Request) {
   must(STRIPE_SECRET_KEY, "STRIPE_SECRET_KEY");
   must(APP_URL, "NEXT_PUBLIC_APP_URL");
+
+  const debug = isDebug(req);
 
   // Optional guard; auth is the real gate.
   if (!sameOriginOrAllowed(req)) {
@@ -118,12 +136,8 @@ export async function POST(req: Request) {
   });
   const subs = unwrapStripeResponse(subsRes);
 
-  // Normalize possible shapes into Stripe.Subscription[]
-  // - ApiList<Subscription> => { data: Subscription[] }
-  // - Subscription[] (what you're seeing) => [ ... ]
-  // - anything else => []
+  // Normalize shapes into Stripe.Subscription[]
   let list: Stripe.Subscription[] = [];
-
   if (Array.isArray(subs)) {
     list = subs as Stripe.Subscription[];
   } else if (
@@ -133,23 +147,69 @@ export async function POST(req: Request) {
     Array.isArray((subs as Stripe.ApiList<Stripe.Subscription>).data)
   ) {
     list = (subs as Stripe.ApiList<Stripe.Subscription>).data;
-  } else {
-    console.error("cancel-subscription: unexpected subs shape", {
-      hasSubs: !!subs,
-      type: typeof subs,
-      isArray: Array.isArray(subs),
-      keys:
-        typeof subs === "object" && subs !== null
-          ? Object.keys(subs as object).slice(0, 20)
-          : [],
-    });
   }
 
-  const target = list.filter((s) =>
-    ["active", "trialing", "past_due", "unpaid"].includes(
-      (s.status ?? "").toString(),
-    ),
-  );
+  const activeSet = new Set(["active", "trialing", "past_due", "unpaid"]);
+  const target = list.filter((s) => activeSet.has(String(s.status ?? "")));
+
+  if (debug) {
+    // Optional DB cross-check: if you store subscriptions somewhere, surface it.
+    // This query is safe to keep even if table doesn't exist (wrap in try/catch).
+    let dbStripeState: unknown = null;
+    try {
+      const r = await sql`
+      select id, stripe_customer_id
+      from members
+      where clerk_user_id = ${userId}
+      limit 1
+    `;
+      dbStripeState = {
+        memberRow: r.rows[0] ?? null,
+      };
+    } catch (e) {
+      dbStripeState = { error: safeErrMessage(e) };
+    }
+
+    const snapshot = {
+      ok: true,
+      debug: true,
+      userId,
+      customerId,
+      stripeKeyHint: (STRIPE_SECRET_KEY ?? "").slice(0, 7) + "...", // proves which env key is in use
+      subsShape: {
+        isArray: Array.isArray(subs),
+        hasDataProp: !!(
+          subs &&
+          typeof subs === "object" &&
+          "data" in (subs as object)
+        ),
+        keys:
+          subs && typeof subs === "object"
+            ? Object.keys(subs as object).slice(0, 10)
+            : [],
+        listCount: list.length,
+        targetCount: target.length,
+      },
+      subs: list.map((s) => ({
+        id: s.id,
+        status: s.status,
+        cancel_at_period_end: s.cancel_at_period_end ?? null,
+        current_period_end:
+          typeof (s as unknown as { current_period_end?: unknown })
+            .current_period_end === "number"
+            ? (s as unknown as { current_period_end: number })
+                .current_period_end
+            : null,
+        itemsCount: (s.items?.data ?? []).length,
+        priceIds: (s.items?.data ?? [])
+          .map((it) => it.price?.id ?? null)
+          .filter((v): v is string => !!v),
+      })),
+      db: dbStripeState,
+    };
+
+    return NextResponse.json(snapshot);
+  }
 
   if (target.length === 0) {
     return NextResponse.json({
