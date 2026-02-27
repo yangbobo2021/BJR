@@ -309,8 +309,8 @@ function AlbumCard(props: {
               backgroundImage: `url(${a.coverUrl})`,
               backgroundPosition: "center",
               backgroundSize: "cover",
-              filter: "blur(24px)",
-              opacity: 0.55,
+              //filter: "blur(24px)",
+              //opacity: 0.55,
             }}
             aria-hidden="true"
           />
