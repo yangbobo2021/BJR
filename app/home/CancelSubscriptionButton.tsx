@@ -22,6 +22,7 @@ export default function CancelSubscriptionButton({
     try {
       const res = await fetch("/api/stripe/cancel-subscription", {
         method: "POST",
+        credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({}),
       });
@@ -29,7 +30,8 @@ export default function CancelSubscriptionButton({
       const data = (await res.json().catch(() => null)) as {
         ok?: boolean;
         error?: string;
-        canceled?: string[];
+        canceled?: string[]; // legacy
+        updated?: Array<{ id: string; cancel_at_period_end: boolean }>; // current
         note?: string;
       } | null;
 
@@ -38,10 +40,14 @@ export default function CancelSubscriptionButton({
         return;
       }
 
+      const canceledCount =
+        (Array.isArray(data?.canceled) ? data?.canceled.length : 0) ||
+        (Array.isArray(data?.updated) ? data?.updated.length : 0);
+
       setMsg(
-        data.canceled?.length
+        canceledCount > 0
           ? "Cancelled. If entitlements don’t update immediately, refresh once (webhooks can lag)."
-          : (data.note ?? "No active subscription found."),
+          : (data?.note ?? "No active subscription found."),
       );
 
       setTimeout(() => {
