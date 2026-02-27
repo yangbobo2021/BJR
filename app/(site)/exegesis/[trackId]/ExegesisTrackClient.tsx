@@ -325,8 +325,8 @@ function GeniusIcon(props: { className?: string }) {
 function medalTier(votes: number): "copper" | "gold" | "adamantium" {
   const n = Math.max(0, votes || 0);
   // v1 thresholds — tweak freely
-  if (n >= 25) return "adamantium";
-  if (n >= 8) return "gold";
+  if (n >= 7) return "adamantium";
+  if (n >= 3) return "gold";
   return "copper";
 }
 
@@ -761,7 +761,7 @@ export default function ExegesisTrackClient(props: {
       {composerStage === "collapsed" ? (
         <button
           type="button"
-          className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-left text-sm text-white/50 hover:bg-black/25"
+          className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-left text-sm text-white/50 hover:bg-black/25"
           onClick={() => {
             if (isLocked) return;
 
@@ -2779,10 +2779,19 @@ export default function ExegesisTrackClient(props: {
                               })}
 
                               {gated ? (
-                                <div className="mt-2">
+                                <div
+                                  className="mt-2"
+                                  style={{
+                                    // match the indentation + vertical thread line vibe
+                                    paddingLeft: Math.min(72, 3 * 12),
+                                    borderLeft:
+                                      "1px solid rgba(255,255,255,0.08)",
+                                    marginLeft: 6,
+                                  }}
+                                >
                                   <button
                                     type="button"
-                                    className="w-full rounded-md bg-white/5 px-2 py-2 text-xs hover:bg-white/10"
+                                    className="inline-flex items-center rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
                                     onClick={() => focusRoot(root.rootId)}
                                   >
                                     Open full thread
