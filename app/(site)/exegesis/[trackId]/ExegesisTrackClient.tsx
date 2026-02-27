@@ -434,6 +434,35 @@ export default function ExegesisTrackClient(props: {
   const [threadErr, setThreadErr] = React.useState<string>("");
   const [sort, setSort] = React.useState<ThreadSort>("top");
 
+  // --- FLIP animation for root list reorder (no deps) ---
+  const rootElByIdRef = React.useRef<Record<string, HTMLDivElement | null>>({});
+  const flipRectsRef = React.useRef<Record<string, DOMRect>>({});
+  const flipPendingRef = React.useRef(false);
+
+  function prefersReducedMotion(): boolean {
+    if (typeof window === "undefined") return true;
+    return (
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false
+    );
+  }
+
+  function beginFlip() {
+    if (prefersReducedMotion()) return;
+    const next: Record<string, DOMRect> = {};
+    for (const [id, el] of Object.entries(rootElByIdRef.current)) {
+      if (!el) continue;
+      next[id] = el.getBoundingClientRect();
+    }
+    flipRectsRef.current = next;
+    flipPendingRef.current = true;
+  }
+
+  function setSortWithFlip(next: ThreadSort) {
+    if (next === sort) return;
+    beginFlip();
+    setSort(next);
+  }
+
   const [threadLoading, setThreadLoading] = React.useState<boolean>(false);
   const [threadLoadedKey, setThreadLoadedKey] = React.useState<string>("");
 
@@ -444,15 +473,97 @@ export default function ExegesisTrackClient(props: {
 
   const viewerKey = authLoaded ? (userId ?? "anon") : "loading";
 
-  const threadWantedKey = React.useMemo(() => {
+  // "Core" identity of the requested thread (selection + viewer), regardless of sort.
+  const threadWantedCoreKey = React.useMemo(() => {
     const lk = (selected?.lineKey ?? "").trim();
     const gk = (selected?.groupKey ?? "").trim();
     if (!trackId || !lk) return "";
-    return `${trackId}::${lk}::${gk}::${sort}::${viewerKey}`;
-  }, [trackId, selected?.lineKey, selected?.groupKey, sort, viewerKey]);
+    return `${trackId}::${lk}::${gk}::${viewerKey}`;
+  }, [trackId, selected?.lineKey, selected?.groupKey, viewerKey]);
 
-  const panelReady =
-    !!threadWantedKey && !threadLoading && threadLoadedKey === threadWantedKey;
+  // Fetch key now ignores sort (sort is client-side).
+  const threadWantedFetchKey = threadWantedCoreKey;
+
+  // Only trust/render `thread` when it matches the current selection+viewer.
+  const threadUI =
+    thread &&
+    threadLoadedKey &&
+    threadWantedCoreKey &&
+    threadLoadedKey === threadWantedCoreKey
+      ? thread
+      : null;
+
+  // Used only to decide whether to show initial shimmer.
+  const shouldShowInitialShimmer =
+    !!threadWantedCoreKey && !threadUI && !threadErr && threadLoading;
+
+  const viewerMemberId =
+    threadUI?.viewer?.kind === "member" ? threadUI.viewer.memberId : "";
+
+  const viewerIdentity = viewerMemberId
+    ? threadUI?.identities?.[viewerMemberId]
+    : undefined;
+
+  const meta = threadUI?.meta ?? null;
+  const isLocked = Boolean(meta?.locked);
+
+  const canVote =
+    threadUI?.viewer?.kind === "member"
+      ? threadUI.viewer.cap.canVote && !isLocked
+      : false;
+
+  const canReport =
+    threadUI?.viewer?.kind === "member" ? threadUI.viewer.cap.canReport : false;
+
+  const canPost =
+    threadUI?.viewer?.kind === "member" ? threadUI.viewer.cap.canPost : false;
+
+  const canClaimName =
+    threadUI?.viewer?.kind === "member"
+      ? threadUI.viewer.cap.canClaimName
+      : false;
+  const rootsForRender = React.useMemo(() => {
+    const roots = [...(threadUI?.roots ?? [])];
+    roots.sort((a, b) => {
+      if (sort === "recent") return rootRecentTs(b) - rootRecentTs(a);
+      return rootTopScore(b) - rootTopScore(a);
+    });
+    const pinnedId = meta?.pinnedCommentId ?? null;
+    return reorderRootsPinnedFirst(roots, pinnedId);
+  }, [threadUI?.roots, meta?.pinnedCommentId, sort]);
+  React.useLayoutEffect(() => {
+    if (!flipPendingRef.current) return;
+    flipPendingRef.current = false;
+
+    if (prefersReducedMotion()) return;
+
+    const prevRects = flipRectsRef.current;
+    for (const [id, el] of Object.entries(rootElByIdRef.current)) {
+      if (!el) continue;
+      const prev = prevRects[id];
+      if (!prev) continue;
+      const next = el.getBoundingClientRect();
+      const dy = prev.top - next.top;
+      if (!dy) continue;
+
+      // Invert
+      el.style.transform = `translateY(${dy}px)`;
+      el.style.transition = "transform 0s";
+
+      // Play
+      requestAnimationFrame(() => {
+        el.style.transition = "transform 220ms ease-out";
+        el.style.transform = "translateY(0)";
+      });
+
+      const cleanup = () => {
+        el.style.transition = "";
+        el.style.transform = "";
+        el.removeEventListener("transitionend", cleanup);
+      };
+      el.addEventListener("transitionend", cleanup);
+    }
+  }, [rootsForRender]);
 
   const [draft, setDraft] = React.useState<string>("");
   const [draftDoc, setDraftDoc] = React.useState<unknown | null>(null);
@@ -554,27 +665,6 @@ export default function ExegesisTrackClient(props: {
   const [reportByCommentId, setReportByCommentId] = React.useState<
     Record<string, ReportDraft>
   >({});
-
-  const viewerMemberId =
-    thread?.viewer?.kind === "member" ? thread.viewer.memberId : "";
-
-  const viewerIdentity = viewerMemberId
-    ? thread?.identities?.[viewerMemberId]
-    : undefined;
-
-  const meta = thread?.meta ?? null;
-  const isLocked = Boolean(meta?.locked);
-
-  const canVote =
-    thread?.viewer?.kind === "member"
-      ? thread.viewer.cap.canVote && !isLocked
-      : false;
-  const canReport =
-    thread?.viewer?.kind === "member" ? thread.viewer.cap.canReport : false;
-  const canPost =
-    thread?.viewer?.kind === "member" ? thread.viewer.cap.canPost : false;
-  const canClaimName =
-    thread?.viewer?.kind === "member" ? thread.viewer.cap.canClaimName : false;
 
   // --- outside-click close refs (main + per-reply/edit) ---
   const composerWrapRef = React.useRef<HTMLDivElement | null>(null);
@@ -685,11 +775,15 @@ export default function ExegesisTrackClient(props: {
   const editWrapByIdRef = React.useRef<Record<string, HTMLDivElement | null>>(
     {},
   );
+  const reportWrapByIdRef = React.useRef<Record<string, HTMLDivElement | null>>(
+    {},
+  );
 
   // --- keep latest draft state in refs to avoid re-binding listeners ---
   const draftRef = React.useRef(draft);
   const replyDraftsRef = React.useRef(replyByCommentId);
   const editDraftsRef = React.useRef(editByCommentId);
+  const reportDraftsRef = React.useRef(reportByCommentId);
 
   React.useEffect(() => {
     draftRef.current = draft;
@@ -702,6 +796,10 @@ export default function ExegesisTrackClient(props: {
   React.useEffect(() => {
     editDraftsRef.current = editByCommentId;
   }, [editByCommentId]);
+
+  React.useEffect(() => {
+    reportDraftsRef.current = reportByCommentId;
+  }, [reportByCommentId]);
 
   function openReport(commentId: string) {
     if (!canReport) return;
@@ -898,6 +996,7 @@ export default function ExegesisTrackClient(props: {
       const draft = draftRef.current;
       const replyById = replyDraftsRef.current;
       const editById = editDraftsRef.current;
+      const reportById = reportDraftsRef.current;
 
       // 1) Main composer
       const composerEl = composerWrapRef.current;
@@ -925,7 +1024,7 @@ export default function ExegesisTrackClient(props: {
         }
       }
 
-      // 3) Edits
+      // 3) Edits (close on outside click ONLY if empty)
       for (const [commentId, d] of Object.entries(editById)) {
         if (!d?.open) continue;
         const el = editWrapByIdRef.current[commentId];
@@ -933,6 +1032,26 @@ export default function ExegesisTrackClient(props: {
 
         if (!el.contains(t) && !(d.plain ?? "").trim()) {
           setEditByCommentId((prev) => {
+            if (!prev[commentId]) return prev;
+            const next = { ...prev };
+            delete next[commentId];
+            return next;
+          });
+        }
+      }
+
+      // 4) Reports (close on outside click ONLY if empty; but allow closing if done)
+      for (const [commentId, d] of Object.entries(reportById)) {
+        if (!d?.open) continue;
+        const el = reportWrapByIdRef.current[commentId];
+        if (!el) continue;
+
+        const reason = (d.reason ?? "").trim();
+        const isEmpty = !reason;
+        const canAutoClose = Boolean(d.done) || isEmpty;
+
+        if (!el.contains(t) && canAutoClose) {
+          setReportByCommentId((prev) => {
             if (!prev[commentId]) return prev;
             const next = { ...prev };
             delete next[commentId];
@@ -1099,9 +1218,12 @@ export default function ExegesisTrackClient(props: {
     async function run() {
       if (!selected?.lineKey) return;
 
-      const wanted = threadWantedKey;
-      if (!wanted) return;
+      const wantedFetch = threadWantedFetchKey;
+      const wantedCore = threadWantedCoreKey;
+      if (!wantedFetch || !wantedCore) return;
 
+      // IMPORTANT: do not blank the UI on sort flips.
+      // We keep rendering the current thread while this refresh is in-flight.
       setThreadLoading(true);
       setThreadErr("");
 
@@ -1113,8 +1235,8 @@ export default function ExegesisTrackClient(props: {
           ? `&groupKey=${encodeURIComponent(gk)}&lineKey=${encodeURIComponent(
               selected.lineKey,
             )}`
-          : `&lineKey=${encodeURIComponent(selected.lineKey)}`) +
-        `&sort=${encodeURIComponent(sort)}`;
+          : `&lineKey=${encodeURIComponent(selected.lineKey)}`);
+      // Sort is now client-side only (no fetch on toggle).
 
       try {
         const r = await fetch(url, { cache: "no-store" });
@@ -1122,25 +1244,28 @@ export default function ExegesisTrackClient(props: {
         if (!alive) return;
 
         if (!j.ok) {
-          setThread(null);
+          // If we *already* have thread data, keep it visible and just surface the error.
+          // Only hard-null the thread when we truly have nothing to show.
+          setThread((prev) => (prev ? prev : null));
           setThreadErr(
             j.code === "ANON_LIMIT"
               ? j.error ||
                   "You’ve hit the anon reading limit. Sign in to continue."
               : j.error || "Failed to load thread.",
           );
-          setThreadLoadedKey(wanted);
+          setThreadLoadedKey(wantedCore);
           return;
         }
 
         setThread(j);
         setThreadErr("");
-        setThreadLoadedKey(wanted);
+        // Mark "loaded" at the core level, so sort flips don't invalidate readiness.
+        setThreadLoadedKey(wantedCore);
       } catch {
         if (!alive) return;
-        setThread(null);
+        setThread((prev) => (prev ? prev : null));
         setThreadErr("Failed to load thread.");
-        setThreadLoadedKey(wanted);
+        setThreadLoadedKey(wantedCore);
       } finally {
         if (!alive) return;
         setThreadLoading(false);
@@ -1155,8 +1280,8 @@ export default function ExegesisTrackClient(props: {
     trackId,
     selected?.lineKey,
     selected?.groupKey,
-    sort,
-    threadWantedKey,
+    threadWantedFetchKey,
+    threadWantedCoreKey,
     viewerKey,
   ]);
 
@@ -1250,7 +1375,7 @@ export default function ExegesisTrackClient(props: {
       const url =
         `/api/exegesis/thread?trackId=${encodeURIComponent(trackId)}` +
         `&groupKey=${encodeURIComponent(groupKey)}` +
-        `&sort=${encodeURIComponent(sort)}`;
+        ``;
 
       fetch(url, { cache: "no-store" })
         .then((r2) => r2.json())
@@ -1404,7 +1529,7 @@ export default function ExegesisTrackClient(props: {
       const url =
         `/api/exegesis/thread?trackId=${encodeURIComponent(trackId)}` +
         `&groupKey=${encodeURIComponent(groupKey)}` +
-        `&sort=${encodeURIComponent(sort)}`;
+        ``;
 
       fetch(url, { cache: "no-store" })
         .then((r2) => r2.json())
@@ -1473,7 +1598,7 @@ export default function ExegesisTrackClient(props: {
           (gk
             ? `&groupKey=${encodeURIComponent(gk)}`
             : `&lineKey=${encodeURIComponent(selected.lineKey)}`) +
-          `&sort=${encodeURIComponent(sort)}`;
+          ``;
         const rr = await fetch(url, { cache: "no-store" });
         const jj = (await rr.json()) as ThreadApiOk | ThreadApiErr;
         if (jj.ok) {
@@ -1512,11 +1637,23 @@ export default function ExegesisTrackClient(props: {
     }
   }, [viewerIdentity?.publicName]);
 
-  const rootsForRender = React.useMemo(() => {
-    const roots = thread?.roots ?? [];
-    const pinnedId = meta?.pinnedCommentId ?? null;
-    return reorderRootsPinnedFirst(roots, pinnedId);
-  }, [thread?.roots, meta?.pinnedCommentId]);
+  function rootTopScore(root: { rootId: string; comments: CommentDTO[] }) {
+    // “Top” = aggregate votes in the root (simple + stable).
+    return (root.comments ?? []).reduce(
+      (sum, c) => sum + (c.voteCount ?? 0),
+      0,
+    );
+  }
+
+  function rootRecentTs(root: { rootId: string; comments: CommentDTO[] }) {
+    // “Recent” = latest activity timestamp among comments (editedAt > createdAt).
+    let best = 0;
+    for (const c of root.comments ?? []) {
+      const t = Date.parse((c.editedAt ?? c.createdAt) as string);
+      if (!Number.isNaN(t)) best = Math.max(best, t);
+    }
+    return best;
+  }
 
   // If the page loads with a deep-link (#l / #c), open drawer on mobile.
   React.useEffect(() => {
@@ -1764,7 +1901,7 @@ export default function ExegesisTrackClient(props: {
                     Select a line to view the discussion.
                   </div>
                 </div>
-              ) : !panelReady ? (
+              ) : shouldShowInitialShimmer ? (
                 <DiscourseShimmer />
               ) : (
                 <>
@@ -1883,7 +2020,7 @@ export default function ExegesisTrackClient(props: {
                       className={`rounded-md px-3 py-1.5 text-sm ${
                         sort === "top" ? "bg-white/10" : "bg-white/5"
                       }`}
-                      onClick={() => setSort("top")}
+                      onClick={() => setSortWithFlip("top")}
                     >
                       Top
                     </button>
@@ -1891,7 +2028,7 @@ export default function ExegesisTrackClient(props: {
                       className={`rounded-md px-3 py-1.5 text-sm ${
                         sort === "recent" ? "bg-white/10" : "bg-white/5"
                       }`}
-                      onClick={() => setSort("recent")}
+                      onClick={() => setSortWithFlip("recent")}
                     >
                       Recent
                     </button>
@@ -1915,6 +2052,9 @@ export default function ExegesisTrackClient(props: {
                         (rootsForRender ?? []).map((root) => (
                           <div
                             key={root.rootId}
+                            ref={(el) => {
+                              rootElByIdRef.current[root.rootId] = el;
+                            }}
                             className="rounded-md bg-black/20 p-3"
                           >
                             {root.comments.map((c) => {
@@ -2311,7 +2451,12 @@ export default function ExegesisTrackClient(props: {
 
                                   {canReport &&
                                   reportByCommentId[c.id]?.open ? (
-                                    <div className="mt-2 rounded-md bg-black/25 p-3 text-sm">
+                                    <div
+                                      ref={(el) => {
+                                        reportWrapByIdRef.current[c.id] = el;
+                                      }}
+                                      className="mt-2 rounded-md bg-black/25 p-3 text-sm"
+                                    >
                                       {reportByCommentId[c.id]?.done ? (
                                         <div className="text-xs opacity-75">
                                           Report submitted. Thanks — this helps
