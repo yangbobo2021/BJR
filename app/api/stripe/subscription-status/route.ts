@@ -1,214 +1,118 @@
-// web/lib/stripeSubscriptions.ts
+// web/app/api/stripe/subscription-status/route.ts
 import "server-only";
+import { NextResponse } from "next/server";
 import { sql } from "@vercel/postgres";
 import Stripe from "stripe";
-import { ensureMemberByEmail, normalizeEmail } from "../../../../lib/members";
+import { auth } from "@clerk/nextjs/server";
 
-type PriceEntitlementRow = {
-  price_id: string;
-  entitlement_key: string;
-  scope_id: string | null;
-  scope_meta: unknown;
-};
+export const runtime = "nodejs" as const;
+export const dynamic = "force-dynamic" as const;
 
-function toDateFromUnixSeconds(s: number | null | undefined): Date | null {
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY ?? "";
+
+function must(v: string, name: string) {
+  if (!v) throw new Error(`Missing ${name}`);
+  return v;
+}
+
+function unwrapStripeResponse<T>(res: T | Stripe.Response<T>): T {
+  if (res && typeof res === "object") {
+    const r = res as unknown as { data?: T; lastResponse?: unknown };
+    if (r.lastResponse && r.data !== undefined) return r.data;
+  }
+  return res as T;
+}
+
+function readNumberProp(obj: unknown, key: string): number | null {
+  if (!obj || typeof obj !== "object") return null;
+  if (!(key in obj)) return null;
+  const v = (obj as Record<string, unknown>)[key];
+  return typeof v === "number" ? v : null;
+}
+
+function pickPeriodEndUnixSeconds(sub: Stripe.Subscription): number | null {
+  const subCpe = readNumberProp(sub, "current_period_end");
+  if (typeof subCpe === "number") return subCpe;
+
+  const itemCpe = sub.items?.data?.[0]?.current_period_end;
+  return typeof itemCpe === "number" ? itemCpe : null;
+}
+
+function toIsoFromUnixSeconds(s: number | null): string | null {
   if (!s || s <= 0) return null;
-  return new Date(s * 1000);
+  return new Date(s * 1000).toISOString();
 }
 
-function keyOf(entitlementKey: string, scopeId: string | null): string {
-  return `${entitlementKey}::${scopeId ?? ""}`;
-}
+export async function GET() {
+  must(STRIPE_SECRET_KEY, "STRIPE_SECRET_KEY");
 
-async function attachStripeCustomerId(
-  memberId: string,
-  customerId: string,
-): Promise<void> {
-  if (!memberId || !customerId) return;
-  await sql`
-    update members
-    set stripe_customer_id = ${customerId}
-    where id = ${memberId}::uuid
-      and (stripe_customer_id is null or stripe_customer_id = ${customerId})
-  `;
-}
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json(
+      { ok: false, error: "Not signed in" },
+      { status: 401 },
+    );
+  }
 
-/**
- * Reconcile entitlements for a Stripe subscription into entitlement_grants.
- *
- * grant_source = 'stripe_subscription'
- * grant_source_ref = subscription.id
- *
- * We intentionally DO NOT use ON CONFLICT, because your schema may not (and need not)
- * have the exact unique constraints Postgres requires for inference.
- */
-export async function reconcileStripeSubscription(params: {
-  stripe: Stripe;
-  subscription: Stripe.Subscription;
-}): Promise<void> {
-  const { stripe, subscription: sub } = params;
-
-  const customerId =
-    typeof sub.customer === "string" ? sub.customer : (sub.customer?.id ?? "");
-  if (!customerId) return;
-
-  // 1) Resolve member by stripe_customer_id; else ensure by email and attach.
-  const memberByCustomer = await sql`
-    select id
+  const row = await sql`
+    select stripe_customer_id
     from members
-    where stripe_customer_id = ${customerId}
+    where clerk_user_id = ${userId}
     limit 1
   `;
-  let memberId = (memberByCustomer.rows[0]?.id as string | undefined) ?? null;
+  const customerId =
+    (row.rows[0]?.stripe_customer_id as string | null | undefined) ?? null;
 
-  if (!memberId) {
-    const customer = await stripe.customers.retrieve(customerId);
-    if (customer.deleted) return;
-
-    const email = normalizeEmail(customer.email ?? "");
-    if (!email) return;
-
-    const ensured = await ensureMemberByEmail({
-      email,
-      source: "stripe",
-      sourceDetail: { stripe_customer_id: customerId },
-      marketingOptIn: true,
-    });
-    memberId = ensured.id;
+  if (!customerId) {
+    return NextResponse.json({ ok: true, hasSubscription: false });
   }
 
-  await attachStripeCustomerId(memberId, customerId);
+  const stripe = new Stripe(STRIPE_SECRET_KEY);
 
-  // 2) Collect subscription item price IDs + per-item period ends
-  const items = sub.items?.data ?? [];
-  const priceIds = items.map((it) => it.price?.id).filter(Boolean) as string[];
+  const subsRes = await stripe.subscriptions.list({
+    customer: customerId,
+    status: "all",
+    limit: 100,
+  });
+  const subs = unwrapStripeResponse(subsRes);
 
-  // 3) Terminal statuses expire immediately
-  const status = (sub.status ?? "").toString();
-  const expireNow =
-    status === "canceled" ||
-    status === "incomplete_expired" ||
-    status === "unpaid";
-
-  if (priceIds.length === 0) {
-    // No items: expire all currently-active grants tied to this subscription
-    await sql`
-      update entitlement_grants
-      set expires_at = now()
-      where member_id = ${memberId}::uuid
-        and grant_source = 'stripe_subscription'
-        and grant_source_ref = ${sub.id}
-        and revoked_at is null
-        and (expires_at is null or expires_at > now())
-    `;
-    return;
+  let list: Stripe.Subscription[] = [];
+  if (Array.isArray(subs)) {
+    list = subs as Stripe.Subscription[];
+  } else if (
+    subs &&
+    typeof subs === "object" &&
+    "data" in (subs as object) &&
+    Array.isArray((subs as Stripe.ApiList<Stripe.Subscription>).data)
+  ) {
+    list = (subs as Stripe.ApiList<Stripe.Subscription>).data;
   }
 
-  const endByPriceId = new Map<string, Date | null>();
-  for (const it of items) {
-    const pid = it.price?.id;
-    if (!pid) continue;
-    endByPriceId.set(pid, toDateFromUnixSeconds(it.current_period_end ?? null));
+  const activeSet = new Set(["active", "trialing", "past_due", "unpaid"]);
+  const active = list.filter((s) => activeSet.has(String(s.status ?? "")));
+
+  if (active.length === 0) {
+    return NextResponse.json({ ok: true, hasSubscription: false });
   }
 
-  // 4) Map prices -> entitlements (single query)
-  const mapped = await sql`
-    select price_id, entitlement_key, scope_id, scope_meta
-    from stripe_price_entitlements
-    where price_id in (
-      select jsonb_array_elements_text(${JSON.stringify(priceIds)}::jsonb)
-    )
-  `;
-  const desiredRows = mapped.rows as PriceEntitlementRow[];
-  const desiredKeys = new Set(
-    desiredRows.map((r) => keyOf(r.entitlement_key, r.scope_id)),
-  );
+  // pick latest period end
+  let best = active[0]!;
+  let bestEnd = pickPeriodEndUnixSeconds(best) ?? 0;
 
-  // If the mapping is empty, treat it as “this subscription grants nothing”:
-  // expire any existing grants tied to this subscription so nothing lingers.
-  if (desiredRows.length === 0) {
-    await sql`
-      update entitlement_grants
-      set expires_at = now()
-      where member_id = ${memberId}::uuid
-        and grant_source = 'stripe_subscription'
-        and grant_source_ref = ${sub.id}
-        and revoked_at is null
-        and (expires_at is null or expires_at > now())
-    `;
-    return;
+  for (const s of active.slice(1)) {
+    const end = pickPeriodEndUnixSeconds(s) ?? 0;
+    if (end > bestEnd) {
+      best = s;
+      bestEnd = end;
+    }
   }
 
-  // 5) Insert desired grants if not already active for this (member,key,scope,source,ref)
-  for (const r of desiredRows) {
-    const expiry = expireNow
-      ? new Date()
-      : (endByPriceId.get(r.price_id) ?? null);
-
-    await sql`
-      insert into entitlement_grants (
-        member_id,
-        entitlement_key,
-        scope_id,
-        scope_meta,
-        granted_by,
-        grant_reason,
-        grant_source,
-        grant_source_ref,
-        expires_at
-      )
-      select
-        ${memberId}::uuid,
-        ${r.entitlement_key},
-        ${r.scope_id},
-        ${JSON.stringify(r.scope_meta ?? {})}::jsonb,
-        'system',
-        'stripe_subscription_reconciled',
-        'stripe_subscription',
-        ${sub.id},
-        ${expiry ? expiry.toISOString() : null}::timestamptz
-      where not exists (
-        select 1
-        from entitlement_grants eg
-        where eg.member_id = ${memberId}::uuid
-          and eg.entitlement_key = ${r.entitlement_key}
-          and coalesce(eg.scope_id,'') = coalesce(${r.scope_id ?? ""},'')
-          and eg.grant_source = 'stripe_subscription'
-          and eg.grant_source_ref = ${sub.id}
-          and eg.revoked_at is null
-          and (eg.expires_at is null or eg.expires_at > now())
-      )
-    `;
-  }
-
-  // 6) Expire stale grants tied to this subscription that are no longer desired
-  const activeGrantsForSub = await sql`
-    select entitlement_key, scope_id
-    from entitlement_grants
-    where member_id = ${memberId}::uuid
-      and grant_source = 'stripe_subscription'
-      and grant_source_ref = ${sub.id}
-      and revoked_at is null
-      and (expires_at is null or expires_at > now())
-  `;
-
-  for (const row of activeGrantsForSub.rows as Array<{
-    entitlement_key: string;
-    scope_id: string | null;
-  }>) {
-    const k = keyOf(row.entitlement_key, row.scope_id);
-    if (desiredKeys.has(k)) continue;
-
-    await sql`
-      update entitlement_grants
-      set expires_at = now()
-      where member_id = ${memberId}::uuid
-        and entitlement_key = ${row.entitlement_key}
-        and coalesce(scope_id,'') = coalesce(${row.scope_id ?? ""},'')
-        and grant_source = 'stripe_subscription'
-        and grant_source_ref = ${sub.id}
-        and revoked_at is null
-        and (expires_at is null or expires_at > now())
-    `;
-  }
+  return NextResponse.json({
+    ok: true,
+    hasSubscription: true,
+    subscriptionId: best.id,
+    status: best.status,
+    cancelAtPeriodEnd: !!best.cancel_at_period_end,
+    accessUntil: toIsoFromUnixSeconds(bestEnd || null),
+  });
 }
