@@ -299,9 +299,9 @@ function AlbumCard(props: {
           maskComposite: "exclude",
         }}
       />
-      {/* Album hero */}
-      <div className="relative overflow-hidden rounded-lg mb-4">
-        {/* Background texture (full-bleed, oversized artwork) */}
+      {/* Album hero (full-bleed to card edges despite card padding) */}
+      <div className="relative overflow-hidden rounded-t-xl -mx-4 -mt-4 mb-4">
+        {/* Background texture */}
         {a.coverUrl ? (
           <div
             className="absolute inset-0 scale-125"
@@ -309,25 +309,25 @@ function AlbumCard(props: {
               backgroundImage: `url(${a.coverUrl})`,
               backgroundPosition: "center",
               backgroundSize: "cover",
-              //filter: "blur(24px)",
-              //opacity: 0.55,
+              filter: "blur(22px)",
+              opacity: 0.55,
             }}
             aria-hidden="true"
           />
         ) : null}
 
-        {/* Gradient darkening (bottom-weighted instead of full black) */}
+        {/* Legibility overlay (gradient, not a flat blackout) */}
         <div
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0.75))",
+              "linear-gradient(to bottom, rgba(0,0,0,0.25), rgba(0,0,0,0.78))",
           }}
           aria-hidden="true"
         />
 
-        {/* Foreground content */}
-        <div className="relative flex items-center gap-5 p-5">
+        {/* Foreground content (padding lives here now) */}
+        <div className="relative flex items-center gap-5 px-5 py-6">
           {/* Large artwork */}
           <div
             className="w-1/3 aspect-square shrink-0 rounded-md shadow-lg"
@@ -342,7 +342,7 @@ function AlbumCard(props: {
 
           {/* Title */}
           <div className="min-w-0">
-            <div className="text-xl font-extrabold tracking-tight text-white leading-tight">
+            <div className="text-2xl font-extrabold tracking-tight text-white leading-tight truncate">
               {label}
             </div>
           </div>
