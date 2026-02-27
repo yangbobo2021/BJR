@@ -118,7 +118,28 @@ export async function POST(req: Request) {
   });
   const subs = unwrapStripeResponse(subsRes);
 
-  const target = subs.data.filter((s) =>
+  const list = Array.isArray(
+    (subs as Stripe.ApiList<Stripe.Subscription>)?.data,
+  )
+    ? (subs as Stripe.ApiList<Stripe.Subscription>).data
+    : [];
+
+  const hasDataProp =
+    typeof subs === "object" && subs !== null && "data" in (subs as object);
+
+  if (list.length === 0 && !hasDataProp) {
+    console.error("cancel-subscription: unexpected subs shape", {
+      hasSubs: !!subs,
+      type: typeof subs,
+      isArray: Array.isArray(subs),
+      keys:
+        typeof subs === "object" && subs !== null
+          ? Object.keys(subs as object).slice(0, 20)
+          : [],
+    });
+  }
+
+  const target = list.filter((s) =>
     ["active", "trialing", "past_due", "unpaid"].includes(
       (s.status ?? "").toString(),
     ),
