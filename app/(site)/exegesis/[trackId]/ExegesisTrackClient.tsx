@@ -159,16 +159,22 @@ function reorderRootsPinnedFirst(
   return [pinned, ...rest];
 }
 
-function parseHash(): { lineKey?: string; commentId?: string } {
+function parseHash(): {
+  lineKey?: string;
+  commentId?: string;
+  rootId?: string;
+} {
   if (typeof window === "undefined") return {};
   const raw = (window.location.hash ?? "").replace(/^#/, "").trim();
   if (!raw) return {};
   const sp = new URLSearchParams(raw);
   const lineKey = (sp.get("l") ?? "").trim();
   const commentId = (sp.get("c") ?? "").trim();
+  const rootId = (sp.get("root") ?? "").trim();
   return {
     lineKey: lineKey || undefined,
     commentId: commentId || undefined,
+    rootId: rootId || undefined,
   };
 }
 
@@ -408,12 +414,17 @@ export default function ExegesisTrackClient(props: {
 
   const canonicalPath = (props.canonicalPath ?? "").trim();
 
-  function setHash(next: { lineKey?: string; commentId?: string }) {
+  function setHash(next: {
+    lineKey?: string;
+    commentId?: string;
+    rootId?: string;
+  }) {
     if (typeof window === "undefined") return;
 
     const sp = new URLSearchParams();
     if (next.lineKey) sp.set("l", next.lineKey);
     if (next.commentId) sp.set("c", next.commentId);
+    if (next.rootId) sp.set("root", next.rootId);
     const h = sp.toString();
 
     // If a canonical base is provided, use it (and do NOT inherit portal query params).
@@ -463,11 +474,6 @@ export default function ExegesisTrackClient(props: {
   const [threadErr, setThreadErr] = React.useState<string>("");
   const [sort, setSort] = React.useState<ThreadSort>("top");
 
-  // Per-root expansion: prevents very long threads from dominating default view.
-  const [expandedRootIds, setExpandedRootIds] = React.useState<
-    Record<string, boolean>
-  >({});
-
   function rootMaxDepth(root: { comments: CommentDTO[] }) {
     let best = 0;
     for (const c of root.comments ?? []) best = Math.max(best, c.depth ?? 0);
@@ -482,6 +488,39 @@ export default function ExegesisTrackClient(props: {
     const maxD = rootMaxDepth(root);
     // v1 heuristic: collapse if it’s either deep or long
     return count > 10 || maxD >= 4;
+  }
+
+  const [focusedRootId, setFocusedRootId] = React.useState<string>("");
+
+  // preserve panel scroll position when jumping in/out of a focused root
+  const panelScrollTopRef = React.useRef<number>(0);
+
+  function focusRoot(rootId: string) {
+    const rid = (rootId ?? "").trim();
+    if (!rid) return;
+
+    panelScrollTopRef.current = threadScrollRef.current?.scrollTop ?? 0;
+
+    const h = parseHash();
+    setFocusedRootId(rid);
+
+    setHash({
+      lineKey: selected?.lineKey || h.lineKey,
+      commentId: h.commentId,
+      rootId: rid,
+    });
+  }
+
+  function clearRootFocus() {
+    setFocusedRootId("");
+    // keep line selection in URL, just drop root
+    if (selected?.lineKey) setHash({ lineKey: selected.lineKey });
+    else setHash({});
+    // restore scroll after the DOM updates
+    window.requestAnimationFrame(() => {
+      const el = threadScrollRef.current;
+      if (el) el.scrollTop = panelScrollTopRef.current || 0;
+    });
   }
 
   // --- FLIP animation for root list reorder (no deps) ---
@@ -581,6 +620,13 @@ export default function ExegesisTrackClient(props: {
     const pinnedId = meta?.pinnedCommentId ?? null;
     return reorderRootsPinnedFirst(roots, pinnedId);
   }, [threadUI?.roots, meta?.pinnedCommentId, sort]);
+
+  const rootsForView = React.useMemo(() => {
+    const roots = rootsForRender ?? [];
+    if (!focusedRootId) return roots;
+    return roots.filter((r) => r.rootId === focusedRootId);
+  }, [rootsForRender, focusedRootId]);
+
   React.useLayoutEffect(() => {
     if (!flipPendingRef.current) return;
     flipPendingRef.current = false;
@@ -1247,6 +1293,12 @@ export default function ExegesisTrackClient(props: {
     : "";
 
   React.useEffect(() => {
+    const h = parseHash();
+    const rid = (h.rootId ?? "").trim();
+    setFocusedRootId(rid);
+  }, [threadKey]); // when a new thread loads / selection changes, re-read hash
+
+  React.useEffect(() => {
     const cid = pendingScrollCommentIdRef.current;
     if (!cid) return;
     if (!threadKey) return;
@@ -1403,7 +1455,11 @@ export default function ExegesisTrackClient(props: {
       setDraftDoc(null);
 
       pendingScrollCommentIdRef.current = j.comment.id;
-      setHash({ lineKey: selected.lineKey, commentId: j.comment.id });
+      setHash({
+        lineKey: selected.lineKey,
+        commentId: j.comment.id,
+        rootId: focusedRootId || undefined,
+      });
 
       // If we already have a thread loaded, we can optimistically insert.
       // If not, do NOT fabricate viewer state; rely on refetch.
@@ -1548,7 +1604,11 @@ export default function ExegesisTrackClient(props: {
       }));
 
       pendingScrollCommentIdRef.current = j.comment.id;
-      setHash({ lineKey: selected.lineKey, commentId: j.comment.id });
+      setHash({
+        lineKey: selected.lineKey,
+        commentId: j.comment.id,
+        rootId: focusedRootId || undefined,
+      });
 
       // optimistic insert into the correct root bucket (append chronologically)
       setThread((prev) => {
@@ -2126,23 +2186,27 @@ export default function ExegesisTrackClient(props: {
                     className="mt-3 space-y-3 flex-1"
                     style={{
                       overflowY: "auto",
-                      overscrollBehavior: "contain",
+                      // Allow scroll chaining to the page when the panel hits top/bottom.
+                      // (This is what you want when the mouse is hovering the panel.)
+                      overscrollBehavior: isMobile ? "contain" : "auto",
                       minHeight: 0, // critical for flex scroll containers
                     }}
                   >
                     <div className="mt-3 space-y-3">
-                      {(rootsForRender ?? []).length === 0 ? (
+                      {(rootsForView ?? []).length === 0 ? (
                         <div className="text-sm opacity-60">
-                          Be the first to comment.
+                          {focusedRootId
+                            ? "Thread not found."
+                            : "Be the first to comment."}
                         </div>
                       ) : (
-                        (rootsForRender ?? []).map((root) => {
-                          const isExpanded = Boolean(
-                            expandedRootIds[root.rootId],
-                          );
+                        (rootsForView ?? []).map((root) => {
                           const collapsible = shouldCollapseRoot(root);
-                          const visibleComments =
-                            collapsible && !isExpanded
+
+                          // Focused root should always show full thread (preview only applies in all-roots view).
+                          const visibleComments = focusedRootId
+                            ? (root.comments ?? [])
+                            : collapsible && !focusedRootId
                               ? (root.comments ?? []).slice(0, 8) // v1: show first 8
                               : (root.comments ?? []);
 
@@ -2155,24 +2219,31 @@ export default function ExegesisTrackClient(props: {
                               className="rounded-md bg-black/20 p-3"
                             >
                               {/* Root-level affordance */}
-                              {collapsible ? (
-                                <div className="mb-2 flex items-center justify-end">
+                              <div className="mb-2 flex items-center justify-between gap-2">
+                                {focusedRootId ? (
                                   <button
                                     type="button"
                                     className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
-                                    onClick={() =>
-                                      setExpandedRootIds((prev) => ({
-                                        ...prev,
-                                        [root.rootId]: !isExpanded,
-                                      }))
-                                    }
+                                    onClick={clearRootFocus}
                                   >
-                                    {isExpanded
-                                      ? "Collapse thread"
-                                      : `Open full thread (${(root.comments ?? []).length})`}
+                                    ← Back to all threads
                                   </button>
-                                </div>
-                              ) : null}
+                                ) : (
+                                  <div className="text-xs opacity-60">
+                                    {(root.comments ?? []).length} comments
+                                  </div>
+                                )}
+
+                                {focusedRootId ? null : collapsible ? (
+                                  <button
+                                    type="button"
+                                    className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
+                                    onClick={() => focusRoot(root.rootId)}
+                                  >
+                                    Open full thread
+                                  </button>
+                                ) : null}
+                              </div>
 
                               {visibleComments.map((c) => {
                                 const ident =
@@ -2317,10 +2388,10 @@ export default function ExegesisTrackClient(props: {
                                               {/* superscript badge (slightly touching top-right) */}
                                               {showBadge ? (
                                                 <span
-                                                  className="absolute -right-0.5 -top-0.5 rounded-full bg-black/70 px-1 text-[10px] leading-[14px] tabular-nums text-white/90"
+                                                  className="absolute right-0 top-0 rounded-full bg-black/60 px-1 text-[10px] leading-[13px] tabular-nums text-current"
                                                   style={{
                                                     transform:
-                                                      "translate(35%,-35%)",
+                                                      "translate(25%,-25%)",
                                                   }}
                                                 >
                                                   {votes}
