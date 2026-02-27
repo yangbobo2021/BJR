@@ -474,21 +474,8 @@ export default function ExegesisTrackClient(props: {
   const [threadErr, setThreadErr] = React.useState<string>("");
   const [sort, setSort] = React.useState<ThreadSort>("top");
 
-  function rootMaxDepth(root: { comments: CommentDTO[] }) {
-    let best = 0;
-    for (const c of root.comments ?? []) best = Math.max(best, c.depth ?? 0);
-    return best;
-  }
-
-  function shouldCollapseRoot(root: {
-    rootId: string;
-    comments: CommentDTO[];
-  }) {
-    const count = (root.comments ?? []).length;
-    const maxD = rootMaxDepth(root);
-    // v1 heuristic: collapse if it’s either deep or long
-    return count > 10 || maxD >= 4;
-  }
+  const PREVIEW_MAX_DEPTH = 2; // show depths 0,1,2 (i.e. 3 levels)
+  const PREVIEW_MAX_COMMENTS = 8; // optional cap for very wide trees
 
   const [focusedRootId, setFocusedRootId] = React.useState<string>("");
 
@@ -2201,14 +2188,24 @@ export default function ExegesisTrackClient(props: {
                         </div>
                       ) : (
                         (rootsForView ?? []).map((root) => {
-                          const collapsible = shouldCollapseRoot(root);
+                          const allComments = root.comments ?? [];
+                          const previewComments = allComments
+                            .filter((c) => (c.depth ?? 0) <= PREVIEW_MAX_DEPTH)
+                            .slice(0, PREVIEW_MAX_COMMENTS);
 
-                          // Focused root should always show full thread (preview only applies in all-roots view).
-                          const visibleComments = focusedRootId
-                            ? (root.comments ?? [])
-                            : collapsible && !focusedRootId
-                              ? (root.comments ?? []).slice(0, 8) // v1: show first 8
-                              : (root.comments ?? []);
+                          const isFocused = !!focusedRootId;
+                          const visibleComments = isFocused
+                            ? allComments
+                            : previewComments;
+
+                          // We consider the preview "gated" if there exists deeper discussion,
+                          // or if the count cap clipped anything.
+                          const gated =
+                            !isFocused &&
+                            (allComments.some(
+                              (c) => (c.depth ?? 0) > PREVIEW_MAX_DEPTH,
+                            ) ||
+                              previewComments.length < allComments.length);
 
                           return (
                             <div
@@ -2218,9 +2215,9 @@ export default function ExegesisTrackClient(props: {
                               }}
                               className="rounded-md bg-black/20 p-3"
                             >
-                              {/* Root-level affordance */}
-                              <div className="mb-2 flex items-center justify-between gap-2">
-                                {focusedRootId ? (
+                              {/* Root-level affordance (only show "Back" when focused) */}
+                              {focusedRootId ? (
+                                <div className="mb-2">
                                   <button
                                     type="button"
                                     className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
@@ -2228,22 +2225,8 @@ export default function ExegesisTrackClient(props: {
                                   >
                                     ← Back to all threads
                                   </button>
-                                ) : (
-                                  <div className="text-xs opacity-60">
-                                    {(root.comments ?? []).length} comments
-                                  </div>
-                                )}
-
-                                {focusedRootId ? null : collapsible ? (
-                                  <button
-                                    type="button"
-                                    className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
-                                    onClick={() => focusRoot(root.rootId)}
-                                  >
-                                    Open full thread
-                                  </button>
-                                ) : null}
-                              </div>
+                                </div>
+                              ) : null}
 
                               {visibleComments.map((c) => {
                                 const ident =
@@ -2794,6 +2777,18 @@ export default function ExegesisTrackClient(props: {
                                   </div>
                                 );
                               })}
+
+                              {gated ? (
+                                <div className="mt-2">
+                                  <button
+                                    type="button"
+                                    className="w-full rounded-md bg-white/5 px-2 py-2 text-xs hover:bg-white/10"
+                                    onClick={() => focusRoot(root.rootId)}
+                                  >
+                                    Open full thread
+                                  </button>
+                                </div>
+                              ) : null}
                             </div>
                           );
                         })
