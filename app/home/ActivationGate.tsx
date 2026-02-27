@@ -547,6 +547,26 @@ export default function ActivationGate(props: Props) {
     accessUntil: string | null;
   } | null>(null);
 
+  const [cancelTipOpen, setCancelTipOpen] = useState(false);
+
+  function formatAccessUntil(iso: string | null): string | null {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    return new Intl.DateTimeFormat(undefined, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }).format(d);
+  }
+
+  function buildCancelTipText(): string {
+    const untilLabel = formatAccessUntil(subStatus?.accessUntil ?? null);
+    return untilLabel
+      ? `Cancellation scheduled — access until ${untilLabel}.`
+      : "Cancellation scheduled — access until the end of your billing period.";
+  }
+
   useEffect(() => {
     if (!isActive) {
       setSubStatus(null);
@@ -720,6 +740,7 @@ export default function ActivationGate(props: Props) {
   // Modal: billing dropdown isn't used (keep state clean)
   useEffect(() => {
     if (placement === "modal") closeMembershipModal();
+    setCancelTipOpen(false);
   }, [placement, closeMembershipModal]);
 
   // Close billing if auth state changes
@@ -741,6 +762,14 @@ export default function ActivationGate(props: Props) {
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [isMembershipOpen, isActive, closeMembershipModal]);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setCancelTipOpen(false);
+    }
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, []);
 
   // If we leave idle/email phase, stop the “typing” state
   useEffect(() => {
@@ -1085,10 +1114,28 @@ export default function ActivationGate(props: Props) {
                   marginTop: 2,
                 }}
               >
-                <CancelSubscriptionButton
-                  variant="link"
-                  label="Cancel subscription"
-                />
+                {subStatus?.cancelAtPeriodEnd ? (
+                  <div
+                    style={{
+                      fontSize: 12,
+                      lineHeight: "16px",
+                      opacity: 0.82,
+                      textAlign: "center",
+                      maxWidth: 520,
+                      padding: "6px 10px",
+                      borderRadius: 12,
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      background: "rgba(255,255,255,0.04)",
+                    }}
+                  >
+                    {buildCancelTipText()}
+                  </div>
+                ) : (
+                  <CancelSubscriptionButton
+                    variant="link"
+                    label="Cancel subscription"
+                  />
+                )}
               </div>
             )}
           </div>
@@ -1288,44 +1335,70 @@ export default function ActivationGate(props: Props) {
                             {tier}
                           </span>
 
-                          {subStatus?.cancelAtPeriodEnd
-                            ? (() => {
-                                const until = subStatus.accessUntil;
-                                const untilLabel = until
-                                  ? new Intl.DateTimeFormat(undefined, {
-                                      year: "numeric",
-                                      month: "long",
-                                      day: "numeric",
-                                    }).format(new Date(until))
-                                  : null;
+                          {subStatus?.cancelAtPeriodEnd ? (
+                            <span
+                              style={{
+                                position: "relative",
+                                display: "inline-flex",
+                              }}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => setCancelTipOpen((v) => !v)}
+                                onMouseEnter={() => setCancelTipOpen(true)}
+                                onMouseLeave={() => setCancelTipOpen(false)}
+                                onBlur={() => setCancelTipOpen(false)}
+                                aria-label={buildCancelTipText()}
+                                style={{
+                                  appearance: "none",
+                                  border: "1px solid rgba(255,255,255,0.16)",
+                                  background: "rgba(255,255,255,0.06)",
+                                  color: "rgba(255,255,255,0.82)",
+                                  width: 18,
+                                  height: 18,
+                                  borderRadius: 999,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  transform: "translateY(1px)",
+                                  padding: 0,
+                                  margin: 0,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                <ClockIcon size={12} />
+                              </button>
 
-                                const tip = untilLabel
-                                  ? `Cancellation scheduled — access until ${untilLabel}.`
-                                  : "Cancellation scheduled — access until the end of your billing period.";
-
-                                return (
-                                  <span
-                                    title={tip}
-                                    aria-label={tip}
-                                    style={{
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      width: 18,
-                                      height: 18,
-                                      borderRadius: 999,
-                                      border:
-                                        "1px solid rgba(255,255,255,0.16)",
-                                      background: "rgba(255,255,255,0.06)",
-                                      color: "rgba(255,255,255,0.82)",
-                                      transform: "translateY(1px)",
-                                    }}
-                                  >
-                                    <ClockIcon size={12} />
-                                  </span>
-                                );
-                              })()
-                            : null}
+                              {cancelTipOpen ? (
+                                <div
+                                  role="tooltip"
+                                  style={{
+                                    position: "absolute",
+                                    top: "calc(100% + 8px)",
+                                    right: 0,
+                                    zIndex: 80,
+                                    minWidth: 220,
+                                    maxWidth: 320,
+                                    padding: "10px 12px",
+                                    borderRadius: 12,
+                                    border: "1px solid rgba(255,255,255,0.14)",
+                                    background: "rgba(10,10,14,0.96)",
+                                    boxShadow:
+                                      "0 18px 42px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04)",
+                                    backdropFilter: "blur(10px)",
+                                    WebkitBackdropFilter: "blur(10px)",
+                                    fontSize: 12,
+                                    lineHeight: "16px",
+                                    color: "rgba(255,255,255,0.86)",
+                                    pointerEvents: "none",
+                                    whiteSpace: "normal",
+                                  }}
+                                >
+                                  {buildCancelTipText()}
+                                </div>
+                              ) : null}
+                            </span>
+                          ) : null}
 
                           <span aria-hidden style={{ opacity: 0.35 }}>
                             |
