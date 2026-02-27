@@ -118,16 +118,22 @@ export async function POST(req: Request) {
   });
   const subs = unwrapStripeResponse(subsRes);
 
-  const list = Array.isArray(
-    (subs as Stripe.ApiList<Stripe.Subscription>)?.data,
-  )
-    ? (subs as Stripe.ApiList<Stripe.Subscription>).data
-    : [];
+  // Normalize possible shapes into Stripe.Subscription[]
+  // - ApiList<Subscription> => { data: Subscription[] }
+  // - Subscription[] (what you're seeing) => [ ... ]
+  // - anything else => []
+  let list: Stripe.Subscription[] = [];
 
-  const hasDataProp =
-    typeof subs === "object" && subs !== null && "data" in (subs as object);
-
-  if (list.length === 0 && !hasDataProp) {
+  if (Array.isArray(subs)) {
+    list = subs as Stripe.Subscription[];
+  } else if (
+    subs &&
+    typeof subs === "object" &&
+    "data" in (subs as object) &&
+    Array.isArray((subs as Stripe.ApiList<Stripe.Subscription>).data)
+  ) {
+    list = (subs as Stripe.ApiList<Stripe.Subscription>).data;
+  } else {
     console.error("cancel-subscription: unexpected subs shape", {
       hasSubs: !!subs,
       type: typeof subs,
