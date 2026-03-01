@@ -106,7 +106,7 @@ const portalPageQuery = `
         title,
         teaser,
         full,
-        requiresEntitlement
+        requiresEntitlement,
         styleVariant
       },
 
