@@ -5,12 +5,11 @@ import React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { usePlayer } from "./PlayerState";
 import type {
-  AlbumInfo,
-  AlbumLyricsBundle,
+  AlbumPlayerBundle,
   AlbumNavItem,
-  PlayerTrack,
   Tier,
   TierName,
+  PlayerTrack,
 } from "@/lib/types";
 import { primeLyricsFromAlbumBundle } from "./lyrics/ensureLyricsForTrack";
 import { deriveShareContext, shareAlbum, shareTrack } from "./share";
@@ -264,12 +263,7 @@ async function fetchAccessOnce(
   return p;
 }
 
-type StableView = {
-  albumSlug: string;
-  album: AlbumInfo | null;
-  tracks: PlayerTrack[];
-  albumLyrics?: AlbumLyricsBundle | null;
-};
+type StableView = AlbumPlayerBundle;
 
 type StreamingPlatform =
   | "spotify"
@@ -305,12 +299,14 @@ function isPlatformLink(v: unknown): v is PlatformLink {
 }
 
 function normalizePlatformLinks(
-  links: AlbumInfo["platformLinks"],
+  links:
+    | NonNullable<AlbumPlayerBundle["album"]>["platformLinks"]
+    | null
+    | undefined,
 ): PlatformLink[] {
   if (!Array.isArray(links)) return [];
   return links.filter(isPlatformLink);
 }
-
 function PlatformIcon({ platform }: { platform: StreamingPlatform }) {
   const common = { width: 18, height: 18, "aria-hidden": true as const };
 
@@ -483,15 +479,21 @@ function canonicalCarryQuery(): string {
 }
 
 export default function FullPlayer(props: {
-  albumSlug: string;
-  album: AlbumInfo | null;
-  tracks: PlayerTrack[];
-  albumLyrics?: AlbumLyricsBundle | null;
+  bundle: AlbumPlayerBundle;
   albums: AlbumNavItem[];
   onSelectAlbum?: (slug: string) => void;
   isBrowsingAlbum?: boolean;
   viewerTier?: Tier;
 }) {
+  const {
+    bundle,
+    albums,
+    onSelectAlbum,
+    isBrowsingAlbum = false,
+    viewerTier = "none",
+  } = props;
+
+  const { albumSlug, album, tracks, albumLyrics } = bundle;
   const p = usePlayer();
 
   // near your other hooks
@@ -505,26 +507,15 @@ export default function FullPlayer(props: {
     pRef.current = p;
   }, [p]);
 
-  const {
-    albumSlug,
-    album,
-    tracks,
-    albums,
-    albumLyrics,
-    onSelectAlbum,
-    isBrowsingAlbum = false,
-    viewerTier = "none",
-  } = props;
-
   // ---- optimistic UI cache (state, not ref) to satisfy react-hooks/refs lint ----
   const [stableView, setStableView] = React.useState<StableView | null>(null);
 
   React.useEffect(() => {
-    if (!album || !Array.isArray(tracks) || tracks.length === 0) return;
-
-    setStableView({ albumSlug, album, tracks, albumLyrics });
+    if (album && tracks && tracks.length) {
+      setStableView(bundle);
+    }
     primeLyricsFromAlbumBundle(albumLyrics ?? null);
-  }, [albumSlug, album, tracks, albumLyrics]);
+  }, [bundle, album, tracks, albumLyrics]);
 
   const showCached = Boolean(
     isBrowsingAlbum && stableView?.album && (!album || !tracks?.length),

@@ -15,11 +15,9 @@ import { getLastPortalTab } from "./portalLastTab";
 import { usePlayer } from "@/app/home/player/PlayerState";
 import { useGlobalTransportKeys } from "./player/useGlobalTransportKeys";
 import type {
-  PlayerTrack,
-  AlbumInfo,
   AlbumNavItem,
   Tier,
-  AlbumLyricsBundle,
+  AlbumPlayerBundle,
 } from "@/lib/types";
 import PlayerController from "./player/PlayerController";
 import MiniPlayer from "./player/MiniPlayer";
@@ -588,10 +586,7 @@ export default function PortalArea(props: {
   topLogoHeight?: number | null;
   initialPortalTabId?: string | null;
   initialExegesisTrackId?: string | null;
-  albumSlug: string;
-  album: AlbumInfo | null;
-  tracks: PlayerTrack[];
-  albumLyrics?: AlbumLyricsBundle | null;
+  bundle: AlbumPlayerBundle;
   albums: AlbumNavItem[];
   attentionMessage?: string | null;
   tier?: string | null;
@@ -602,10 +597,7 @@ export default function PortalArea(props: {
 }) {
   const {
     portalPanel,
-    albumSlug,
-    album: initialAlbum,
-    tracks: initialTracks,
-    albumLyrics,
+    bundle,
     albums,
     attentionMessage = null,
     tier = null,
@@ -665,7 +657,7 @@ export default function PortalArea(props: {
 
   // Base album slug to use when jumping "to player" from a portal tab.
   // (On portal routes route.albumSlug is null, so we fall back to the shell’s current albumSlug prop.)
-  const playerAlbumSlug = route.albumSlug ?? albumSlug;
+  const playerAlbumSlug = route.albumSlug ?? bundle.albumSlug;
 
   // --- Prefetch player/portal surfaces so Player↔Portal flips feel like tab switches ---
   const buildSecondaryForNav = React.useCallback(() => {
@@ -889,17 +881,10 @@ export default function PortalArea(props: {
     forceSurface("player", null, "replace");
   }, [qTrack, qAutoplay, isPlayer, forceSurface]);
 
-  const [currentAlbumSlug, setCurrentAlbumSlug] =
-    React.useState<string>(albumSlug);
-  const [album, setAlbum] = React.useState<AlbumInfo | null>(initialAlbum);
-  const [tracks, setTracks] = React.useState<PlayerTrack[]>(initialTracks);
+  const currentAlbumSlug = bundle.albumSlug;
+  const album = bundle.album;
+  const tracks = bundle.tracks;
   const isBrowsingAlbum = false;
-
-  React.useEffect(() => {
-    setAlbum(initialAlbum);
-    setTracks(initialTracks);
-    setCurrentAlbumSlug(albumSlug);
-  }, [albumSlug, initialAlbum, initialTracks]);
 
   const onSelectAlbum = React.useCallback(
     (slug: string) => {
@@ -1085,10 +1070,7 @@ export default function PortalArea(props: {
         label: "Player",
         content: (
           <PlayerController
-            albumSlug={currentAlbumSlug}
-            album={album}
-            tracks={tracks}
-            albumLyrics={albumLyrics}
+            bundle={bundle}
             albums={albums}
             onSelectAlbum={onSelectAlbum}
             isBrowsingAlbum={isBrowsingAlbum}
@@ -1100,16 +1082,13 @@ export default function PortalArea(props: {
       { id: "portal", label: "Portal", content: portalPanel },
     ],
     [
-      portalPanel,
-      currentAlbumSlug,
-      album,
-      tracks,
-      albumLyrics,
+      bundle,
       albums,
-      forceSurface,
-      isBrowsingAlbum,
       onSelectAlbum,
+      isBrowsingAlbum,
+      forceSurface,
       viewerTier,
+      portalPanel,
     ],
   );
 

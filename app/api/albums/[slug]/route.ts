@@ -33,23 +33,18 @@ export async function GET(
   context: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await context.params;
-
-  const { searchParams } = new URL(req.url);
-  const includeLyrics =
-    (searchParams.get("includeLyrics") ?? "").trim() === "1";
-
   const { userId } = await auth();
   const tier = await getMemberTier(userId ?? null);
 
-  const data = await getAlbumBySlug(slug);
-  if (!data.album) {
+  const bundle = await getAlbumBySlug(slug);
+  if (!bundle.album) {
     return NextResponse.json(
       { ok: false, error: "NOT_FOUND" },
       { status: 404 },
     );
   }
 
-  const policy = data.album.policy;
+  const policy = bundle.album.policy;
 
   // hide from everyone if not visible
   if (policy?.publicPageVisible === false) {
@@ -65,10 +60,5 @@ export async function GET(
     );
   }
 
-  return NextResponse.json({
-    ok: true,
-    album: data.album,
-    tracks: data.tracks,
-    ...(includeLyrics ? { lyrics: data.lyrics } : {}),
-  });
+  return NextResponse.json({ ok: true, bundle });
 }

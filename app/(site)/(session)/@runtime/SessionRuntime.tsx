@@ -108,7 +108,7 @@ export default async function SessionRuntime(props: {
 
   const albumSlug = (props.albumSlugOverride ?? "").trim() || featuredAlbumSlug;
 
-  const albumData = await getAlbumBySlug(albumSlug);
+  const bundle = await getAlbumBySlug(albumSlug);
 
   const browseAlbumsRaw = await listAlbumsForBrowse();
 
@@ -139,10 +139,7 @@ export default async function SessionRuntime(props: {
   return (
     <PortalArea
       portalPanel={portalPanel}
-      albumSlug={albumSlug}
-      album={albumData.album}
-      tracks={albumData.tracks}
-      albumLyrics={albumData.lyrics}
+      bundle={bundle}
       albums={browseAlbums}
       attentionMessage={null}
       tier={tier}

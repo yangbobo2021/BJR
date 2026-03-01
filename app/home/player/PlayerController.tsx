@@ -3,25 +3,19 @@
 
 import React from "react";
 import FullPlayer from "./FullPlayer";
-import type { AlbumInfo, AlbumNavItem, PlayerTrack, Tier, AlbumLyricsBundle } from "@/lib/types";
+import type { AlbumPlayerBundle, AlbumNavItem, Tier } from "@/lib/types";
 import StageOverlay from "./stage/StageOverlay";
 
 export default function PlayerController(props: {
-  albumSlug: string;
   openPlayerPanel: () => void;
-  album: AlbumInfo | null;
-  tracks: PlayerTrack[];
-  albumLyrics?: AlbumLyricsBundle | null;
+  bundle: AlbumPlayerBundle;
   albums: AlbumNavItem[];
   onSelectAlbum: (slug: string) => void;
   isBrowsingAlbum: boolean;
   viewerTier?: Tier;
 }) {
   const {
-    albumSlug,
-    album,
-    tracks,
-    albumLyrics,
+    bundle,
     albums,
     onSelectAlbum,
     isBrowsingAlbum,
@@ -34,20 +28,14 @@ export default function PlayerController(props: {
   return (
     <>
       <FullPlayer
-        albumSlug={albumSlug}
-        album={album}
-        tracks={tracks}
-        albumLyrics={albumLyrics}
+        bundle={bundle}
         albums={albums}
         onSelectAlbum={onSelectAlbum}
         isBrowsingAlbum={isBrowsingAlbum}
         viewerTier={viewerTier}
       />
 
-      <StageOverlay
-        open={stageOpen}
-        onClose={closeStage}
-      />
+      <StageOverlay open={stageOpen} onClose={closeStage} />
     </>
   );
 }

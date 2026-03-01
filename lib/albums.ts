@@ -1,13 +1,16 @@
 // web/lib/albums.ts
 import { client } from "@/sanity/lib/client";
 import { urlFor } from "@/sanity/lib/image";
-import { normalizeLyricCuesFromSanity } from "@/lib/types";
 import type {
   AlbumInfo,
   PlayerTrack,
   TierName,
   LyricCue,
-  AlbumLyricsBundle,
+  AlbumPlayerBundle,
+} from "@/lib/types";
+import {
+  makeAlbumPlayerBundle,
+  normalizeLyricCuesFromSanity,
 } from "@/lib/types";
 
 type AlbumDoc = {
@@ -119,11 +122,7 @@ function parseTierNameArray(v: unknown): TierName[] {
   return v.map(parseTierName).filter((x): x is TierName => x !== null);
 }
 
-export async function getAlbumBySlug(slug: string): Promise<{
-  album: AlbumInfo | null;
-  tracks: PlayerTrack[];
-  lyrics: AlbumLyricsBundle;
-}> {
+export async function getAlbumBySlug(slug: string): Promise<AlbumPlayerBundle> {
   const q = `
     *[_type == "album" && slug.current == $slug][0]{
       _id,
@@ -160,11 +159,12 @@ export async function getAlbumBySlug(slug: string): Promise<{
   const doc = await client.fetch<AlbumDoc | null>(q, { slug });
 
   if (!doc?._id) {
-    return {
+    return makeAlbumPlayerBundle({
+      albumSlug: slug,
       album: null,
       tracks: [],
-      lyrics: { cuesByTrackId: {}, offsetByTrackId: {} },
-    };
+      albumLyrics: null,
+    });
   }
 
   const albumCatalogueId = normStr(doc.catalogueId) ?? undefined;
@@ -269,7 +269,12 @@ export async function getAlbumBySlug(slug: string): Promise<{
         : 0;
   }
 
-  return { album, tracks, lyrics: { cuesByTrackId, offsetByTrackId } };
+  return makeAlbumPlayerBundle({
+    albumSlug: slug,
+    album,
+    tracks,
+    albumLyrics: { cuesByTrackId, offsetByTrackId },
+  });
 }
 
 export async function listAlbumsForBrowse(): Promise<AlbumBrowseItem[]> {

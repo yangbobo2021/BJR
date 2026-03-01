@@ -30,6 +30,28 @@ export type AlbumPolicy = {
   minTierToLoad?: TierName | null;
 };
 
+export type AlbumPlayerBundle = {
+  albumSlug: string;
+  album: AlbumInfo | null;
+  tracks: PlayerTrack[];
+  albumLyrics: AlbumLyricsBundle | null;
+};
+
+// Optional helper (keeps call-sites tidy)
+export function makeAlbumPlayerBundle(args: {
+  albumSlug: string;
+  album: AlbumInfo | null;
+  tracks: PlayerTrack[];
+  albumLyrics?: AlbumLyricsBundle | null;
+}): AlbumPlayerBundle {
+  return {
+    albumSlug: args.albumSlug,
+    album: args.album,
+    tracks: Array.isArray(args.tracks) ? args.tracks : [],
+    albumLyrics: args.albumLyrics ?? null,
+  };
+}
+
 export type AlbumNavItem = {
   id: string;
   slug: string;
