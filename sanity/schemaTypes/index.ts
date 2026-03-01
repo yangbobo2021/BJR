@@ -6,8 +6,10 @@ import { siteFlags } from "./siteFlags";
 import { portalPage } from "./portalPage";
 import { moduleHeading } from "./moduleHeading";
 import { modulePanels } from "./modules/modulePanels";
+import { moduleCardGrid } from "./moduleCardGrid";
 import { moduleDownloads } from "./moduleDownloads";
 import { moduleDownloadGrid } from "./moduleDownloadGrid";
+import { moduleRichText } from "./modules/moduleRichText";
 import { artistPost } from "./artistPost";
 import { moduleArtistPosts } from "./moduleArtistPosts";
 import { moduleExegesis } from "./moduleExegesis";
@@ -22,8 +24,10 @@ export const schema: { types: SchemaTypeDefinition[] } = {
     portalPage,
     moduleHeading,
     modulePanels,
+    moduleCardGrid,
     moduleDownloads,
     moduleDownloadGrid,
+    moduleRichText,
     artistPost,
     moduleArtistPosts,
     moduleExegesis,
