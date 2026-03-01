@@ -542,7 +542,7 @@ export default function PortalExegesis(props: { title?: string }) {
 
   // index
   return (
-    <div className="w-full px-4 py-6">
+    <div className="w-full px-4 py-6 pl-0">
       <div className="mt-1 text-sm opacity-70">
         Choose a track to read and discuss lyrics.
       </div>

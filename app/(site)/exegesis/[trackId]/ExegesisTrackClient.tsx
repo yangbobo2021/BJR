@@ -1842,7 +1842,7 @@ export default function ExegesisTrackClient(props: {
 
   return (
     <div
-      className="w-full max-w-none px-4 py-6"
+      className="w-full max-w-none px-4 py-6 pl-0"
       style={
         {
           "--lxRow": "#2c2431",
