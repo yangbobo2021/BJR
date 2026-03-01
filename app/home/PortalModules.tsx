@@ -215,7 +215,8 @@ function PanelShell(props: {
 
   if (variant !== "gold") return <>{children}</>;
 
-  // Gradient border frame (MembershipModal style)
+  // Exact same structural idea as MembershipModal:
+  // frame (gradient) -> inner surface (opaque) -> content (children)
   return (
     <div
       className="portalPanelFrame portalPanelFrame--gold"
@@ -225,7 +226,15 @@ function PanelShell(props: {
         transform: "translateZ(0)",
       }}
     >
-      <div style={{ borderRadius: 17 }}>{children}</div>
+      <div
+        className="portalPanelInner portalPanelInner--gold"
+        style={{
+          borderRadius: 17,
+          overflow: "hidden", // key: clips the frame completely
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 }
