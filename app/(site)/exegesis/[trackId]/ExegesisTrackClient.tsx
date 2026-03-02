@@ -2332,50 +2332,19 @@ export default function ExegesisTrackClient(props: {
 
                                                 {showBadge ? (
                                                   <span
-                                                    className="absolute inline-grid place-items-center text-[9px] font-black leading-[9px] tabular-nums"
+                                                    className="absolute text-[9px] font-black leading-[9px] tabular-nums text-current"
                                                     style={{
                                                       right: "-1px",
                                                       top: "-1px",
                                                       pointerEvents: "none",
+                                                      // True outline (no second glyph -> no misregistration).
+                                                      WebkitTextStroke:
+                                                        "2px rgb(var(--voteBgRgb) / 0.55)",
+                                                      // Helps some rasterizers keep the stroke visually “outside”.
+                                                      paintOrder: "stroke fill",
                                                     }}
                                                   >
-                                                    {/* Matte “cutout” layer: same glyph, same layout cell */}
-                                                    <span
-                                                      aria-hidden
-                                                      className="[grid-area:1/1]"
-                                                      style={{
-                                                        color:
-                                                          "rgb(var(--voteBgRgb) / 1)",
-                                                        textShadow: [
-                                                          // inner ring (1px)
-                                                          "1px 0 rgb(var(--voteBgRgb) / 1)",
-                                                          "-1px 0 rgb(var(--voteBgRgb) / 1)",
-                                                          "0 1px rgb(var(--voteBgRgb) / 1)",
-                                                          "0 -1px rgb(var(--voteBgRgb) / 1)",
-                                                          "1px 1px rgb(var(--voteBgRgb) / 1)",
-                                                          "1px -1px rgb(var(--voteBgRgb) / 1)",
-                                                          "-1px 1px rgb(var(--voteBgRgb) / 1)",
-                                                          "-1px -1px rgb(var(--voteBgRgb) / 1)",
-
-                                                          // outer ring (2px)
-                                                          "2px 0 rgb(var(--voteBgRgb) / 1)",
-                                                          "-2px 0 rgb(var(--voteBgRgb) / 1)",
-                                                          "0 2px rgb(var(--voteBgRgb) / 1)",
-                                                          "0 -2px rgb(var(--voteBgRgb) / 1)",
-                                                          "2px 2px rgb(var(--voteBgRgb) / 1)",
-                                                          "2px -2px rgb(var(--voteBgRgb) / 1)",
-                                                          "-2px 2px rgb(var(--voteBgRgb) / 1)",
-                                                          "-2px -2px rgb(var(--voteBgRgb) / 1)",
-                                                        ].join(","),
-                                                      }}
-                                                    >
-                                                      {votes}
-                                                    </span>
-
-                                                    {/* Actual number on top (same cell) */}
-                                                    <span className="text-current [grid-area:1/1]">
-                                                      {votes}
-                                                    </span>
+                                                    {votes}
                                                   </span>
                                                 ) : null}
                                               </span>
