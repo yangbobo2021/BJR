@@ -2332,18 +2332,17 @@ export default function ExegesisTrackClient(props: {
 
                                                 {showBadge ? (
                                                   <span
-                                                    className="absolute text-[9px] font-black leading-[9px] tabular-nums"
+                                                    className="absolute inline-grid place-items-center text-[9px] font-black leading-[9px] tabular-nums"
                                                     style={{
                                                       right: "-1px",
                                                       top: "-1px",
-                                                      transform: "none",
                                                       pointerEvents: "none",
                                                     }}
                                                   >
-                                                    {/* Matte “cutout” layer: solid bg-colored silhouette + ring */}
+                                                    {/* Matte “cutout” layer: same glyph, same layout cell */}
                                                     <span
                                                       aria-hidden
-                                                      className="absolute inset-0"
+                                                      className="[grid-area:1/1]"
                                                       style={{
                                                         color:
                                                           "rgb(var(--voteBgRgb) / 1)",
@@ -2373,8 +2372,8 @@ export default function ExegesisTrackClient(props: {
                                                       {votes}
                                                     </span>
 
-                                                    {/* Actual number on top */}
-                                                    <span className="relative text-current">
+                                                    {/* Actual number on top (same cell) */}
+                                                    <span className="text-current [grid-area:1/1]">
                                                       {votes}
                                                     </span>
                                                   </span>
