@@ -2338,7 +2338,6 @@ export default function ExegesisTrackClient(props: {
                                                       top: "-1px",
                                                       transform: "none",
                                                       textShadow: [
-                                                        // inner ring (1px)
                                                         "1px 0 rgb(var(--voteBgRgb) / 1)",
                                                         "-1px 0 rgb(var(--voteBgRgb) / 1)",
                                                         "0 1px rgb(var(--voteBgRgb) / 1)",
