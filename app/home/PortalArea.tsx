@@ -853,16 +853,18 @@ export default function PortalArea(props: {
   const qShareToken = (sp.get("st") ?? sp.get("share") ?? "").trim() || null;
   const hasSt = Boolean(qShareToken);
 
-  const playbackIntent =
+  // Spotlight should only be possible after an explicit play attempt (or autoplay deep link).
+  // Note: PortalArea primes queue/current on load, so `p.current` is NOT a valid signal here.
+  const spotlightArmed =
     p.intent === "play" ||
+    p.status === "loading" ||
     p.status === "playing" ||
     p.status === "paused" ||
-    Boolean(p.current) ||
     Boolean(qTrack) ||
     Boolean(qAutoplay);
 
   const spotlightAttention =
-    playbackIntent &&
+    spotlightArmed &&
     !!derivedAttentionMessage &&
     p.blockUiMode === "global" &&
     spotlightEligibleCode &&

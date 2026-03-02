@@ -187,7 +187,7 @@ type AccessState = {
   embargoed: boolean;
   releaseAt: string | null;
   code?: string;
-  action?: BlockAction; // <-- typed to player.setBlocked contract
+  action?: BlockAction; //
   reason?: string;
   corr?: string | null;
 };
@@ -691,7 +691,32 @@ export default function FullPlayer(props: {
             player.pendingTrackId && set.has(player.pendingTrackId),
           );
 
-          if (curInThisAlbum || queueIsThisAlbum || pendingInThisAlbum) {
+          const code = typeof next.code === "string" ? next.code.trim() : "";
+
+          const isAuthOrCap =
+            code === "AUTH_REQUIRED" ||
+            code === "CAP_REACHED" ||
+            code === "ANON_CAP_REACHED";
+
+          // "Queue is this album" is not intent — PortalArea primes queue/current on first load.
+          // Only treat as block-worthy when there's an actual play attempt or active playback lifecycle.
+          const hasPlaybackIntentForThisAlbum =
+            player.intent === "play" ||
+            player.status === "loading" ||
+            player.status === "playing" ||
+            player.status === "paused" ||
+            pendingInThisAlbum;
+
+          const shouldBlockThisAlbum =
+            curInThisAlbum ||
+            pendingInThisAlbum ||
+            (queueIsThisAlbum && hasPlaybackIntentForThisAlbum);
+
+          // Extra hardening: auth/cap blocks should *never* fire from passive hydration.
+          if (
+            shouldBlockThisAlbum &&
+            (!isAuthOrCap || hasPlaybackIntentForThisAlbum)
+          ) {
             player.setBlocked(next.reason ?? "Playback blocked.", {
               code: next.code,
               action: next.action,
