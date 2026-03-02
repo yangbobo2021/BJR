@@ -7,27 +7,16 @@ import { usePlayer } from "./PlayerState";
 import { muxSignedHlsUrl } from "@/lib/mux";
 import { mediaSurface } from "./mediaSurface";
 import { audioSurface } from "./audioSurface";
-
-type BlockCode =
-  | "AUTH_REQUIRED"
-  | "ANON_CAP_REACHED"
-  | "ENTITLEMENT_REQUIRED"
-  | "EMBARGO"
-  | "TIER_REQUIRED"
-  | "INVALID_REQUEST"
-  | "PROVISIONING"
-  | "CAP_REACHED";
-
-type BlockAction = "login" | "subscribe" | "buy" | "wait";
+import type { GateAction, GateCodeRaw } from "@/app/home/gating/gateTypes";
 
 type TokenResponse =
   | { ok: true; token: string; expiresAt: string | number }
   | {
       ok: false;
       blocked: true;
-      action?: BlockAction;
+      action?: GateAction;
       reason: string;
-      code?: BlockCode;
+      code?: GateCodeRaw;
     };
 
 function canPlayNativeHls(a: HTMLMediaElement) {

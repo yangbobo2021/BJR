@@ -4,24 +4,21 @@
 import React from "react";
 import type { PlayerTrack } from "@/lib/types";
 import { ensureLyricsForTrack } from "@/app/home/player/lyrics/ensureLyricsForTrack";
+import type {
+  GateAction,
+  GateCodeRaw,
+  GateUiMode,
+} from "@/app/home/gating/gateTypes";
+import { normalizeGateCodeRaw } from "@/app/home/gating/gateTypes";
 
 type PlayerStatus = "idle" | "loading" | "playing" | "paused" | "blocked";
 type RepeatMode = "off" | "one" | "all";
 type Intent = "play" | "pause" | null;
 type LoadingReason = "token" | "attach" | "buffering" | undefined;
 
-export type BlockUiMode = "none" | "inline" | "global";
-export type BlockAction = "login" | "subscribe" | "buy" | "wait";
-
-export type BlockCode =
-  | "AUTH_REQUIRED"
-  | "ANON_CAP_REACHED"
-  | "ENTITLEMENT_REQUIRED"
-  | "EMBARGO"
-  | "TIER_REQUIRED"
-  | "INVALID_REQUEST"
-  | "PROVISIONING"
-  | "CAP_REACHED";
+export type BlockUiMode = GateUiMode;
+export type BlockAction = GateAction;
+export type BlockCode = GateCodeRaw;
 
 export type QueueContext = {
   contextId?: string;
@@ -64,7 +61,7 @@ export type PlayerState = {
 
   durationById: Record<string, number>;
 
-  blockedCode?: string;
+  blockedCode?: BlockCode;
   blockedAction?: BlockAction;
   blockedCorrelationId?: string | null;
 };
@@ -174,32 +171,10 @@ function primeDurationById(
   return next;
 }
 
-function normalizeBlockCode(raw: string | null | undefined): BlockCode | null {
-  const c = (raw ?? "").trim();
-  if (!c) return null;
-  switch (c) {
-    case "AUTH_REQUIRED":
-    case "ANON_CAP_REACHED":
-    case "ENTITLEMENT_REQUIRED":
-    case "EMBARGO":
-    case "TIER_REQUIRED":
-    case "INVALID_REQUEST":
-    case "PROVISIONING":
-    case "CAP_REACHED":
-      return c;
-    default:
-      return null;
-  }
-}
-
-function uiModeForBlockedCode(code: BlockCode | null): BlockUiMode {
-  // Policy:
-  // - EMBARGO: inline only
-  // - TIER_REQUIRED: inline only (never full-page)
+function uiModeForBlockedCode(code: BlockCode | undefined): BlockUiMode {
+  // Keep behavior stable for PlayerState: only EMBARGO + TIER_REQUIRED are forced inline.
+  // Everything else remains eligible for global blur.
   if (code === "EMBARGO" || code === "TIER_REQUIRED") return "inline";
-
-  // All other blocked codes are allowed to be "global" candidates.
-  // PortalArea will still restrict spotlight to signed-out + allowlist.
   return "global";
 }
 
@@ -244,10 +219,10 @@ export function PlayerStateProvider(props: { children: React.ReactNode }) {
 
   const api: PlayerState & PlayerActions & PlayerDerivedUX =
     React.useMemo(() => {
-      // ✅ keep normalization AND use it
-      const code = normalizeBlockCode(state.blockedCode ?? null);
       const blockUiMode: BlockUiMode =
-        state.status === "blocked" ? uiModeForBlockedCode(code) : "none";
+        state.status === "blocked"
+          ? uiModeForBlockedCode(state.blockedCode)
+          : "none";
 
       const shouldBlur = state.status === "blocked" && blockUiMode === "global";
       const shouldShowTopbarBlockMessage =
@@ -718,7 +693,11 @@ export function PlayerStateProvider(props: { children: React.ReactNode }) {
         ) =>
           setState((s) => {
             const nextReason = reason ?? "Playback blocked.";
-            const nextCode = meta?.code;
+
+            // Normalize ONCE at the boundary; store canonical (or undefined).
+            const nextCode: BlockCode | undefined =
+              normalizeGateCodeRaw(meta?.code) ?? undefined;
+
             const nextAction = meta?.action;
             const nextCorr =
               meta?.correlationId ?? s.blockedCorrelationId ?? null;
