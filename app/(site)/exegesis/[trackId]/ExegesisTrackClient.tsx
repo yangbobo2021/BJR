@@ -1281,6 +1281,9 @@ export default function ExegesisTrackClient(props: {
 
     async function run() {
       if (!selected?.lineKey) return;
+      // If the inline gate is active, do not keep refetching on selection changes.
+      // The overlay explains what's happening; we keep the last-loaded thread blurred.
+      if (inlineGate.open) return;
 
       const wantedFetch = threadWantedFetchKey;
       const wantedCore = threadWantedCoreKey;
@@ -1325,12 +1328,10 @@ export default function ExegesisTrackClient(props: {
 
             // Keep the error out of the normal in-panel error box; the gate overlay owns this UX.
             setThreadErr("");
-            setThreadLoadedKey(wantedCore);
             return;
           }
 
           setThreadErr(j.error || "Failed to load thread.");
-          setThreadLoadedKey(wantedCore);
           return;
         }
 
@@ -1342,7 +1343,6 @@ export default function ExegesisTrackClient(props: {
         if (!alive) return;
         setThread((prev) => (prev ? prev : null));
         setThreadErr("Failed to load thread.");
-        setThreadLoadedKey(wantedCore);
       } finally {
         if (!alive) return;
         setThreadLoading(false);
@@ -1361,6 +1361,7 @@ export default function ExegesisTrackClient(props: {
     threadWantedCoreKey,
     viewerKey,
     reportInlineGate,
+    inlineGate.open,
   ]);
 
   async function postComment() {
@@ -2212,7 +2213,44 @@ export default function ExegesisTrackClient(props: {
                         </div>
                       ) : null}
 
-                      {Composer}
+                      <div className="relative">
+                        {Composer}
+
+                        {inlineGate.open ? (
+                          <button
+                            type="button"
+                            className="absolute inset-0 z-10 rounded-lg border border-white/10 bg-black/35 backdrop-blur-[2px] text-left"
+                            onClick={() => {
+                              // single obvious action
+                              if (isAnon) {
+                                reportInlineGate({
+                                  intent: "explicit",
+                                  message:
+                                    inlineGate.message ||
+                                    "Discussion is exclusive to members.",
+                                  correlationId:
+                                    inlineGate.correlationId ?? null,
+                                });
+                                return;
+                              }
+                              openMembershipModal();
+                            }}
+                            aria-label="Unlock discussion"
+                          >
+                            <div className="px-3 py-2">
+                              <div className="text-sm font-semibold text-white/90">
+                                {isAnon
+                                  ? "Sign in to continue"
+                                  : "Upgrade to continue"}
+                              </div>
+                              <div className="mt-0.5 text-xs text-white/65">
+                                {inlineGate.message ||
+                                  "Unlock full discussion and posting."}
+                              </div>
+                            </div>
+                          </button>
+                        ) : null}
+                      </div>
 
                       {/* Header controls: sort when browsing all; Back when focused */}
                       <div className="mt-3 flex items-center justify-end">
