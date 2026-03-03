@@ -74,7 +74,12 @@ type SeenOkResponse = {
 function isGatePayload(x: unknown): x is GatePayload {
   if (!x || typeof x !== "object") return false;
   const r = x as Record<string, unknown>;
-  return r.ok === false && r.blocked === true && typeof r.code === "string";
+  return (
+    typeof r.code === "string" &&
+    typeof r.action === "string" &&
+    typeof r.domain === "string" &&
+    typeof r.message === "string"
+  );
 }
 
 function fmtDate(iso: string) {
@@ -810,7 +815,13 @@ export default function PortalArtistPosts(props: {
               uiMode: decision.uiMode,
               correlationId: raw.correlationId ?? null,
             });
-            setInlineGateMsg(decision.reason.message || raw.reason);
+            setInlineGateMsg(
+              (
+                decision.reason.message ??
+                (raw as Partial<GatePayload>).message ??
+                "Sign in to keep reading."
+              ).trim(),
+            );
             setInlineGateActive(true);
           }
           return;
@@ -1763,8 +1774,6 @@ export default function PortalArtistPosts(props: {
                     <div />
                   </ActivationGate>
                 </div>
-
-               
               </div>
             </div>
           </div>
