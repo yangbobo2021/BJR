@@ -54,7 +54,6 @@ type Post = {
 
 type ArtistPostsResponse = {
   ok: boolean;
-  requiresAuth: boolean;
   posts: Post[];
   nextCursor: string | null;
   correlationId?: string;
@@ -165,7 +164,6 @@ function parsePostsResponse(raw: unknown): ArtistPostsResponse {
   const posts = Array.isArray(r.posts) ? r.posts : [];
   return {
     ok: Boolean(r.ok),
-    requiresAuth: Boolean(r.requiresAuth),
     posts: posts as Post[],
     nextCursor: typeof r.nextCursor === "string" ? r.nextCursor : null,
     correlationId:
@@ -629,7 +627,6 @@ export default function PortalArtistPosts(props: {
 }) {
   const {
     pageSize,
-    requireAuthAfter,
     minVisibility,
     authorName = "Brendan John Roch",
     authorInitials = "BJR",
@@ -707,9 +704,8 @@ export default function PortalArtistPosts(props: {
 
   const [posts, setPosts] = React.useState<Post[]>([]);
   const [loading, setLoading] = React.useState(false);
-  const [requiresAuth, setRequiresAuth] = React.useState(false);
   const [cursor, setCursor] = React.useState<string | null>("0");
-  const [err, setErr] = React.useState<string | null>(null);
+  const [, setErr] = React.useState<string | null>(null);
 
   const [copiedSlug, setCopiedSlug] = React.useState<string | null>(null);
   const [toastVisible, setToastVisible] = React.useState(false);
@@ -724,16 +720,14 @@ export default function PortalArtistPosts(props: {
     };
   }, []);
 
-  const seenRef = React.useRef<Set<string>>(new Set());
   const postEls = React.useRef<Map<string, HTMLDivElement>>(new Map());
-
+  const loadingRef = React.useRef(false);
   const inflightRef = React.useRef<AbortController | null>(null);
   const inflightKeyRef = React.useRef<string>("");
 
   const fetchPage = React.useCallback(
     async (nextCursor: string | null) => {
-      if (requiresAuth) return;
-      if (loading) return;
+      if (loadingRef.current) return;
       if (nextCursor === null) return;
 
       const key =
@@ -741,7 +735,6 @@ export default function PortalArtistPosts(props: {
           nextCursor: nextCursor ?? "",
           pageSize,
           minVisibility,
-          requireAuthAfter,
           postTypeFilter: postTypeFilter ?? "",
         }) || "";
 
@@ -759,7 +752,9 @@ export default function PortalArtistPosts(props: {
       inflightRef.current = ac;
       inflightKeyRef.current = key;
 
+      loadingRef.current = true;
       setLoading(true);
+
       const filterAtCall = postTypeFilter;
       setErr(null);
 
@@ -767,7 +762,6 @@ export default function PortalArtistPosts(props: {
         const u = new URL("/api/artist-posts", window.location.origin);
         u.searchParams.set("limit", String(pageSize));
         u.searchParams.set("minVisibility", minVisibility);
-        u.searchParams.set("requireAuthAfter", String(requireAuthAfter));
         if (postTypeFilter) u.searchParams.set("postType", postTypeFilter);
         if (nextCursor !== "0") u.searchParams.set("offset", nextCursor);
 
@@ -775,7 +769,6 @@ export default function PortalArtistPosts(props: {
           nextCursor,
           pageSize,
           minVisibility,
-          requireAuthAfter,
           postTypeFilter,
         });
 
@@ -793,12 +786,6 @@ export default function PortalArtistPosts(props: {
         // If filter changed while request was in-flight, ignore result.
         if (filterAtCall !== postTypeFilter) return;
 
-        if (j.requiresAuth) {
-          setRequiresAuth(true);
-          setCursor(null);
-          return;
-        }
-
         const nextPosts = Array.isArray(j.posts) ? j.posts : [];
         setPosts((p) =>
           nextCursor !== "0" ? [...p, ...nextPosts] : nextPosts,
@@ -809,22 +796,16 @@ export default function PortalArtistPosts(props: {
         const msg = e instanceof Error ? e.message : "Failed to load posts";
         setErr(msg);
       } finally {
+        // Only clear loading if this request is still the active one.
         if (inflightRef.current === ac) {
           inflightRef.current = null;
           inflightKeyRef.current = "";
+          loadingRef.current = false;
+          setLoading(false);
         }
-        setLoading(false);
       }
     },
-    [
-      requiresAuth,
-      loading,
-      pageSize,
-      minVisibility,
-      requireAuthAfter,
-      postTypeFilter,
-      mountId,
-    ],
+    [pageSize, minVisibility, postTypeFilter],
   );
 
   // optional: abort on unmount
@@ -836,23 +817,19 @@ export default function PortalArtistPosts(props: {
     };
   }, []);
 
-  const firstFilterRunRef = React.useRef(true);
-
+  // One effect owns the initial load + filter changes.
   React.useEffect(() => {
     if (typeof window === "undefined") return;
 
-    if (firstFilterRunRef.current) {
-      firstFilterRunRef.current = false;
-      void fetchPage("0");
-      return;
-    }
-
-    setRequiresAuth(false);
-    setCursor("0"); 
+    // reset list state
+    setCursor("0");
     setPosts([]);
     setErr(null);
+
+    // kick first page
     void fetchPage("0");
-  }, [postTypeFilter, fetchPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postTypeFilter, pageSize, minVisibility]);
 
   React.useEffect(() => {
     if (!deepSlug) return;
@@ -860,49 +837,6 @@ export default function PortalArtistPosts(props: {
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [deepSlug, posts.length]);
-
-  const markSeen = React.useCallback(async (slug: string) => {
-    if (!slug) return;
-    if (seenRef.current.has(slug)) return;
-    seenRef.current.add(slug);
-
-    try {
-      await fetch("/api/artist-posts/seen", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-correlation-id": crypto.randomUUID(),
-        },
-        cache: "no-store",
-        body: JSON.stringify({ slug }),
-      });
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  React.useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const ent of entries) {
-          if (!ent.isIntersecting) continue;
-          const el = ent.target as HTMLElement;
-          const slug = el.dataset.slug ?? "";
-          if (slug) void markSeen(slug);
-        }
-      },
-      { root: null, threshold: 0.6 },
-    );
-
-    for (const p of posts) {
-      const el = postEls.current.get(p.slug);
-      if (el) io.observe(el);
-    }
-
-    return () => io.disconnect();
-  }, [posts, markSeen]);
 
   function triggerCopiedFeedback(slug: string) {
     setCopiedSlug(slug);
@@ -1288,7 +1222,7 @@ export default function PortalArtistPosts(props: {
             <button
               type="button"
               onClick={() => void fetchPage(cursor)}
-              disabled={loading || requiresAuth}
+              disabled={loading}
               style={{
                 border: "none",
                 background: "transparent",
@@ -1522,23 +1456,6 @@ export default function PortalArtistPosts(props: {
         </div>
       ) : null}
 
-      {requiresAuth ? (
-        <div
-          style={{
-            marginTop: 12,
-            fontSize: 13,
-            opacity: 0.85,
-            lineHeight: 1.55,
-          }}
-        >
-          Sign in to keep reading posts.
-        </div>
-      ) : null}
-
-      {err ? (
-        <div style={{ marginTop: 12, fontSize: 13, opacity: 0.8 }}>{err}</div>
-      ) : null}
-
       <div style={{ marginTop: 6 }}>
         {posts.map((p) => {
           const isDeep = deepSlug === p.slug;
@@ -1681,7 +1598,7 @@ export default function PortalArtistPosts(props: {
           </div>
         ) : null}
 
-        {!loading && !requiresAuth && posts.length === 0 ? (
+        {!loading && posts.length === 0 ? (
           <div style={{ fontSize: 13, opacity: 0.75, padding: "12px 0" }}>
             No posts yet.
           </div>
