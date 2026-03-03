@@ -1764,33 +1764,7 @@ export default function PortalArtistPosts(props: {
                   </ActivationGate>
                 </div>
 
-                {/* Hard fallback: if ActivationGate doesn’t render meaningfully inline */}
-                <div
-                  style={{
-                    marginTop: 12,
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    gap: 10,
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => openMembershipModal()}
-                    style={{
-                      height: 30,
-                      padding: "0 12px",
-                      borderRadius: 10,
-                      border: "1px solid rgba(255,255,255,0.14)",
-                      background: "rgba(255,255,255,0.06)",
-                      color: "rgba(255,255,255,0.88)",
-                      cursor: "pointer",
-                      fontSize: 12,
-                      fontWeight: 750,
-                    }}
-                  >
-                    Sign in / unlock
-                  </button>
-                </div>
+               
               </div>
             </div>
           </div>
