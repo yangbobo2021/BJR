@@ -20,7 +20,7 @@ const R2_EXISTENCE_CACHE_SECONDS = 6 * 60 * 60; // 6 hours
 import type {
   GatePayload,
   GateDomain,
-  GateCode,
+  GateCodeRaw,
   GateAction,
 } from "@/app/home/gating/gateTypes";
 
@@ -46,18 +46,14 @@ function newCorrelationId(): string {
 }
 
 function gatePayload(params: {
-  code: GateCode;
+  code: GateCodeRaw; // <-- raw, not canonicalized
   action: GateAction;
-  reason: string;
-  message?: string;
+  message: string; // <-- required
   correlationId: string;
 }): GatePayload {
   return {
-    ok: false,
-    blocked: true,
     code: params.code,
     action: params.action,
-    reason: params.reason,
     message: params.message,
     domain: DOMAIN,
     correlationId: params.correlationId,
@@ -221,7 +217,7 @@ export async function POST(req: Request) {
       gatePayload({
         code: "INVALID_REQUEST",
         action: "wait",
-        reason: "Missing albumSlug.",
+        message: "Missing albumSlug.",
         correlationId,
       }),
     );
@@ -234,7 +230,7 @@ export async function POST(req: Request) {
       gatePayload({
         code: "INVALID_REQUEST",
         action: "wait",
-        reason: "Unknown albumSlug.",
+        message: "Unknown albumSlug.",
         correlationId,
       }),
     );
@@ -248,7 +244,7 @@ export async function POST(req: Request) {
       gatePayload({
         code: "AUTH_REQUIRED",
         action: "login",
-        reason: "Sign in required.",
+        message: "Sign in required.",
         correlationId,
       }),
     );
@@ -262,7 +258,7 @@ export async function POST(req: Request) {
       gatePayload({
         code: "PROVISIONING",
         action: "wait",
-        reason: `Too many requests. Please wait ${ipGate.retryAfterSeconds}s.`,
+        message: `Too many requests. Please wait ${ipGate.retryAfterSeconds}s.`,
         correlationId,
       }),
       { "Retry-After": String(ipGate.retryAfterSeconds) },
@@ -283,7 +279,7 @@ export async function POST(req: Request) {
       gatePayload({
         code: "PROVISIONING",
         action: "wait",
-        reason: "Member not found.",
+        message: "Member not found.",
         correlationId,
       }),
     );
@@ -298,7 +294,7 @@ export async function POST(req: Request) {
       gatePayload({
         code: "ENTITLEMENT_REQUIRED",
         action: "subscribe",
-        reason: "Not entitled.",
+        message: "Not entitled.",
         correlationId,
       }),
     );
@@ -311,7 +307,7 @@ export async function POST(req: Request) {
       gatePayload({
         code: "INVALID_REQUEST",
         action: "wait",
-        reason: "Unknown assetId.",
+        message: "Unknown assetId.",
         correlationId,
       }),
     );
@@ -329,7 +325,7 @@ export async function POST(req: Request) {
       gatePayload({
         code: "PROVISIONING",
         action: "wait",
-        reason: `Please wait ${memberGate.retryAfterSeconds}s and try again.`,
+        message: `Please wait ${memberGate.retryAfterSeconds}s and try again.`,
         correlationId,
       }),
       { "Retry-After": String(memberGate.retryAfterSeconds) },
@@ -354,7 +350,7 @@ export async function POST(req: Request) {
       ...gatePayload({
         code: "PROVISIONING",
         action: "wait",
-        reason: "Download not available (missing object).",
+        message: "Download not available (missing object).",
         correlationId,
       }),
       ...(detail ? { detail } : {}),
