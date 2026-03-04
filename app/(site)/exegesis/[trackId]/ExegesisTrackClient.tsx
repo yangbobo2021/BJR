@@ -293,14 +293,13 @@ export default function ExegesisTrackClient(props: {
   const { userId, isLoaded: authLoaded } = useAuth();
 
   const applyGateResult = React.useCallback(
-    (res: GateResult) => {
+    (res: GateResult, opts?: { dismissible?: boolean }) => {
       if (res.ok) {
         broker.clearGate({ domain: EXEGESIS_DOMAIN });
         clearInlineGate();
         return;
       }
 
-      // Broker should store the engine-derived uiMode (never hardcode it here).
       broker.reportGate({
         code: res.reason.code,
         action: res.reason.action,
@@ -310,14 +309,13 @@ export default function ExegesisTrackClient(props: {
         correlationId: res.reason.correlationId ?? null,
       });
 
-      // Exegesis read-cap is inline-only by engine invariant, but respect engine anyway.
       if (res.uiMode === "inline") {
         setInlineGate({
           open: true,
           message: (res.reason.message ?? "").trim(),
           correlationId: res.reason.correlationId ?? null,
-          // Server-derived inline gates = “hard stop” (read-cap, etc).
-          dismissible: false,
+          // default hard-stop; allow caller to opt into dismiss for “nag” gates
+          dismissible: Boolean(opts?.dismissible),
         });
       } else {
         clearInlineGate();
@@ -355,18 +353,7 @@ export default function ExegesisTrackClient(props: {
           },
         };
 
-        // If the engine says inline, we can optionally allow dismiss.
-        // (This is the “nag” path; hard gates come from payload/servers.)
-        if (res.uiMode === "inline") {
-          setInlineGate({
-            open: true,
-            message: msg,
-            correlationId: res.reason.correlationId ?? null,
-            dismissible: Boolean(opts.dismissible),
-          });
-        }
-
-        applyGateResult(res);
+        applyGateResult(res, { dismissible: Boolean(opts.dismissible) });
         return;
       }
 
