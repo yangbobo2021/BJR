@@ -3,7 +3,6 @@
 
 import React from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { createPortal } from "react-dom";
 import { useAuth } from "@clerk/nextjs";
 import PortalShell, { PortalPanelSpec } from "./PortalShell";
 import {
@@ -250,248 +249,6 @@ function FullWidthBanner(props: {
         ×
       </button>
     </div>
-  );
-}
-
-function BodyPortal(props: { children: React.ReactNode }) {
-  const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => setMounted(true), []);
-  if (!mounted) return null;
-  if (typeof document === "undefined") return null;
-  return createPortal(props.children, document.body);
-}
-
-function SpotlightVeil(props: { active: boolean }) {
-  const { active } = props;
-  const debugbarStyleRef = React.useRef<string | null>(null);
-
-  React.useEffect(() => {
-    if (!active) return;
-    const prev = document.documentElement.style.overflow;
-    document.documentElement.style.overflow = "hidden";
-    return () => {
-      document.documentElement.style.overflow = prev;
-    };
-  }, [active]);
-
-  React.useEffect(() => {
-    const getEl = () =>
-      typeof document !== "undefined"
-        ? document.getElementById("af-admin-debugbar")
-        : null;
-
-    const el = getEl();
-    if (!el) return;
-
-    if (debugbarStyleRef.current == null) {
-      debugbarStyleRef.current = el.getAttribute("style") ?? "";
-    }
-
-    if (active) {
-      el.setAttribute(
-        "style",
-        `${debugbarStyleRef.current}; position: relative; z-index: 50000; pointer-events: auto;`,
-      );
-    } else {
-      const orig = debugbarStyleRef.current ?? "";
-      if (orig.trim()) el.setAttribute("style", orig);
-      else el.removeAttribute("style");
-    }
-
-    return () => {
-      // Cleanup if route changes while spotlight is active.
-      const el2 = getEl();
-      if (!el2) return;
-      const orig = debugbarStyleRef.current ?? "";
-      if (orig.trim()) el2.setAttribute("style", orig);
-      else el2.removeAttribute("style");
-    };
-  }, [active]);
-
-  if (!active) return null;
-  return (
-    <BodyPortal>
-      <div
-        aria-hidden
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 20000,
-          pointerEvents: "auto",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          background: "rgba(0,0,0,0.30)",
-        }}
-      />
-    </BodyPortal>
-  );
-}
-
-function useFocusTrap(
-  enabled: boolean,
-  rootRef: React.RefObject<HTMLElement | null>,
-) {
-  React.useEffect(() => {
-    if (!enabled) return;
-
-    const root = rootRef.current;
-    if (!root) return;
-
-    const isElementDisabled = (el: Element): boolean => {
-      if (el instanceof HTMLButtonElement) return el.disabled;
-      if (el instanceof HTMLInputElement) return el.disabled;
-      if (el instanceof HTMLSelectElement) return el.disabled;
-      if (el instanceof HTMLTextAreaElement) return el.disabled;
-      if (el instanceof HTMLOptGroupElement) return el.disabled;
-      if (el instanceof HTMLOptionElement) return el.disabled;
-      return false;
-    };
-
-    const isActuallyFocusable = (el: HTMLElement): boolean => {
-      if (el.tabIndex < 0) return false;
-      if (isElementDisabled(el)) return false;
-
-      const style = window.getComputedStyle(el);
-      if (style.display === "none" || style.visibility === "hidden")
-        return false;
-
-      return true;
-    };
-
-    const isFocusable = (el: Element): el is HTMLElement => {
-      if (!(el instanceof HTMLElement)) return false;
-
-      const tag = el.tagName.toLowerCase();
-      const focusableTags = new Set([
-        "input",
-        "button",
-        "select",
-        "textarea",
-        "a",
-      ]);
-
-      if (tag === "a") {
-        const a = el as HTMLAnchorElement;
-        if (!a.href && el.tabIndex <= 0) return false;
-      } else if (!focusableTags.has(tag)) {
-        if (el.getAttribute("role") !== "button") return false;
-      }
-
-      return isActuallyFocusable(el);
-    };
-
-    const getFocusable = (): HTMLElement[] => {
-      const all = Array.from(root.querySelectorAll("*"));
-      return all.filter(isFocusable);
-    };
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (!enabled) return;
-
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
-
-      if (e.key !== "Tab") return;
-
-      const items = getFocusable();
-      if (items.length === 0) {
-        e.preventDefault();
-        return;
-      }
-
-      const active =
-        document.activeElement instanceof HTMLElement
-          ? document.activeElement
-          : null;
-      const idx = active ? items.indexOf(active) : -1;
-
-      const nextIdx = e.shiftKey
-        ? idx <= 0
-          ? items.length - 1
-          : idx - 1
-        : idx >= items.length - 1
-          ? 0
-          : idx + 1;
-
-      e.preventDefault();
-      items[nextIdx]?.focus();
-    };
-
-    document.addEventListener("keydown", onKeyDown, true);
-    return () => document.removeEventListener("keydown", onKeyDown, true);
-  }, [enabled, rootRef]);
-}
-
-function SpotlightModal(props: {
-  active: boolean;
-  attentionMessage: string | null;
-  gateNode: React.ReactNode;
-}) {
-  const { active, gateNode } = props;
-  const modalRef = React.useRef<HTMLDivElement | null>(null);
-
-  useFocusTrap(active, modalRef);
-
-  if (!active) return null;
-
-  return (
-    <BodyPortal>
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 30000,
-          pointerEvents: "auto",
-          display: "grid",
-          placeItems: "center",
-          padding: "min(7vh, 56px) 16px",
-        }}
-      >
-        <div
-          ref={modalRef}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Authentication required"
-          style={{
-            width: "100%",
-            // slimmer + taller feel
-            maxWidth: "min(92vw, 520px)",
-            borderRadius: 24,
-            border: "1px solid rgba(255,255,255,0.16)",
-            background: "rgba(10,10,14,0.92)",
-            backdropFilter: "blur(14px)",
-            WebkitBackdropFilter: "blur(14px)",
-            boxShadow: `
-              0 28px 80px rgba(0,0,0,0.60),
-              0 0 0 1px rgba(255,255,255,0.04),
-              0 60px 160px rgba(0,0,0,0.80)
-            `,
-            padding: 20,
-            display: "grid",
-            gap: 14,
-          }}
-        >
-
-          <div
-            style={{
-              width: "100%",
-              borderRadius: 20,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(0,0,0,0.22)",
-              padding: 16,
-              boxShadow: "0 16px 40px rgba(0,0,0,0.22)",
-              display: "grid",
-              placeItems: "center",
-            }}
-          >
-            {gateNode}
-          </div>
-        </div>
-      </div>
-    </BodyPortal>
   );
 }
 
@@ -762,11 +519,6 @@ export default function PortalArea(props: {
   const derivedAttentionMessage =
     attentionMessage ?? brokerAttentionMessage ?? null;
 
-  const dbgForceSpotlight =
-    process.env.NEXT_PUBLIC_ADMIN_DEBUG === "1" &&
-    typeof window !== "undefined" &&
-    window.sessionStorage.getItem("af:dbgSpotlight") === "1";
-
   const qAlbum = (isPublicAlbumRoute ? route.albumSlug : null) ?? null;
   const qTrack = (isPublicAlbumRoute ? route.trackId : null) ?? null;
 
@@ -774,11 +526,6 @@ export default function PortalArea(props: {
   const qAutoplay = getAutoplayFlag(sp);
   const qShareToken = (sp.get("st") ?? sp.get("share") ?? "").trim() || null;
   const hasSt = Boolean(qShareToken);
-
-  const spotlightAttention =
-    !!derivedAttentionMessage &&
-    brokerGate.uiMode === "spotlight" &&
-    (!isSignedIn || dbgForceSpotlight);
 
   const forcedPlayerRef = React.useRef(false);
   React.useEffect(() => {
@@ -1019,18 +766,6 @@ export default function PortalArea(props: {
     </ActivationGate>
   );
 
-  const gateNodeModal = (
-    <ActivationGate
-      placement="modal"
-      attentionMessage={derivedAttentionMessage}
-      canManageBilling={canManageBilling}
-      isPatron={isPatron}
-      tier={tier}
-    >
-      <div />
-    </ActivationGate>
-  );
-
   const bannerKind: "gift" | "checkout" | null = gift
     ? "gift"
     : checkout
@@ -1048,13 +783,6 @@ export default function PortalArea(props: {
 
   return (
     <>
-      <SpotlightVeil active={spotlightAttention} />
-      <SpotlightModal
-        active={spotlightAttention}
-        attentionMessage={derivedAttentionMessage}
-        gateNode={gateNodeModal}
-      />
-
       <div
         style={{ height: "100%", minHeight: 0, minWidth: 0, display: "grid" }}
       >
@@ -1263,15 +991,7 @@ export default function PortalArea(props: {
                         className="afTopBarRightInner"
                         style={{ maxWidth: 520, minWidth: 0 }}
                       >
-                        <div
-                          style={{
-                            position: "relative",
-                            visibility: spotlightAttention
-                              ? "hidden"
-                              : "visible",
-                            pointerEvents: spotlightAttention ? "none" : "auto",
-                          }}
-                        >
+                        <div style={{ position: "relative" }}>
                           {gateNodeTopRight}
                         </div>
                       </div>
