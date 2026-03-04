@@ -1737,11 +1737,12 @@ export default function PortalArtistPosts(props: {
             style={{
               position: "absolute",
               inset: 0,
-              padding: 14,
               zIndex: 50,
               pointerEvents: "auto",
-              display: "flex",
-              justifyContent: "center",
+
+              // this layer is purely visual + hit-testing; it should not create
+              // surprising layout/scroll behavior
+              display: "block",
             }}
             onMouseDown={(e) => {
               // keep click containment local to the module
@@ -1750,34 +1751,49 @@ export default function PortalArtistPosts(props: {
           >
             <div
               style={{
-                width: "min(520px, 100%)",
+                position: "absolute",
+                inset: 0,
+                padding: 14,
 
-                // stays inside PortalArtistPosts but follows scroll
-                position: "sticky",
-                top: "50vh",
-                transform: "translateY(-50%)",
+                // center within the viewport, but interaction remains scoped to this module
+                // because the veil is contained by the module overlay.
+                display: "grid",
+                placeItems: "center",
 
-                borderRadius: 18,
-                border: "1px solid rgba(255,255,255,0.14)",
-                background: "rgba(16,16,16,0.78)",
-                backdropFilter: "blur(10px)",
-                WebkitBackdropFilter: "blur(10px)",
-                boxShadow: "0 26px 90px rgba(0,0,0,0.55)",
-
-                // no internal scrollbars
-                overflow: "hidden",
+                // IMPORTANT: don’t create a new scrolling context
+                overflow: "visible",
               }}
             >
-              <div style={{ padding: 14 }}>
-                <div style={{ fontSize: 13, fontWeight: 850, opacity: 0.92 }}>
-                  {inlineGateMsg}
-                </div>
+              <div
+                style={{
+                  width: "min(520px, calc(100vw - 28px))",
 
-                <div style={{ marginTop: 10 }}>
-                  {/* Primary inline reuse (if ActivationGate is self-contained) */}
-                  <ActivationGate>
-                    <div />
-                  </ActivationGate>
+                  // follow the user's gaze without messing with module height
+                  position: "fixed",
+                  left: "50%",
+                  top: "50%",
+                  transform: "translate(-50%, -50%)",
+
+                  borderRadius: 18,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(16,16,16,0.78)",
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                  boxShadow: "0 26px 90px rgba(0,0,0,0.55)",
+                  overflow: "hidden",
+                }}
+              >
+                <div style={{ padding: 14 }}>
+                  <div style={{ fontSize: 13, fontWeight: 850, opacity: 0.92 }}>
+                    {inlineGateMsg}
+                  </div>
+
+                  <div style={{ marginTop: 10 }}>
+                    {/* Primary inline reuse (if ActivationGate is self-contained) */}
+                    <ActivationGate>
+                      <div />
+                    </ActivationGate>
+                  </div>
                 </div>
               </div>
             </div>
