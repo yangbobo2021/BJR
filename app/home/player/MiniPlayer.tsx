@@ -604,10 +604,9 @@ export default function MiniPlayer(props: {
 
   const title = displayTrack?.title ?? displayTrack?.id ?? "Nothing queued";
 
-  const statusLine = (() => {
-    if (p.status === "blocked") return "Playback error";
-    return displayTrack?.artist ?? "";
-  })();
+  const statusLine = p.lastError
+    ? "Playback error"
+    : (displayTrack?.artist ?? "");
 
   /* ---------------- Share ---------------- */
 
@@ -947,7 +946,7 @@ export default function MiniPlayer(props: {
                     window.dispatchEvent(new Event("af:play-intent"));
                   }
                 }}
-                disabled={(!p.current && p.queue.length === 0) || playLock}
+                disabled={!displayTrack || playLock}
               >
                 <PlayPauseIcon playing={playingish} />
               </IconBtn>
@@ -1147,7 +1146,7 @@ export default function MiniPlayer(props: {
                 <ShareIcon />
               </IconBtn>
 
-              {p.status === "blocked" || p.lastError ? (
+              {p.lastError ? (
                 <IconBtn
                   label="Retry"
                   title="Retry"
