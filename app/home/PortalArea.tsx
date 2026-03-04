@@ -899,58 +899,75 @@ export default function PortalArea(props: {
   pointer-events: none;
   z-index: 6;
 
-  background: linear-gradient(
-    115deg,
-    rgba(255,255,255,0.00) 0%,
-    rgba(255,255,255,0.00) 46%,
-    rgba(255,255,255,0.22) 50%,
-    rgba(255,255,255,0.00) 54%,
-    rgba(255,255,255,0.00) 100%
-  );
+  /*
+    Two-layer sheen:
+    - wide soft shoulder (glass wash)
+    - narrower bright core (sun beam)
+  */
+  background-image:
+    linear-gradient(
+      120deg,
+      rgba(255,255,255,0.00) 0%,
+      rgba(255,255,255,0.00) 30%,
+      rgba(255,255,255,0.10) 45%,
+      rgba(255,255,255,0.00) 60%,
+      rgba(255,255,255,0.00) 100%
+    ),
+    linear-gradient(
+      120deg,
+      rgba(255,255,255,0.00) 0%,
+      rgba(255,255,255,0.00) 44%,
+      rgba(255,255,255,0.30) 50%,
+      rgba(255,255,255,0.00) 56%,
+      rgba(255,255,255,0.00) 100%
+    );
+
   background-repeat: no-repeat;
-  background-size: 260% 260%;
-  background-position: -160% 160%;
+  /* Oversize so the band can fully traverse the logo */
+  background-size: 340% 340%, 340% 340%;
+  /* Start well off-screen (top-left) */
+  background-position: -220% -220%, -220% -220%;
 
   mix-blend-mode: screen;
   opacity: 0;
-  filter: blur(0.75px);
+  filter: blur(0.55px);
 
-  animation: afLogoGlisten 42s ease-in-out infinite;
+  animation: afLogoGlisten 38s ease-in-out infinite;
   will-change: opacity, background-position, transform;
 }
 
 @keyframes afLogoGlisten {
-  /* idle (most of the time) */
-  0%, 82% {
+  /* idle */
+  0%, 80% {
     opacity: 0;
-    background-position: -160% 160%;
+    background-position: -220% -220%, -220% -220%;
     transform: translateX(0%) translateY(0%);
   }
 
-  /* ease in */
-  86% {
-    opacity: 0.30;
-    background-position: -90% 90%;
-    transform: translateX(-0.4%) translateY(-0.25%);
+  /* ramp */
+  83% {
+    opacity: 0.22;
+    background-position: -120% -120%, -120% -120%;
+    transform: translateX(-0.2%) translateY(-0.2%);
   }
 
-  /* slow-ish sweep (iOS icon vibe) */
-  92% {
-    opacity: 0.60;
-    background-position: 130% -130%;
-    transform: translateX(0.45%) translateY(0.25%);
+  /* full sweep across entire logo */
+  90% {
+    opacity: 0.70;
+    background-position: 220% 220%, 220% 220%;
+    transform: translateX(0.25%) translateY(0.25%);
   }
 
-  /* decay */
-  95% {
-    opacity: 0.10;
-    background-position: 185% -185%;
-    transform: translateX(0.55%) translateY(0.35%);
+  /* fade out as it exits */
+  93% {
+    opacity: 0.12;
+    background-position: 280% 280%, 280% 280%;
+    transform: translateX(0.35%) translateY(0.35%);
   }
 
   100% {
     opacity: 0;
-    background-position: 185% -185%;
+    background-position: 280% 280%, 280% 280%;
     transform: translateX(0%) translateY(0%);
   }
 }
