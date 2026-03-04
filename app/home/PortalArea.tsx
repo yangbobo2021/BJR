@@ -888,71 +888,78 @@ export default function PortalArea(props: {
   isolation: isolate; /* keeps blend/stacking predictable */
 }
 
-/* Occasional glossy glisten (rare + quick) */
+/* Occasional glossy glisten — clipped to the logo box, iOS-app-style */
+.afLogoVeilWrap {
+  overflow: hidden; /* hard-clip ANY shimmer to the logo bounds */
+}
+
+/* shimmer lives ONLY inside the wrapper bounds */
 .afLogoVeilWrap::after {
   content: "";
   position: absolute;
-  inset: -24% -24%;
+  inset: 0;
   pointer-events: none;
   z-index: 6;
 
-  /* a thin diagonal highlight band */
+  /* diagonal “app icon” sweep band */
   background: linear-gradient(
     115deg,
     rgba(255,255,255,0.00) 0%,
-    rgba(255,255,255,0.00) 40%,
-    rgba(255,255,255,0.22) 48%,
+    rgba(255,255,255,0.00) 44%,
+    rgba(255,255,255,0.18) 50%,
     rgba(255,255,255,0.00) 56%,
     rgba(255,255,255,0.00) 100%
   );
   background-repeat: no-repeat;
-  background-size: 240% 240%;
-  background-position: -120% 120%;
+  background-size: 220% 220%;
+  background-position: -140% 140%;
 
+  /* keep it “polished” not “flashbang” */
   mix-blend-mode: screen;
   opacity: 0;
 
-  filter: blur(0.6px);
-  transform: rotate(0deg);
+  filter: blur(0.7px);
+  transform: translateX(0%) translateY(0%);
 
-  animation: afLogoGlisten 19s ease-in-out infinite;
+  /* long idle, slow-ish sweep */
+  animation: afLogoGlisten 34s ease-in-out infinite;
   will-change: opacity, background-position, transform;
 }
 
 @keyframes afLogoGlisten {
   /* idle */
-  0%, 72% {
+  0%, 78% {
     opacity: 0;
-    background-position: -120% 120%;
-    transform: translateX(-1%) translateY(0%) rotate(-2deg);
+    background-position: -140% 140%;
+    transform: translateX(0%) translateY(0%);
   }
 
-  /* ramp in */
-  76% {
+  /* fade in */
+  82% {
+    opacity: 0.35;
+    background-position: -80% 80%;
+    transform: translateX(-0.4%) translateY(-0.2%);
+  }
+
+  /* sweep across */
+  88% {
     opacity: 0.55;
-    background-position: -60% 60%;
-    transform: translateX(0%) translateY(-0.4%) rotate(-2deg);
-  }
-
-  /* sweep */
-  80% {
-    opacity: 0.72;
     background-position: 120% -120%;
-    transform: translateX(0.6%) translateY(0.4%) rotate(-2deg);
+    transform: translateX(0.4%) translateY(0.2%);
   }
 
-  /* decay */
-  84% {
-    opacity: 0.12;
-    background-position: 160% -160%;
-    transform: translateX(0.9%) translateY(0.6%) rotate(-2deg);
+  /* fade out */
+  92% {
+    opacity: 0.10;
+    background-position: 170% -170%;
+    transform: translateX(0.6%) translateY(0.3%);
   }
 
   /* back to idle */
   100% {
     opacity: 0;
-    background-position: 160% -160%;
-    transform: translateX(-1%) translateY(0%) rotate(-2deg);
+    background-position: 170% -170%;
+    transform: translateX(0%) translateY(0%);
   }
 }
 
