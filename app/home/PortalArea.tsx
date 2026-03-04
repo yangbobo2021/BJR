@@ -858,27 +858,32 @@ export default function PortalArea(props: {
   0%, 100% { transform: translateX(-7%) translateY(0%); opacity: 0.18; }
   50%      { transform: translateX(7%)  translateY(0%); opacity: 0.30; }
 }
-.afLogoVeilWrap { position: relative; display: inline-block; line-height: 0; }
+.afLogoVeilWrap {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+  isolation: isolate; /* keeps blend/stacking predictable */
+}
+
+/* Force the image to be its own stacking participant */
+.afLogoVeilImg {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+}
+
 .afLogoVeil {
   position: absolute;
-  inset: -18% -10%;
+  inset: 0;
   pointer-events: none;
 
-  /* Ensure it paints above the logo */
-  z-index: 5;
-  display: block;
+  /* DEBUG: impossible to miss */
+  z-index: 2;
+  opacity: 0.55;
+  mix-blend-mode: normal;
+  background: rgba(255, 0, 0, 0.55);
 
-  opacity: 0.22;
-
-  /* On dark-on-dark, shadow/multiply can be imperceptible; start with highlight */
-  mix-blend-mode: screen;
-  background: radial-gradient(
-    60% 120% at 30% 50%,
-    rgba(255,255,255,0.14),
-    rgba(255,255,255,0.00) 62%
-  );
-
-  animation: afLogoVeilDrift 9.5s ease-in-out infinite;
+  animation: afLogoVeilDrift 2.8s ease-in-out infinite;
   will-change: transform, opacity;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -904,32 +909,33 @@ export default function PortalArea(props: {
                     <div className="afTopBarLogoInner">
                       {props.topLogoUrl ? (
                         <div className="afLogoVeilWrap">
-                          <Image
-                            src={props.topLogoUrl}
-                            alt="Logo"
-                            height={Math.max(
-                              16,
-                              Math.min(120, props.topLogoHeight ?? 38),
-                            )}
-                            width={Math.max(
-                              16,
-                              Math.min(120, props.topLogoHeight ?? 38),
-                            )}
-                            sizes="(max-width: 720px) 120px, 160px"
-                            style={{
-                              height: Math.max(
+                          <div className="afLogoVeilImg">
+                            <Image
+                              src={props.topLogoUrl}
+                              alt="Logo"
+                              height={Math.max(
                                 16,
                                 Math.min(120, props.topLogoHeight ?? 38),
-                              ),
-                              width: "auto",
-                              objectFit: "contain",
-                              opacity: 0.94,
-                              userSelect: "none",
-                              // keep your existing base shadow; veil adds the “passing” feel
-                              filter:
-                                "drop-shadow(0 10px 22px rgba(0,0,0,0.28))",
-                            }}
-                          />
+                              )}
+                              width={Math.max(
+                                16,
+                                Math.min(120, props.topLogoHeight ?? 38),
+                              )}
+                              sizes="(max-width: 720px) 120px, 160px"
+                              style={{
+                                height: Math.max(
+                                  16,
+                                  Math.min(120, props.topLogoHeight ?? 38),
+                                ),
+                                width: "auto",
+                                objectFit: "contain",
+                                opacity: 0.94,
+                                userSelect: "none",
+                                filter:
+                                  "drop-shadow(0 10px 22px rgba(0,0,0,0.28))",
+                              }}
+                            />
+                          </div>
                           <div aria-hidden="true" className="afLogoVeil" />
                         </div>
                       ) : (
