@@ -1740,6 +1740,8 @@ export default function PortalArtistPosts(props: {
               padding: 14,
               zIndex: 50,
               pointerEvents: "auto",
+              display: "flex",
+              justifyContent: "center",
             }}
             onMouseDown={(e) => {
               // keep click containment local to the module
@@ -1748,13 +1750,12 @@ export default function PortalArtistPosts(props: {
           >
             <div
               style={{
-                width: "min(520px, calc(100vw - 28px))",
+                width: "min(520px, 100%)",
 
-                // ✅ always centered in the user's *viewport* (not the module)
-                position: "fixed",
-                left: "50%",
-                top: "50%",
-                transform: "translate(-50%, -50%)",
+                // stays inside PortalArtistPosts but follows scroll
+                position: "sticky",
+                top: "50vh",
+                transform: "translateY(-50%)",
 
                 borderRadius: 18,
                 border: "1px solid rgba(255,255,255,0.14)",
