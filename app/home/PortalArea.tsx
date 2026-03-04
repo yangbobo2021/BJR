@@ -900,74 +900,82 @@ export default function PortalArea(props: {
   z-index: 6;
 
   /*
-    Two-layer sheen:
-    - wide soft shoulder (glass wash)
-    - narrower bright core (sun beam)
+    Full-logo glass sheen:
+    - wide soft wash (glass)
+    - narrow bright core (sun beam)
   */
   background-image:
     linear-gradient(
       120deg,
       rgba(255,255,255,0.00) 0%,
-      rgba(255,255,255,0.00) 30%,
-      rgba(255,255,255,0.10) 45%,
+      rgba(255,255,255,0.00) 28%,
+      rgba(255,255,255,0.09) 44%,
       rgba(255,255,255,0.00) 60%,
       rgba(255,255,255,0.00) 100%
     ),
     linear-gradient(
       120deg,
       rgba(255,255,255,0.00) 0%,
-      rgba(255,255,255,0.00) 44%,
-      rgba(255,255,255,0.30) 50%,
-      rgba(255,255,255,0.00) 56%,
+      rgba(255,255,255,0.00) 45%,
+      rgba(255,255,255,0.34) 50%,
+      rgba(255,255,255,0.00) 55%,
       rgba(255,255,255,0.00) 100%
     );
 
   background-repeat: no-repeat;
-  /* Oversize so the band can fully traverse the logo */
   background-size: 340% 340%, 340% 340%;
-  /* Start well off-screen (top-left) */
   background-position: -220% -220%, -220% -220%;
 
   mix-blend-mode: screen;
   opacity: 0;
   filter: blur(0.55px);
 
-  animation: afLogoGlisten 38s ease-in-out infinite;
+  /* ✅ Perfect alpha mask: sheen only where PNG has pixels */
+  -webkit-mask-image: var(--afLogoMaskUrl);
+  mask-image: var(--afLogoMaskUrl);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  mask-position: center;
+
+  animation: afLogoGlisten 62s ease-in-out infinite;
   will-change: opacity, background-position, transform;
 }
 
 @keyframes afLogoGlisten {
   /* idle */
-  0%, 80% {
+  0%, 84% {
     opacity: 0;
     background-position: -220% -220%, -220% -220%;
     transform: translateX(0%) translateY(0%);
   }
 
-  /* ramp */
-  83% {
-    opacity: 0.22;
-    background-position: -120% -120%, -120% -120%;
-    transform: translateX(-0.2%) translateY(-0.2%);
+  /* slow ramp in */
+  87% {
+    opacity: 0.18;
+    background-position: -150% -150%, -150% -150%;
+    transform: translateX(-0.15%) translateY(-0.15%);
   }
 
-  /* full sweep across entire logo */
-  90% {
-    opacity: 0.70;
+  /* long sweep (this is the main “beam across glass”) */
+  95% {
+    opacity: 0.72;
     background-position: 220% 220%, 220% 220%;
-    transform: translateX(0.25%) translateY(0.25%);
+    transform: translateX(0.22%) translateY(0.22%);
   }
 
-  /* fade out as it exits */
-  93% {
-    opacity: 0.12;
-    background-position: 280% 280%, 280% 280%;
-    transform: translateX(0.35%) translateY(0.35%);
+  /* slow fade out */
+  98% {
+    opacity: 0.10;
+    background-position: 300% 300%, 300% 300%;
+    transform: translateX(0.28%) translateY(0.28%);
   }
 
   100% {
     opacity: 0;
-    background-position: 280% 280%, 280% 280%;
+    background-position: 300% 300%, 300% 300%;
     transform: translateX(0%) translateY(0%);
   }
 }
@@ -990,6 +998,16 @@ export default function PortalArea(props: {
   z-index: 2;
 
   mix-blend-mode: multiply;
+
+  /* ✅ Keep veil layers inside PNG alpha too */
+  -webkit-mask-image: var(--afLogoMaskUrl);
+  mask-image: var(--afLogoMaskUrl);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  mask-position: center;
 
   /* primary shadow sweep */
   background-image: linear-gradient(
@@ -1091,7 +1109,14 @@ export default function PortalArea(props: {
                   <div className="afTopBarLogo">
                     <div className="afTopBarLogoInner">
                       {props.topLogoUrl ? (
-                        <div className="afLogoVeilWrap">
+                        <div
+                          className="afLogoVeilWrap"
+                          style={
+                            {
+                              ["--afLogoMaskUrl" as const]: `url(${props.topLogoUrl})`,
+                            } as React.CSSProperties
+                          }
+                        >
                           <div className="afLogoVeilImg">
                             <Image
                               src={props.topLogoUrl}
