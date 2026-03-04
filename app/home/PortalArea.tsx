@@ -872,19 +872,28 @@ export default function PortalArea(props: {
   display: inline-block;
 }
 
+/* Subtle drifting highlight veil (reads on dark-on-dark logos) */
 .afLogoVeil {
   position: absolute;
-  inset: 0;
+  inset: -18% -10%;
   pointer-events: none;
-
-  /* DEBUG: impossible to miss */
   z-index: 2;
-  opacity: 0.55;
-  mix-blend-mode: normal;
-  background: rgba(255, 0, 0, 0.55);
 
-  animation: afLogoVeilDrift 2.8s ease-in-out infinite;
+  mix-blend-mode: screen;
+  background: radial-gradient(
+    60% 120% at 30% 50%,
+    rgba(255,255,255,0.14),
+    rgba(255,255,255,0.00) 62%
+  );
+
+  opacity: 0.14;
+  animation: afLogoVeilDrift 9.5s ease-in-out infinite;
   will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Keep it visible, just stop movement */
+  .afLogoVeil { animation: none !important; opacity: 0.20; }
 }
 @media (prefers-reduced-motion: reduce) {
   /* Keep it visible, just stop movement */
