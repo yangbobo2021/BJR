@@ -271,16 +271,23 @@ export default function ExegesisTrackClient(props: {
     open: boolean;
     message: string;
     correlationId: string | null;
+    dismissible: boolean;
   };
 
   const [inlineGate, setInlineGate] = React.useState<InlineGateState>({
     open: false,
     message: "",
     correlationId: null,
+    dismissible: false,
   });
 
   function clearInlineGate() {
-    setInlineGate({ open: false, message: "", correlationId: null });
+    setInlineGate({
+      open: false,
+      message: "",
+      correlationId: null,
+      dismissible: false,
+    });
   }
 
   const { userId, isLoaded: authLoaded } = useAuth();
@@ -309,6 +316,8 @@ export default function ExegesisTrackClient(props: {
           open: true,
           message: (res.reason.message ?? "").trim(),
           correlationId: res.reason.correlationId ?? null,
+          // Server-derived inline gates = “hard stop” (read-cap, etc).
+          dismissible: false,
         });
       } else {
         clearInlineGate();
@@ -323,6 +332,7 @@ export default function ExegesisTrackClient(props: {
       intent: "passive" | "explicit";
       messageOverride?: string;
       correlationId?: string | null;
+      dismissible?: boolean;
       ctxExtra?: Omit<GateContext, "isSignedIn" | "intent">;
     }) => {
       const baseCtx: GateContext = {
@@ -344,6 +354,18 @@ export default function ExegesisTrackClient(props: {
               opts.correlationId ?? res0.reason.correlationId ?? null,
           },
         };
+
+        // If the engine says inline, we can optionally allow dismiss.
+        // (This is the “nag” path; hard gates come from payload/servers.)
+        if (res.uiMode === "inline") {
+          setInlineGate({
+            open: true,
+            message: msg,
+            correlationId: res.reason.correlationId ?? null,
+            dismissible: Boolean(opts.dismissible),
+          });
+        }
+
         applyGateResult(res);
         return;
       }
@@ -774,6 +796,7 @@ export default function ExegesisTrackClient(props: {
                 intent: "explicit",
                 messageOverride: "Discussion is exclusive to members.",
                 correlationId: null,
+                dismissible: true,
               });
               return;
             }
@@ -3066,8 +3089,23 @@ export default function ExegesisTrackClient(props: {
                         </ActivationGate>
 
                         {inlineGate.message ? (
-                          <div className="mt-3 rounded-lg bg-white/5 p-3 text-sm text-white/85">
+                          <div className="mt-2 rounded-md bg-black/30 p-3 text-sm opacity-90">
                             {inlineGate.message}
+                          </div>
+                        ) : null}
+
+                        {inlineGate.dismissible ? (
+                          <div className="mt-2 flex items-center justify-end">
+                            <button
+                              type="button"
+                              className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
+                              onClick={() => {
+                                broker.clearGate({ domain: EXEGESIS_DOMAIN });
+                                clearInlineGate();
+                              }}
+                            >
+                              Dismiss
+                            </button>
                           </div>
                         ) : null}
                       </div>
