@@ -864,16 +864,26 @@ export default function PortalArea(props: {
   inset: -18% -10%;
   pointer-events: none;
 
-  /* DEBUG: make it obvious */
-  opacity: 0.55;
-  mix-blend-mode: normal;
-  background: radial-gradient(60% 120% at 30% 50%, rgba(255,255,255,0.28), rgba(255,255,255,0.00) 62%);
+  /* Ensure it paints above the logo */
+  z-index: 5;
+  display: block;
 
-  animation: afLogoVeilDrift 4.8s ease-in-out infinite;
+  opacity: 0.22;
+
+  /* On dark-on-dark, shadow/multiply can be imperceptible; start with highlight */
+  mix-blend-mode: screen;
+  background: radial-gradient(
+    60% 120% at 30% 50%,
+    rgba(255,255,255,0.14),
+    rgba(255,255,255,0.00) 62%
+  );
+
+  animation: afLogoVeilDrift 9.5s ease-in-out infinite;
   will-change: transform, opacity;
 }
 @media (prefers-reduced-motion: reduce) {
-  .afLogoVeil { animation: none !important; opacity: 0.18; }
+  /* Keep it visible, just stop movement */
+  .afLogoVeil { animation: none !important; opacity: 0.32; }
 }
 
 @media (max-width:720px) {
