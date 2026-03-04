@@ -53,7 +53,10 @@ export async function POST(req: NextRequest) {
 
   const { userId } = await auth();
 
-  const cookieRes = NextResponse.json({ ok: true, correlationId }, { status: 200 });
+  const cookieRes = NextResponse.json(
+    { ok: true, correlationId },
+    { status: 200 },
+  );
 
   // keep anon stable + persist cookie if needed
   const anon = ensureAnonId(req, cookieRes);
@@ -111,20 +114,21 @@ export async function POST(req: NextRequest) {
     setSeenCount(cookieRes, nextSeenCount);
   }
 
-  // Cap reached -> canonical GatePayload (payload-first blocking contract)
+  // Cap reached -> canonical GatePayload (wrapped API error contract)
   if (cap > 0 && nextSeenCount >= cap) {
     return NextResponse.json(
       {
         ok: false,
-        blocked: true,
-        code: "AUTH_REQUIRED",
-        action: "login",
-        reason: "You’ve reached the anonymous reading limit.",
-        message: "Sign in to keep reading.",
-        domain: "journal",
-        correlationId,
+        error: "Sign in to keep reading.",
+        gate: {
+          code: "JOURNAL_READ_CAP_REACHED",
+          action: "login",
+          domain: "journal",
+          message: "Sign in to keep reading.",
+          correlationId,
+        },
       },
-      { status: 403, headers: cookieRes.headers },
+      { status: 403 },
     );
   }
 

@@ -16,7 +16,7 @@ export type GateReport = {
   action: GateAction;
   message: string;
   domain: GateDomain;
-  uiMode?: GateUiMode;
+  uiMode: GateUiMode; // REQUIRED: adapters must ask engine
   correlationId?: string | null;
 };
 
@@ -33,15 +33,6 @@ type Ctx = {
 };
 
 const GateBrokerContext = React.createContext<Ctx | null>(null);
-
-function deriveUiModeFallback(
-  domain: GateDomain,
-  code: GateCodeRaw,
-): GateUiMode {
-  // Temporary fallback ONLY when an adapter does not provide uiMode yet.
-  if (domain === "playback" && code === "PLAYBACK_CAP_REACHED") return "global";
-  return "inline";
-}
 
 export function GateBrokerProvider(props: { children: React.ReactNode }) {
   const [gate, setGate] = React.useState<GateState>({
@@ -75,8 +66,21 @@ export function GateBrokerProvider(props: { children: React.ReactNode }) {
 
       if (same) return prev;
 
-      const uiMode = r.uiMode ?? deriveUiModeFallback(r.domain, normalized);
-      return { active: nextReason, uiMode, lastSetAtMs: Date.now() };
+      if (!r.uiMode) {
+        // This should be impossible once adapters are spine-aligned.
+        // Keep the crash dev-only so prod sessions don't brick if an edge path regresses.
+        if (process.env.NODE_ENV !== "production") {
+          throw new Error(
+            `[GateBroker] Missing uiMode in reportGate (domain=${r.domain}, code=${normalized})`,
+          );
+        }
+      }
+
+      return {
+        active: nextReason,
+        uiMode: r.uiMode ?? "inline",
+        lastSetAtMs: Date.now(),
+      };
     });
   }, []);
 

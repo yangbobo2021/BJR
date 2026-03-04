@@ -1,8 +1,16 @@
 // web/app/api/exegesis/vote/route.ts
 import "server-only";
+import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { sql } from "@vercel/postgres";
+
+import type {
+  GatePayload,
+  GateDomain,
+  GateAction,
+  GateCodeRaw,
+} from "@/app/home/gating/gateTypes";
 
 import { hasAnyEntitlement } from "@/lib/entitlements";
 import { ENTITLEMENTS } from "@/lib/vocab";
@@ -16,10 +24,52 @@ type ApiOk = {
   voteCount: number;
 };
 
-type ApiErr = { ok: false; error: string };
+type ApiErr = { ok: false; error: string; gate?: GatePayload };
 
 function json(status: number, body: ApiOk | ApiErr) {
   return NextResponse.json(body, { status });
+}
+
+const EXEGESIS_DOMAIN: GateDomain = "exegesis";
+
+function mkCorrelationId(input: string): string {
+  // short, stable, non-PII
+  return crypto.createHash("sha256").update(input).digest("hex").slice(0, 16);
+}
+
+function gatePayload(
+  code: GateCodeRaw,
+  action: GateAction,
+  message: string,
+  correlationId: string | null,
+): GatePayload {
+  return {
+    code,
+    action,
+    domain: EXEGESIS_DOMAIN,
+    message: message.trim(),
+    correlationId: typeof correlationId === "string" ? correlationId : null,
+  };
+}
+
+function gateErr(
+  status: number,
+  opts: {
+    code: GateCodeRaw;
+    action: GateAction;
+    message: string;
+    error?: string;
+    correlationKey: string;
+  },
+) {
+  const cid = mkCorrelationId(
+    `exegesis:vote:${opts.code}:${opts.action}:${opts.correlationKey}`,
+  );
+  return json(status, {
+    ok: false,
+    error: (opts.error ?? opts.message).trim(),
+    gate: gatePayload(opts.code, opts.action, opts.message, cid),
+  });
 }
 
 function norm(s: unknown): string {
@@ -75,13 +125,32 @@ export async function POST(req: NextRequest) {
     return json(400, { ok: false, error: "Invalid commentId." });
 
   const memberId = await requireMemberId();
-  if (!memberId) return json(401, { ok: false, error: "Sign in required." });
-  if (!isUuid(memberId))
-    return json(403, { ok: false, error: "Provisioning required." });
+  if (!memberId) {
+    return gateErr(401, {
+      code: "AUTH_REQUIRED",
+      action: "login",
+      message: "Sign in to vote.",
+      correlationKey: commentId,
+    });
+  }
+
+  if (!isUuid(memberId)) {
+    return gateErr(403, {
+      code: "PROVISIONING",
+      action: "wait",
+      message: "Provisioning required.",
+      correlationKey: `${memberId}:${commentId}`,
+    });
+  }
 
   const canVote = await requireCanVote(memberId);
   if (!canVote) {
-    return json(403, { ok: false, error: "Friend tier or higher required." });
+    return gateErr(403, {
+      code: "TIER_REQUIRED",
+      action: "subscribe",
+      message: "Voting requires Friend tier or higher.",
+      correlationKey: `${memberId}:${commentId}`,
+    });
   }
 
   try {
@@ -158,18 +227,32 @@ export async function POST(req: NextRequest) {
     if (!row.ok) {
       if (row.err === "NOT_FOUND")
         return json(404, { ok: false, error: "Comment not found." });
-      if (row.err === "DELETED")
-        return json(400, {
-          ok: false,
-          error: "Cannot vote on deleted comment.",
+      if (row.err === "DELETED") {
+        return gateErr(400, {
+          code: "INVALID_REQUEST",
+          action: "wait",
+          message: "Cannot vote on deleted comment.",
+          correlationKey: `${memberId}:${commentId}:deleted`,
         });
-      if (row.err === "HIDDEN")
-        return json(403, {
-          ok: false,
-          error: "Cannot vote on hidden comment.",
+      }
+      if (row.err === "HIDDEN") {
+        return gateErr(403, {
+          code: "INVALID_REQUEST",
+          action: "wait",
+          message: "Cannot vote on hidden comment.",
+          correlationKey: `${memberId}:${commentId}:hidden`,
         });
-      if (row.err === "LOCKED")
-        return json(403, { ok: false, error: "Thread is locked." });
+      }
+
+      if (row.err === "LOCKED") {
+        return gateErr(403, {
+          // You previously mapped locked thread to INVALID_REQUEST elsewhere; keep consistent for now.
+          code: "INVALID_REQUEST",
+          action: "wait",
+          message: "Thread is locked.",
+          correlationKey: `${memberId}:${commentId}:locked`,
+        });
+      }
 
       return json(400, { ok: false, error: "Cannot vote on this comment." });
     }

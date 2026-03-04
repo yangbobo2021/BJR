@@ -1,8 +1,16 @@
 // web/app/api/exegesis/identity/claim-name/route.ts
 import "server-only";
+import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { sql } from "@vercel/postgres";
+
+import type {
+  GatePayload,
+  GateDomain,
+  GateAction,
+  GateCodeRaw,
+} from "@/app/home/gating/gateTypes";
 
 export const runtime = "nodejs";
 
@@ -15,10 +23,57 @@ type IdentityDTO = {
 };
 
 type ApiOk = { ok: true; identity: IdentityDTO };
-type ApiErr = { ok: false; error: string; code?: "TAKEN" | "NOT_UNLOCKED" };
+type ApiErr = {
+  ok: false;
+  error: string;
+  code?: "TAKEN" | "NOT_UNLOCKED";
+  gate?: GatePayload;
+};
 
 function json(status: number, body: ApiOk | ApiErr) {
   return NextResponse.json(body, { status });
+}
+
+const EXEGESIS_DOMAIN: GateDomain = "exegesis";
+
+function mkCorrelationId(input: string): string {
+  // short, stable, non-PII
+  return crypto.createHash("sha256").update(input).digest("hex").slice(0, 16);
+}
+
+function gatePayload(
+  code: GateCodeRaw,
+  action: GateAction,
+  message: string,
+  correlationId: string | null,
+): GatePayload {
+  return {
+    code,
+    action,
+    domain: EXEGESIS_DOMAIN,
+    message: message.trim(),
+    correlationId: typeof correlationId === "string" ? correlationId : null,
+  };
+}
+
+function gateErr(
+  status: number,
+  opts: {
+    code: GateCodeRaw;
+    action: GateAction;
+    message: string;
+    error?: string;
+    correlationKey: string;
+  },
+) {
+  const cid = mkCorrelationId(
+    `exegesis:claim_name:${opts.code}:${opts.action}:${opts.correlationKey}`,
+  );
+  return json(status, {
+    ok: false,
+    error: (opts.error ?? opts.message).trim(),
+    gate: gatePayload(opts.code, opts.action, opts.message, cid),
+  });
 }
 
 function norm(v: unknown): string {
@@ -116,9 +171,23 @@ export async function POST(req: NextRequest) {
   if (!v.ok) return json(400, { ok: false, error: v.error });
 
   const memberId = await requireMemberId();
-  if (!memberId) return json(401, { ok: false, error: "Sign in required." });
-  if (!isUuid(memberId))
-    return json(403, { ok: false, error: "Provisioning required." });
+  if (!memberId) {
+    return gateErr(401, {
+      code: "AUTH_REQUIRED",
+      action: "login",
+      message: "Sign in required.",
+      correlationKey: v.lowered,
+    });
+  }
+
+  if (!isUuid(memberId)) {
+    return gateErr(403, {
+      code: "PROVISIONING",
+      action: "wait",
+      message: "Provisioning required.",
+      correlationKey: `${memberId}:${v.lowered}`,
+    });
+  }
 
   try {
     const r = await sql<{

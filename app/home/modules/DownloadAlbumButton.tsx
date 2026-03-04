@@ -10,6 +10,7 @@ import type {
   GateDomain,
   GatePayload,
 } from "@/app/home/gating/gateTypes";
+import { canonicalizeLegacyCapCode } from "@/app/home/gating/gateTypes";
 
 type Props = {
   albumSlug: string;
@@ -27,20 +28,76 @@ type Props = {
   cooldownMs?: number; // default 10s
 };
 
+type ApiErr = {
+  ok: false;
+  error?: string;
+  gate?: GatePayload;
+};
+
+type DownloadOk = {
+  ok: true;
+  url: string;
+  albumSlug: string;
+  asset: { id: string; label: string; filename: string };
+};
+
+// Back-compat: downloads may still emit a legacy top-level "blocked" payload.
+// Treat it as a "gate carrier" only.
+type LegacyBlockedGate = {
+  ok: false;
+  blocked: true;
+  code: string;
+  action: string;
+  domain: string;
+  reason?: string;
+  message?: string;
+  correlationId?: string | null;
+};
+
 type DownloadResponse =
-  | {
-      ok: true;
-      url: string;
-      albumSlug: string;
-      asset: { id: string; label: string; filename: string };
-    }
-  | GatePayload
+  | DownloadOk
+  | ApiErr
+  | LegacyBlockedGate
   | { ok: false; error?: string };
 
-function isGatePayload(v: unknown): v is GatePayload {
+function isApiErrWithGate(v: unknown): v is ApiErr {
+  if (!v || typeof v !== "object") return false;
+  const o = v as Record<string, unknown>;
+  if (o.ok !== false) return false;
+  if (!("gate" in o)) return false;
+  const g = o.gate as unknown;
+  return Boolean(g && typeof g === "object");
+}
+
+function isLegacyBlockedGate(v: unknown): v is LegacyBlockedGate {
   if (!v || typeof v !== "object") return false;
   const o = v as Record<string, unknown>;
   return o.ok === false && o.blocked === true && typeof o.code === "string";
+}
+
+function extractGateFromUnknown(v: unknown): GatePayload | null {
+  // Preferred: wrapped envelope { ok:false; gate }
+  if (isApiErrWithGate(v)) {
+    const g = (v.gate as GatePayload | undefined) ?? null;
+    return g;
+  }
+
+  // Back-compat: legacy blocked payload
+  if (isLegacyBlockedGate(v)) {
+    const code = String(v.code);
+    const action = String(v.action);
+    const domain = String(v.domain) as GateDomain;
+    const message = String(v.message ?? v.reason ?? "Access blocked.").trim();
+    return {
+      code: code as GateCode,
+      action: action as GatePayload["action"],
+      domain,
+      message,
+      correlationId: v.correlationId ?? null,
+    };
+  }
+
+  return null;
 }
 
 function mergeStyle(
@@ -188,10 +245,30 @@ export default function DownloadAlbumButton(props: Props) {
 
         const dataUnknown = (await res.json().catch(() => null)) as unknown;
 
-        // Prefer canonical gate payload messaging if present.
-        if (isGatePayload(dataUnknown)) {
-          const payload = dataUnknown;
-          setErr(payload.message ?? payload.reason);
+        const gatePayload = extractGateFromUnknown(dataUnknown);
+        if (gatePayload) {
+          const decision = gate(
+            { verb, domain },
+            { isSignedIn: Boolean(isSignedIn), intent: "explicit" },
+          );
+
+          if (!decision.ok) {
+            const normalized = canonicalizeLegacyCapCode(
+              gatePayload.code,
+              gatePayload.domain,
+            );
+
+            reportGate({
+              code: normalized,
+              action: gatePayload.action,
+              domain: gatePayload.domain,
+              correlationId: gatePayload.correlationId ?? null,
+              message: gatePayload.message,
+              uiMode: decision.uiMode,
+            });
+          }
+
+          setErr(gatePayload.message);
           return;
         }
 
@@ -219,27 +296,31 @@ export default function DownloadAlbumButton(props: Props) {
 
       const dataUnknown = (await res.json().catch(() => null)) as unknown;
 
-      // Payload-first: if server emitted canonical gate payload, use it.
-      if (isGatePayload(dataUnknown)) {
-        const payload = dataUnknown;
-
+      // Payload-first: if server emitted a gate (preferred wrapped, legacy tolerated), use it.
+      const gatePayload = extractGateFromUnknown(dataUnknown);
+      if (gatePayload) {
         const result = gate(
           { verb, domain },
           { isSignedIn: Boolean(isSignedIn), intent: "explicit" },
         );
 
         if (!result.ok) {
+          const normalized = canonicalizeLegacyCapCode(
+            gatePayload.code,
+            gatePayload.domain,
+          );
+
           reportGate({
-            code: payload.code,
-            action: payload.action,
-            domain: payload.domain,
-            correlationId: payload.correlationId ?? null,
-            message: payload.message ?? payload.reason,
+            code: normalized,
+            action: gatePayload.action,
+            domain: gatePayload.domain,
+            correlationId: gatePayload.correlationId ?? null,
+            message: gatePayload.message,
             uiMode: result.uiMode,
           });
         }
 
-        setErr(payload.message ?? payload.reason);
+        setErr(gatePayload.message);
         return;
       }
 

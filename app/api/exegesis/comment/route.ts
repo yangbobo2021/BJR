@@ -37,6 +37,11 @@ function json(status: number, body: ApiOk | ApiErr) {
 
 const EXEGESIS_DOMAIN: GateDomain = "exegesis";
 
+function mkCorrelationId(input: string): string {
+  // short, stable, non-PII
+  return crypto.createHash("sha256").update(input).digest("hex").slice(0, 16);
+}
+
 function gatePayload(
   code: GateCodeRaw,
   action: GateAction,
@@ -46,9 +51,9 @@ function gatePayload(
   return {
     code,
     action,
-    message,
     domain: EXEGESIS_DOMAIN,
-    correlationId,
+    message: message.trim(),
+    correlationId: typeof correlationId === "string" ? correlationId : null,
   };
 }
 
@@ -60,16 +65,20 @@ function gateErr(
     message: string;
     error?: string; // optional alternate client-visible `error`
     correlationId?: string | null;
+    correlationKey?: string; // optional: caller can provide a stable input
   },
 ) {
   const cid =
     typeof opts.correlationId === "string"
       ? opts.correlationId
-      : crypto.randomUUID();
+      : mkCorrelationId(
+          `exegesis:comment:${opts.code}:${opts.action}:${opts.correlationKey ?? opts.message}`,
+        );
+
   return json(status, {
     ok: false,
     error: (opts.error ?? opts.message).trim(),
-    gate: gatePayload(opts.code, opts.action, opts.message.trim(), cid),
+    gate: gatePayload(opts.code, opts.action, opts.message, cid),
   });
 }
 
@@ -357,6 +366,7 @@ export async function POST(req: NextRequest) {
       code: "AUTH_REQUIRED",
       action: "login",
       message: "Sign in to post a comment.",
+      correlationKey: `${trackId}:${groupKey}:${lineKey}`,
     });
   }
 
@@ -366,6 +376,7 @@ export async function POST(req: NextRequest) {
       code: "PROVISIONING",
       action: "wait",
       message: "Still setting things up. Try again shortly.",
+      correlationKey: `${trackId}:${groupKey}:${lineKey}`,
     });
   }
 
@@ -375,6 +386,7 @@ export async function POST(req: NextRequest) {
       code: "TIER_REQUIRED",
       action: "subscribe",
       message: "Posting requires Patron or Partner.",
+      correlationKey: `${trackId}:${groupKey}:${lineKey}`,
     });
   }
 

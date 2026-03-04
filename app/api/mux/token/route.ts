@@ -9,6 +9,12 @@ import {
   newCorrelationId,
 } from "@/lib/events";
 import { ACCESS_ACTIONS } from "@/lib/vocab";
+import type {
+  GatePayload,
+  GateDomain,
+  GateAction,
+  GateCodeRaw,
+} from "@/app/home/gating/gateTypes";
 import { validateShareToken } from "@/lib/shareTokens";
 import { decideAlbumPlaybackAccess } from "@/lib/accessOracle";
 import { ensureAnonId } from "@/lib/anon";
@@ -28,21 +34,10 @@ type TokenOk = {
   correlationId: string;
 };
 
-type TokenBlocked = {
+type ApiErr = {
   ok: false;
-  blocked: true;
-  code:
-    | "AUTH_REQUIRED"
-    | "ANON_CAP_REACHED"
-    | "ENTITLEMENT_REQUIRED"
-    | "EMBARGO"
-    | "TIER_REQUIRED"
-    | "INVALID_REQUEST"
-    | "PROVISIONING"
-    | "CAP_REACHED";
-  reason: string;
-  action?: "login" | "subscribe" | "buy" | "wait";
-  correlationId: string;
+  error: string;
+  gate?: GatePayload;
 };
 
 const AUD = "v";
@@ -64,23 +59,37 @@ function normalizeAlbumId(raw: string): string {
   return s.trim();
 }
 
-function respondBlocked(
+const PLAYBACK_DOMAIN: GateDomain = "playback";
+
+function respondGated(
   req: NextRequest,
   correlationId: string,
-  code: TokenBlocked["code"],
-  reason: string,
-  action?: TokenBlocked["action"],
-  status: number = 403,
+  opts: {
+    code: GateCodeRaw;
+    action: GateAction;
+    message: string;
+    // optional alternate client-visible error string
+    error?: string;
+    status?: number; // default 403
+  },
 ) {
-  const out: TokenBlocked = {
-    ok: false,
-    blocked: true,
-    code,
-    reason,
-    action,
+  const payload: GatePayload = {
+    code: opts.code,
+    action: opts.action,
+    domain: PLAYBACK_DOMAIN,
+    message: opts.message.trim(),
     correlationId,
   };
-  const res = NextResponse.json(out, { status });
+
+  const res = NextResponse.json<ApiErr>(
+    {
+      ok: false,
+      error: (opts.error ?? opts.message).trim(),
+      gate: payload,
+    },
+    { status: opts.status ?? 403 },
+  );
+
   res.headers.set("x-correlation-id", correlationId);
   ensureAnonId(req, res); // ✅ persist cookie consistently
   return res;
@@ -128,37 +137,31 @@ export async function POST(req: NextRequest) {
 
   const playbackId = body?.playbackId;
   if (!playbackId || typeof playbackId !== "string") {
-    return respondBlocked(
-      req,
-      correlationId,
-      "INVALID_REQUEST",
-      "Missing playbackId",
-      undefined,
-      400,
-    );
+    return respondGated(req, correlationId, {
+      code: "INVALID_REQUEST",
+      action: "wait",
+      message: "Missing playbackId",
+      status: 400,
+    });
   }
 
   const rawAlbumId = (body?.albumId ?? "").trim();
   if (!rawAlbumId) {
-    return respondBlocked(
-      req,
-      correlationId,
-      "INVALID_REQUEST",
-      "Missing albumId (canonical album context).",
-      undefined,
-      400,
-    );
+    return respondGated(req, correlationId, {
+      code: "INVALID_REQUEST",
+      action: "wait",
+      message: "Missing albumId (canonical album context)",
+      status: 400,
+    });
   }
   const albumId = normalizeAlbumId(rawAlbumId);
   if (!albumId) {
-    return respondBlocked(
-      req,
-      correlationId,
-      "INVALID_REQUEST",
-      "Missing albumId (canonical album context).",
-      undefined,
-      400,
-    );
+    return respondGated(req, correlationId, {
+      code: "INVALID_REQUEST",
+      action: "wait",
+      message: "Missing albumId (canonical album context)",
+      status: 400,
+    });
   }
   const albumScopeId = `alb:${albumId}`;
 
@@ -191,23 +194,20 @@ export async function POST(req: NextRequest) {
     tokenAllowsPlayback = v.ok;
     if (!v.ok) {
       if (v.code === "CAP_REACHED") {
-        return respondBlocked(
-          req,
-          correlationId,
-          "CAP_REACHED",
-          "Share link cap reached.",
-          "login",
-          403,
-        );
+        return respondGated(req, correlationId, {
+          code: "CAP_REACHED",
+          action: "login",
+          message: "Share link cap reached.",
+          status: 403,
+        });
       }
-      return respondBlocked(
-        req,
-        correlationId,
-        "ENTITLEMENT_REQUIRED",
-        "Invalid or expired share token.",
-        "login",
-        403,
-      );
+
+      return respondGated(req, correlationId, {
+        code: "ENTITLEMENT_REQUIRED",
+        action: "login",
+        message: "Invalid or expired share token.",
+        status: 403,
+      });
     }
   }
 
@@ -218,14 +218,13 @@ export async function POST(req: NextRequest) {
       sinceDays: ANON_WINDOW_DAYS,
     });
     if (distinctCompleted >= ANON_DISTINCT_TRACK_CAP) {
-      return respondBlocked(
-        req,
-        correlationId,
-        "ANON_CAP_REACHED",
-        "Please enter an email address to continue listening for free.",
-        "login",
-        403,
-      );
+      return respondGated(req, correlationId, {
+        code: "PLAYBACK_CAP_REACHED",
+        action: "login",
+        message:
+          "Please enter an email address to continue listening for free.",
+        status: 403,
+      });
     }
   }
 
@@ -233,14 +232,13 @@ export async function POST(req: NextRequest) {
   if (userId && !tokenAllowsPlayback) {
     const memberId = await getMemberIdByClerkUserId(userId);
     if (!memberId) {
-      return respondBlocked(
-        req,
-        correlationId,
-        "PROVISIONING",
-        "Signed in, but your member profile is still being created. Refresh in a moment.",
-        "wait",
-        403,
-      );
+      return respondGated(req, correlationId, {
+        code: "PROVISIONING",
+        action: "wait",
+        message:
+          "Signed in, but your member profile is still being created. Refresh in a moment.",
+        status: 403,
+      });
     }
 
     console.log("[MUX_TOKEN] about to decideAlbumPlaybackAccess", {
@@ -269,7 +267,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!d.allowed) {
-      const code: TokenBlocked["code"] =
+      const code: GateCodeRaw =
         d.code === "INVALID_REQUEST"
           ? "INVALID_REQUEST"
           : d.code === "EMBARGO"
@@ -280,14 +278,12 @@ export async function POST(req: NextRequest) {
                 ? "PROVISIONING"
                 : "ENTITLEMENT_REQUIRED";
 
-      return respondBlocked(
-        req,
-        correlationId,
+      return respondGated(req, correlationId, {
         code,
-        d.reason,
-        d.action ?? undefined,
-        403,
-      );
+        action: (d.action ?? "wait") as GateAction,
+        message: d.reason,
+        status: 403,
+      });
     }
   }
 

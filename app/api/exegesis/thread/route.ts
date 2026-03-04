@@ -92,11 +92,25 @@ type ApiOk = {
 
 type ApiErr = { ok: false; error: string; gate?: GatePayload };
 
+function gatePayload(opts: {
+  code: GatePayload["code"];
+  action: GatePayload["action"];
+  message: string;
+  correlationId?: string | null;
+}): GatePayload {
+  return {
+    code: opts.code,
+    action: opts.action,
+    domain: "exegesis",
+    message: opts.message.trim(),
+    correlationId: opts.correlationId ?? null,
+  };
+}
+
 function json(status: number, body: ApiOk | ApiErr, res?: NextResponse) {
   const r = res ?? NextResponse.json(body, { status });
   return r;
 }
-
 function norm(s: string | null): string {
   return (s ?? "").trim();
 }
@@ -370,21 +384,18 @@ export async function GET(req: NextRequest) {
     if (!allowed) {
       const message = "Sign in to keep reading.";
 
-      const payload: GatePayload = {
-        code: "EXEGESIS_THREAD_READ_CAP_REACHED",
-        action: "login",
-        domain: "exegesis",
-        message,
-        correlationId: mkCorrelationId(
-          `exegesis:${sessionId}:${trackId}:${groupKey}:${LIMIT}`,
-        ),
-      };
-
       return NextResponse.json<ApiErr>(
         {
           ok: false,
           error: message,
-          gate: payload,
+          gate: gatePayload({
+            code: "EXEGESIS_THREAD_READ_CAP_REACHED",
+            action: "login",
+            message,
+            correlationId: mkCorrelationId(
+              `exegesis:${sessionId}:${trackId}:${groupKey}:${LIMIT}`,
+            ),
+          }),
         },
         { status: 403, headers: res.headers },
       );

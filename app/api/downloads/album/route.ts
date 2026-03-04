@@ -24,14 +24,19 @@ import type {
   GateAction,
 } from "@/app/home/gating/gateTypes";
 
-type JsonError = { ok: false; error: string; detail?: unknown };
+type ApiErr = {
+  ok: false;
+  error: string;
+  gate?: GatePayload;
+  detail?: unknown;
+};
 type JsonOk = {
   ok: true;
   url: string;
   albumSlug: string;
   asset: { id: string; label: string; filename: string };
 };
-type JsonBody = JsonOk | JsonError | GatePayload;
+type JsonBody = JsonOk | ApiErr;
 
 const DOMAIN: GateDomain = "downloads";
 
@@ -62,6 +67,36 @@ function gatePayload(params: {
 
 function json(status: number, body: JsonBody, headers?: HeadersInit) {
   return NextResponse.json(body, { status, headers });
+}
+
+function respondGated(
+  status: number,
+  opts: {
+    code: GateCodeRaw;
+    action: GateAction;
+    message: string;
+    correlationId: string;
+    // optional alternate client-visible error string
+    error?: string;
+    detail?: unknown;
+  },
+  headers?: HeadersInit,
+) {
+  const payload = gatePayload({
+    code: opts.code,
+    action: opts.action,
+    message: opts.message,
+    correlationId: opts.correlationId,
+  });
+
+  const body: ApiErr = {
+    ok: false,
+    error: (opts.error ?? opts.message).trim(),
+    gate: payload,
+    ...(opts.detail ? { detail: opts.detail } : {}),
+  };
+
+  return json(status, body, headers);
 }
 
 async function resolveMemberId(params: {
@@ -212,55 +247,46 @@ export async function POST(req: Request) {
     .toLowerCase();
 
   if (!albumSlug) {
-    return json(
-      400,
-      gatePayload({
-        code: "INVALID_REQUEST",
-        action: "wait",
-        message: "Missing albumSlug.",
-        correlationId,
-      }),
-    );
+    return respondGated(400, {
+      code: "INVALID_REQUEST",
+      action: "wait",
+      message: "Missing albumSlug.",
+      correlationId,
+    });
   }
 
   const offer = getAlbumOffer(albumSlug);
   if (!offer) {
-    return json(
-      400,
-      gatePayload({
-        code: "INVALID_REQUEST",
-        action: "wait",
-        message: "Unknown albumSlug.",
-        correlationId,
-      }),
-    );
+    return respondGated(400, {
+      code: "INVALID_REQUEST",
+      action: "wait",
+      message: "Unknown albumSlug.",
+      correlationId,
+    });
   }
 
   // v1 policy: downloads require an authenticated session
   const { userId } = await auth();
   if (!userId) {
-    return json(
-      401,
-      gatePayload({
-        code: "AUTH_REQUIRED",
-        action: "login",
-        message: "Sign in required.",
-        correlationId,
-      }),
-    );
+    return respondGated(401, {
+      code: "AUTH_REQUIRED",
+      action: "login",
+      message: "Sign in required.",
+      correlationId,
+    });
   }
 
   // Best-effort IP throttle (very generous; only trips on obvious automation)
   const ipGate = await checkIpThrottle(getClientIp(req));
   if (!ipGate.ok) {
-    return json(
+    return respondGated(
       429,
-      gatePayload({
+      {
         code: "PROVISIONING",
         action: "wait",
         message: `Too many requests. Please wait ${ipGate.retryAfterSeconds}s.`,
         correlationId,
-      }),
+      },
       { "Retry-After": String(ipGate.retryAfterSeconds) },
     );
   }
@@ -274,43 +300,34 @@ export async function POST(req: Request) {
 
   const memberId = await resolveMemberId({ userId, email });
   if (!memberId) {
-    return json(
-      404,
-      gatePayload({
-        code: "PROVISIONING",
-        action: "wait",
-        message: "Member not found.",
-        correlationId,
-      }),
-    );
+    return respondGated(404, {
+      code: "PROVISIONING",
+      action: "wait",
+      message: "Member not found.",
+      correlationId,
+    });
   }
 
   const match = await findEntitlement(memberId, offer.entitlementKey, null, {
     allowGlobalFallback: true,
   });
   if (!match) {
-    return json(
-      403,
-      gatePayload({
-        code: "ENTITLEMENT_REQUIRED",
-        action: "subscribe",
-        message: "Not entitled.",
-        correlationId,
-      }),
-    );
+    return respondGated(403, {
+      code: "ENTITLEMENT_REQUIRED",
+      action: "subscribe",
+      message: "Not entitled.",
+      correlationId,
+    });
   }
 
   const asset = offer.assets.find((a) => a.id === assetId) ?? null;
   if (!asset) {
-    return json(
-      400,
-      gatePayload({
-        code: "INVALID_REQUEST",
-        action: "wait",
-        message: "Unknown assetId.",
-        correlationId,
-      }),
-    );
+    return respondGated(400, {
+      code: "INVALID_REQUEST",
+      action: "wait",
+      message: "Unknown assetId.",
+      correlationId,
+    });
   }
 
   // Primary protection: per-member per-asset cooldown
@@ -320,14 +337,14 @@ export async function POST(req: Request) {
     assetId: asset.id,
   });
   if (!memberGate.ok) {
-    return json(
+    return respondGated(
       429,
-      gatePayload({
+      {
         code: "PROVISIONING",
         action: "wait",
         message: `Please wait ${memberGate.retryAfterSeconds}s and try again.`,
         correlationId,
-      }),
+      },
       { "Retry-After": String(memberGate.retryAfterSeconds) },
     );
   }
@@ -346,14 +363,12 @@ export async function POST(req: Request) {
           }
         : undefined;
 
-    return json(500, {
-      ...gatePayload({
-        code: "PROVISIONING",
-        action: "wait",
-        message: "Download not available (missing object).",
-        correlationId,
-      }),
-      ...(detail ? { detail } : {}),
+    return respondGated(500, {
+      code: "PROVISIONING",
+      action: "wait",
+      message: "Download not available (missing object).",
+      correlationId,
+      detail,
     });
   }
 

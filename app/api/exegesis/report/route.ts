@@ -1,8 +1,16 @@
 // web/app/api/exegesis/report/route.ts
 import "server-only";
+import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { sql } from "@vercel/postgres";
+
+import type {
+  GatePayload,
+  GateDomain,
+  GateAction,
+  GateCodeRaw,
+} from "@/app/home/gating/gateTypes";
 
 import { hasAnyEntitlement } from "@/lib/entitlements";
 import { ENTITLEMENTS } from "@/lib/vocab";
@@ -10,10 +18,57 @@ import { ENTITLEMENTS } from "@/lib/vocab";
 export const runtime = "nodejs";
 
 type ApiOk = { ok: true; reportId: string };
-type ApiErr = { ok: false; error: string; code?: "ALREADY_REPORTED" };
+type ApiErr = {
+  ok: false;
+  error: string;
+  code?: "ALREADY_REPORTED";
+  gate?: GatePayload;
+};
 
 function json(status: number, body: ApiOk | ApiErr) {
   return NextResponse.json(body, { status });
+}
+
+const EXEGESIS_DOMAIN: GateDomain = "exegesis";
+
+function mkCorrelationId(input: string): string {
+  // short, stable, non-PII
+  return crypto.createHash("sha256").update(input).digest("hex").slice(0, 16);
+}
+
+function gatePayload(
+  code: GateCodeRaw,
+  action: GateAction,
+  message: string,
+  correlationId: string | null,
+): GatePayload {
+  return {
+    code,
+    action,
+    domain: EXEGESIS_DOMAIN,
+    message: message.trim(),
+    correlationId: typeof correlationId === "string" ? correlationId : null,
+  };
+}
+
+function gateErr(
+  status: number,
+  opts: {
+    code: GateCodeRaw;
+    action: GateAction;
+    message: string;
+    error?: string;
+    correlationKey: string;
+  },
+) {
+  const cid = mkCorrelationId(
+    `exegesis:report:${opts.code}:${opts.action}:${opts.correlationKey}`,
+  );
+  return json(status, {
+    ok: false,
+    error: (opts.error ?? opts.message).trim(),
+    gate: gatePayload(opts.code, opts.action, opts.message, cid),
+  });
 }
 
 function norm(v: unknown): string {
@@ -104,13 +159,32 @@ export async function POST(req: NextRequest) {
     });
 
   const memberId = await requireMemberId();
-  if (!memberId) return json(401, { ok: false, error: "Sign in required." });
-  if (!isUuid(memberId))
-    return json(403, { ok: false, error: "Provisioning required." });
+  if (!memberId) {
+    return gateErr(401, {
+      code: "AUTH_REQUIRED",
+      action: "login",
+      message: "Sign in to report a comment.",
+      correlationKey: commentId,
+    });
+  }
+
+  if (!isUuid(memberId)) {
+    return gateErr(403, {
+      code: "PROVISIONING",
+      action: "wait",
+      message: "Provisioning required.",
+      correlationKey: `${memberId}:${commentId}`,
+    });
+  }
 
   const canReport = await requireCanReport(memberId);
   if (!canReport) {
-    return json(403, { ok: false, error: "Friend tier or higher required." });
+    return gateErr(403, {
+      code: "TIER_REQUIRED",
+      action: "subscribe",
+      message: "Reporting requires Friend tier or higher.",
+      correlationKey: `${memberId}:${commentId}`,
+    });
   }
 
   try {

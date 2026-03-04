@@ -3,21 +3,19 @@
 
 import React from "react";
 import Hls from "hls.js";
+import { useAuth } from "@clerk/nextjs";
 import { usePlayer } from "./PlayerState";
 import { muxSignedHlsUrl } from "@/lib/mux";
 import { mediaSurface } from "./mediaSurface";
 import { audioSurface } from "./audioSurface";
-import type { GateAction, GateCodeRaw } from "@/app/home/gating/gateTypes";
+import type { GatePayload, GateDomain } from "@/app/home/gating/gateTypes";
+import { canonicalizeLegacyCapCode } from "@/app/home/gating/gateTypes";
+import { gate } from "@/app/home/gating/gate";
+import { useGateBroker } from "@/app/home/gating/GateBroker";
 
 type TokenResponse =
   | { ok: true; token: string; expiresAt: string | number }
-  | {
-      ok: false;
-      blocked: true;
-      action?: GateAction;
-      reason: string;
-      code?: GateCodeRaw;
-    };
+  | { ok: false; error: string; gate?: GatePayload };
 
 function canPlayNativeHls(a: HTMLMediaElement) {
   return a.canPlayType("application/vnd.apple.mpegurl") !== "";
@@ -26,6 +24,11 @@ function canPlayNativeHls(a: HTMLMediaElement) {
 export default function AudioEngine() {
   const p = usePlayer();
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
+
+  const { isSignedIn: isSignedInRaw } = useAuth();
+  const isSignedIn = Boolean(isSignedInRaw);
+
+  const { reportGate, clearGate } = useGateBroker();
 
   const hlsRef = React.useRef<Hls | null>(null);
   const tokenAbortRef = React.useRef<AbortController | null>(null);
@@ -507,31 +510,73 @@ export default function AudioEngine() {
           data = null;
         }
 
-        // ----- BLOCKED PATH -----
+        // ----- GATED / ERROR PATH -----
         if (!res.ok || !data || !("ok" in data) || data.ok !== true) {
-          const code =
-            data && "ok" in data && data.ok === false ? data.code : undefined;
-          const action =
-            data && "ok" in data && data.ok === false ? data.action : undefined;
-          const reason =
+          const gatePayload =
             data && "ok" in data && data.ok === false
-              ? data.reason
-              : `Token error (${res.status})`;
+              ? (data.gate ?? null)
+              : null;
+
+          const reason =
+            gatePayload?.message?.trim() ||
+            (data && "ok" in data && data.ok === false ? data.error : "") ||
+            `Token error (${res.status})`;
 
           // Always stop the media element.
           hardStopAndDetach();
 
-          // IMPORTANT: do NOT clear queue here.
-          // We want the *blocked* (next) track to remain selected so auth can resume cleanly.
-
           blockedNonceRef.current.set(playbackId, s.reloadNonce);
           playIntentRef.current = false;
 
+          // 1) Feed PlayerState (legacy local channel)
           pRef.current.setBlocked(reason, {
-            code,
-            action,
-            correlationId: corr,
+            code: gatePayload?.code,
+            action: gatePayload?.action,
+            correlationId: gatePayload?.correlationId ?? corr,
           });
+
+          // 2) Feed GateBroker (global channel) — NOW: engine-derived uiMode (no fallback).
+          if (gatePayload) {
+            const domain: GateDomain = gatePayload.domain ?? "playback";
+
+            const lastAttempt = s.lastPlayAttemptAtMs;
+            const explicitIntent =
+              s.intent === "play" ||
+              (typeof lastAttempt === "number" &&
+                Number.isFinite(lastAttempt) &&
+                Date.now() - lastAttempt < 12_000);
+
+            const normalized = canonicalizeLegacyCapCode(
+              gatePayload.code,
+              "playback",
+            );
+
+            const decision = gate(
+              { verb: "play", domain: "playback" },
+              {
+                isSignedIn,
+                intent: explicitIntent ? "explicit" : "passive",
+                playbackCapReached: normalized === "PLAYBACK_CAP_REACHED",
+              },
+            );
+
+            if (!decision.ok) {
+              reportGate({
+                domain,
+                code: normalized,
+                action: gatePayload.action,
+                message: gatePayload.message,
+                correlationId: gatePayload.correlationId ?? corr,
+                uiMode: decision.uiMode,
+              });
+            } else {
+              clearGate({ domain: "playback" });
+            }
+          } else {
+            // If server didn't send a payload, keep broker clear.
+            clearGate({ domain: "playback" });
+          }
+
           mediaSurface.setStatus("blocked");
           return;
         }
@@ -550,8 +595,9 @@ export default function AudioEngine() {
 
         blockedNonceRef.current.delete(playbackId);
 
-        // NEW: token success implies we’re no longer blocked
+        // Token success implies we’re no longer blocked (both channels).
         pRef.current.clearBlocked();
+        clearGate({ domain: "playback" });
 
         attachSrc(muxSignedHlsUrl(playbackId, data.token));
       } catch {
@@ -568,6 +614,9 @@ export default function AudioEngine() {
     p.intent,
     p.status,
     hardStopAndDetach,
+    clearGate,
+    reportGate,
+    isSignedIn,
   ]);
 
   /* ---------------- Media element -> time + duration + state ---------------- */

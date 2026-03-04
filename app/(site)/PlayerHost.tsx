@@ -6,7 +6,6 @@ import { PlayerStateProvider } from "@/app/home/player/PlayerState";
 import AudioEngine from "@/app/home/player/AudioEngine";
 import TrackTitleSync from "@/app/home/player/TrackTitleSync";
 import StageInlineHost from "@/app/home/player/StageInlineHost";
-import PlaybackGateReporter from "@/app/home/player/PlaybackGateReporter";
 
 export default function PlayerHost({
   children,
@@ -80,7 +79,6 @@ export default function PlayerHost({
   return (
     <PlayerStateProvider>
       <AudioEngine />
-      <PlaybackGateReporter />
       <StageInlineHost />
       <TrackTitleSync fallbackLeaf="Consolers" mode="track" />
       {children}
