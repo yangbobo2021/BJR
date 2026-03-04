@@ -3070,31 +3070,30 @@ export default function ExegesisTrackClient(props: {
                 {inlineGate.open ? (
                   <div className="absolute inset-0 grid place-items-center p-4">
                     <div className="w-full max-w-[520px]">
-                      <div className="rounded-2xl border border-white/10 bg-black/50 p-4 shadow-[0_26px_90px_rgba(0,0,0,0.55)] backdrop-blur-md">
-                        <ActivationGate>
-                          <div />
-                        </ActivationGate>
+                      <div className="relative rounded-2xl border border-white/10 bg-black/50 p-4 shadow-[0_26px_90px_rgba(0,0,0,0.55)] backdrop-blur-md">
+                        {inlineGate.dismissible ? (
+                          <button
+                            type="button"
+                            aria-label="Dismiss"
+                            className="absolute right-3 top-3 rounded-md p-1 text-white/50 hover:bg-white/10 hover:text-white/80 transition"
+                            onClick={() => {
+                              broker.clearGate({ domain: EXEGESIS_DOMAIN });
+                              clearInlineGate();
+                            }}
+                          >
+                            ✕
+                          </button>
+                        ) : null}
 
                         {inlineGate.message ? (
-                          <div className="mt-2 rounded-md bg-black/30 p-3 text-sm opacity-90">
+                          <div className="mt-2 rounded-md bg-black/30 p-3 text-[13px] opacity-90">
                             {inlineGate.message}
                           </div>
                         ) : null}
 
-                        {inlineGate.dismissible ? (
-                          <div className="mt-2 flex items-center justify-end">
-                            <button
-                              type="button"
-                              className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
-                              onClick={() => {
-                                broker.clearGate({ domain: EXEGESIS_DOMAIN });
-                                clearInlineGate();
-                              }}
-                            >
-                              Dismiss
-                            </button>
-                          </div>
-                        ) : null}
+                        <ActivationGate>
+                          <div />
+                        </ActivationGate>
                       </div>
                     </div>
                   </div>

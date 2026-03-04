@@ -1789,7 +1789,7 @@ export default function PortalArtistPosts(props: {
                 }}
               >
                 <div style={{ padding: 14 }}>
-                  <div style={{ fontSize: 13, fontWeight: 850, opacity: 0.92 }}>
+                  <div style={{ fontSize: 13, fontWeight: 750, opacity: 0.92 }}>
                     {inlineGateMsg}
                   </div>
 
