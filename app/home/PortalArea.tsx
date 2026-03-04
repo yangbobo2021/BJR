@@ -888,6 +888,78 @@ export default function PortalArea(props: {
   isolation: isolate; /* keeps blend/stacking predictable */
 }
 
+/* Occasional glossy glisten (rare + quick) */
+.afLogoVeilWrap::after {
+  content: "";
+  position: absolute;
+  inset: -24% -24%;
+  pointer-events: none;
+  z-index: 6;
+
+  /* a thin diagonal highlight band */
+  background: linear-gradient(
+    115deg,
+    rgba(255,255,255,0.00) 0%,
+    rgba(255,255,255,0.00) 40%,
+    rgba(255,255,255,0.22) 48%,
+    rgba(255,255,255,0.00) 56%,
+    rgba(255,255,255,0.00) 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 240% 240%;
+  background-position: -120% 120%;
+
+  mix-blend-mode: screen;
+  opacity: 0;
+
+  filter: blur(0.6px);
+  transform: rotate(0deg);
+
+  animation: afLogoGlisten 19s ease-in-out infinite;
+  will-change: opacity, background-position, transform;
+}
+
+@keyframes afLogoGlisten {
+  /* idle */
+  0%, 72% {
+    opacity: 0;
+    background-position: -120% 120%;
+    transform: translateX(-1%) translateY(0%) rotate(-2deg);
+  }
+
+  /* ramp in */
+  76% {
+    opacity: 0.55;
+    background-position: -60% 60%;
+    transform: translateX(0%) translateY(-0.4%) rotate(-2deg);
+  }
+
+  /* sweep */
+  80% {
+    opacity: 0.72;
+    background-position: 120% -120%;
+    transform: translateX(0.6%) translateY(0.4%) rotate(-2deg);
+  }
+
+  /* decay */
+  84% {
+    opacity: 0.12;
+    background-position: 160% -160%;
+    transform: translateX(0.9%) translateY(0.6%) rotate(-2deg);
+  }
+
+  /* back to idle */
+  100% {
+    opacity: 0;
+    background-position: 160% -160%;
+    transform: translateX(-1%) translateY(0%) rotate(-2deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .afLogoVeilWrap::after { animation: none !important; opacity: 0 !important; }
+}
+
 /* Force the image to be its own stacking participant */
 .afLogoVeilImg {
   position: relative;
