@@ -863,10 +863,13 @@ export default function PortalArea(props: {
   position: absolute;
   inset: -18% -10%;
   pointer-events: none;
-  opacity: 0.20;
-  mix-blend-mode: multiply;
-  background: radial-gradient(60% 120% at 30% 50%, rgba(0,0,0,0.50), rgba(0,0,0,0.00) 60%);
-  animation: afLogoVeilDrift 8.5s ease-in-out infinite;
+
+  /* DEBUG: make it obvious */
+  opacity: 0.55;
+  mix-blend-mode: normal;
+  background: radial-gradient(60% 120% at 30% 50%, rgba(255,255,255,0.28), rgba(255,255,255,0.00) 62%);
+
+  animation: afLogoVeilDrift 4.8s ease-in-out infinite;
   will-change: transform, opacity;
 }
 @media (prefers-reduced-motion: reduce) {
