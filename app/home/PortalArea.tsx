@@ -19,6 +19,7 @@ import MiniPlayer from "./player/MiniPlayer";
 import ActivationGate from "@/app/home/ActivationGate";
 import { PortalViewerProvider } from "@/app/home/PortalViewerProvider";
 import { useGateBroker } from "@/app/home/gating/GateBroker";
+import GateSpotlightOverlay from "@/app/home/gating/GateSpotlightOverlay";
 import Image from "next/image";
 
 // --- SURFACE: path-only (NO ?p= fallback) ---
@@ -337,6 +338,34 @@ export default function PortalArea(props: {
     return new URLSearchParams(sp.toString());
   }, [sp]);
 
+  function buildSurfaceHref(
+    secondary: URLSearchParams,
+    opts: {
+      toPlayer?: boolean;
+      tab?: string | null;
+      clearPosts?: boolean;
+      albumSlugForPlayer: string;
+    },
+  ) {
+    const next = new URLSearchParams(secondary.toString());
+
+    // strip legacy/state keys (should already be sanitized, but belt + braces)
+    for (const k of ["p", "panel", "album", "track", "t"]) next.delete(k);
+
+    // if leaving posts, clear post params
+    if (opts.clearPosts) {
+      next.delete("post");
+      next.delete("pt");
+    }
+
+    const base = opts.toPlayer
+      ? `/album/${encodeURIComponent(opts.albumSlugForPlayer)}`
+      : `/${encodeURIComponent(opts.tab ?? DEFAULT_PORTAL_TAB)}`;
+
+    const q = next.toString();
+    return q ? `${base}?${q}` : base;
+  }
+
   const hrefToPlayer = React.useMemo(() => {
     const secondary = buildSecondaryForNav();
     return buildSurfaceHref(secondary, {
@@ -397,34 +426,6 @@ export default function PortalArea(props: {
     },
     [],
   );
-
-  function buildSurfaceHref(
-    secondary: URLSearchParams,
-    opts: {
-      toPlayer?: boolean;
-      tab?: string | null;
-      clearPosts?: boolean;
-      albumSlugForPlayer: string;
-    },
-  ) {
-    const next = new URLSearchParams(secondary.toString());
-
-    // strip legacy/state keys (should already be sanitized, but belt + braces)
-    for (const k of ["p", "panel", "album", "track", "t"]) next.delete(k);
-
-    // if leaving posts, clear post params
-    if (opts.clearPosts) {
-      next.delete("post");
-      next.delete("pt");
-    }
-
-    const base = opts.toPlayer
-      ? `/album/${encodeURIComponent(opts.albumSlugForPlayer)}`
-      : `/${encodeURIComponent(opts.tab ?? DEFAULT_PORTAL_TAB)}`;
-
-    const q = next.toString();
-    return q ? `${base}?${q}` : base;
-  }
 
   const forceSurface = React.useCallback(
     (
@@ -526,6 +527,11 @@ export default function PortalArea(props: {
   const qAutoplay = getAutoplayFlag(sp);
   const qShareToken = (sp.get("st") ?? sp.get("share") ?? "").trim() || null;
   const hasSt = Boolean(qShareToken);
+
+  const spotlightAttention =
+    !!derivedAttentionMessage &&
+    brokerGate.uiMode === "spotlight" &&
+    !isSignedIn;
 
   const forcedPlayerRef = React.useRef(false);
   React.useEffect(() => {
@@ -766,6 +772,18 @@ export default function PortalArea(props: {
     </ActivationGate>
   );
 
+  const gateNodeModal = (
+    <ActivationGate
+      placement="modal"
+      attentionMessage={derivedAttentionMessage}
+      canManageBilling={canManageBilling}
+      isPatron={isPatron}
+      tier={tier}
+    >
+      <div />
+    </ActivationGate>
+  );
+
   const bannerKind: "gift" | "checkout" | null = gift
     ? "gift"
     : checkout
@@ -783,6 +801,9 @@ export default function PortalArea(props: {
 
   return (
     <>
+      {/* ✅ All spotlight overlay mechanics are now owned by GateSpotlightOverlay */}
+      <GateSpotlightOverlay active={spotlightAttention} gateNode={gateNodeModal} />
+
       <div
         style={{ height: "100%", minHeight: 0, minWidth: 0, display: "grid" }}
       >
@@ -991,7 +1012,15 @@ export default function PortalArea(props: {
                         className="afTopBarRightInner"
                         style={{ maxWidth: 520, minWidth: 0 }}
                       >
-                        <div style={{ position: "relative" }}>
+                        <div
+                          style={{
+                            position: "relative",
+                            visibility: spotlightAttention
+                              ? "hidden"
+                              : "visible",
+                            pointerEvents: spotlightAttention ? "none" : "auto",
+                          }}
+                        >
                           {gateNodeTopRight}
                         </div>
                       </div>
