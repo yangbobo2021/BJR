@@ -1766,13 +1766,12 @@ export default function PortalArtistPosts(props: {
             >
               <div
                 style={{
-                  width: "min(520px, calc(100vw - 28px))",
+                  // width is responsive to the *panel*, not the viewport
+                  width: "min(520px, 100%)",
+                  maxWidth: "calc(100% - 28px)",
 
-                  // follow the user's gaze without messing with module height
-                  position: "fixed",
-                  left: "50%",
-                  top: "50%",
-                  transform: "translate(-50%, -50%)",
+                  // ✅ stay inside the module overlay (which is already centered by the grid parent)
+                  position: "relative",
 
                   borderRadius: 18,
                   border: "1px solid rgba(255,255,255,0.14)",
