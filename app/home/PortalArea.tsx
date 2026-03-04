@@ -901,42 +901,42 @@ export default function PortalArea(props: {
 
   /*
     Full-logo glass sheen:
-    - wide soft wash (glass)  ✅ (2) make this wider + (3) more diffuse
-    - narrow bright core      ✅ (2) slightly wider + (3) softer edges
+    Layer 1 = broad environmental glow
+    Layer 2 = brighter central highlight
   */
   background-image:
-    /* (2)+(3) WIDER + more gradual fade: move “rise” earlier + “fall” later, lower peak a touch */
     linear-gradient(
       120deg,
       rgba(255,255,255,0.00) 0%,
-      rgba(255,255,255,0.00) 18%,   /* (2) widen: starts affecting sooner (was 28%) */
-      rgba(255,255,255,0.08) 46%,   /* (3) diffuse: lower peak + broadened mid (was 0.09 @ 44%) */
-      rgba(255,255,255,0.00) 74%,   /* (2) widen: fades out later (was 60%) */
+      rgba(255,255,255,0.00) 16%,   /* (2) widen glow shoulder */
+      rgba(255,255,255,0.07) 46%,   /* (3) diffuse brightness */
+      rgba(255,255,255,0.00) 76%,   /* (2) widen fade-out distance */
       rgba(255,255,255,0.00) 100%
     ),
-    /* (2)+(3) core beam: widen band + soften edges (bigger shoulder, smaller peak) */
     linear-gradient(
       120deg,
       rgba(255,255,255,0.00) 0%,
-      rgba(255,255,255,0.00) 38%,   /* (2) widen: earlier lead-in (was 45%) */
-      rgba(255,255,255,0.26) 50%,   /* (3) diffuse: reduce “bar” intensity (was 0.34) */
-      rgba(255,255,255,0.00) 62%,   /* (2) widen: later fade-out (was 55%) */
+      rgba(255,255,255,0.00) 36%,   /* (2) widen beam lead-in */
+      rgba(255,255,255,0.24) 50%,   /* (3) softer peak intensity */
+      rgba(255,255,255,0.00) 64%,   /* (2) widen trailing falloff */
       rgba(255,255,255,0.00) 100%
     );
 
   background-repeat: no-repeat;
 
-  /* (2) widen: bigger background field makes the sheen feel broader as it traverses */
-  background-size: 420% 420%, 420% 420%; /* (was 340%) */
-  background-position: -260% -260%, -260% -260%; /* keep start off-canvas to avoid early flashes */
+  /* (2) width of shimmer field */
+  background-size: 420% 420%, 420% 420%;
+
+  /* start fully off-frame */
+  background-position: -260% -260%, -260% -260%;
 
   mix-blend-mode: screen;
   opacity: 0;
 
-  /* (3) diffuse: more blur = softer glow distance (but don’t go too high or it looks like fog) */
-  filter: blur(1.05px); /* (was 0.55px) */
+  /* (3) diffusion of sheen */
+  filter: blur(1.1px);
 
-  /* ✅ Perfect alpha mask: sheen only where PNG has pixels */
+  /* mask to PNG alpha */
   -webkit-mask-image: var(--afLogoMaskUrl);
   mask-image: var(--afLogoMaskUrl);
   -webkit-mask-repeat: no-repeat;
@@ -946,38 +946,47 @@ export default function PortalArea(props: {
   -webkit-mask-position: center;
   mask-position: center;
 
-  /* (1) slower: increase total cycle duration (more time between shimmers + slower traverse) */
-  animation: afLogoGlisten 92s ease-in-out infinite; /* (was 62s) */
+  /* overall cycle length (affects frequency, not travel speed) */
+  animation: afLogoGlisten 62s ease-in-out infinite;
+
   will-change: opacity, background-position, transform;
 }
 
+
 @keyframes afLogoGlisten {
-  /* (1) slower: longer idle window before the sweep begins */
-  0%, 88% { /* (was 0%,84%) */
+
+  /* idle period */
+  0%, 84% {
     opacity: 0;
     background-position: -260% -260%, -260% -260%;
     transform: translateX(0%) translateY(0%);
   }
 
-  /* (1) slower: gentler ramp-in */
-  91% { /* (was 87%) */
-    opacity: 0.16; /* (3) diffuse: slightly less “bar” punch on entry */
-    background-position: -170% -170%, -170% -170%;
+  /* gentle appearance */
+  86% {
+    opacity: 0.14; /* (3) subtle entry glow */
+    background-position: -160% -160%, -160% -160%;
     transform: translateX(-0.12%) translateY(-0.12%);
   }
 
-  /* (1) slower: the main sweep arrives later + (3) slightly lower peak for diffused glass look */
-  97% { /* (was 95%) */
-    opacity: 0.58; /* (was 0.72) */
+  /*
+    MAIN SWEEP
+    (1) slower movement:
+    - previously ~87 → 95 (≈8% of timeline)
+    - now ~86 → 98 (≈12% of timeline)
+    → beam crosses frame ~50% slower
+  */
+  98% {
+    opacity: 0.56; /* (3) softer peak */
     background-position: 260% 260%, 260% 260%;
     transform: translateX(0.18%) translateY(0.18%);
   }
 
-  /* (1) slower: longer fade-out tail (still subtle) */
-  99% { /* (was 98%) */
-    opacity: 0.08; /* (was 0.10) */
+  /* fade-out tail */
+  99.5% {
+    opacity: 0.08;
     background-position: 340% 340%, 340% 340%;
-    transform: translateX(0.24%) translateY(0.24%);
+    transform: translateX(0.22%) translateY(0.22%);
   }
 
   100% {
