@@ -10,7 +10,7 @@ import type {
   GateDomain,
   GatePayload,
 } from "@/app/home/gating/gateTypes";
-import { canonicalizeLegacyCapCode } from "@/app/home/gating/gateTypes";
+import { gateResultFromPayload } from "@/app/home/gating/fromPayload";
 
 type Props = {
   albumSlug: string;
@@ -247,24 +247,21 @@ export default function DownloadAlbumButton(props: Props) {
 
         const gatePayload = extractGateFromUnknown(dataUnknown);
         if (gatePayload) {
-          const decision = gate(
-            { verb, domain },
-            { isSignedIn: Boolean(isSignedIn), intent: "explicit" },
-          );
+          const result = gateResultFromPayload({
+            payload: gatePayload,
+            attempt: { verb, domain },
+            isSignedIn: Boolean(isSignedIn),
+            intent: "explicit",
+          });
 
-          if (!decision.ok) {
-            const normalized = canonicalizeLegacyCapCode(
-              gatePayload.code,
-              gatePayload.domain,
-            );
-
+          if (!result.ok) {
             reportGate({
-              code: normalized,
-              action: gatePayload.action,
-              domain: gatePayload.domain,
-              correlationId: gatePayload.correlationId ?? null,
-              message: gatePayload.message,
-              uiMode: decision.uiMode,
+              code: result.reason.code,
+              action: result.reason.action,
+              domain: result.reason.domain,
+              correlationId: result.reason.correlationId ?? null,
+              message: result.reason.message,
+              uiMode: result.uiMode,
             });
           }
 
@@ -299,24 +296,21 @@ export default function DownloadAlbumButton(props: Props) {
       // Payload-first: if server emitted a gate (preferred wrapped, legacy tolerated), use it.
       const gatePayload = extractGateFromUnknown(dataUnknown);
       if (gatePayload) {
-        const result = gate(
-          { verb, domain },
-          { isSignedIn: Boolean(isSignedIn), intent: "explicit" },
-        );
+        const decision = gateResultFromPayload({
+          payload: gatePayload,
+          attempt: { verb, domain },
+          isSignedIn: Boolean(isSignedIn),
+          intent: "explicit",
+        });
 
-        if (!result.ok) {
-          const normalized = canonicalizeLegacyCapCode(
-            gatePayload.code,
-            gatePayload.domain,
-          );
-
+        if (!decision.ok) {
           reportGate({
-            code: normalized,
-            action: gatePayload.action,
-            domain: gatePayload.domain,
-            correlationId: gatePayload.correlationId ?? null,
-            message: gatePayload.message,
-            uiMode: result.uiMode,
+            code: decision.reason.code,
+            action: decision.reason.action,
+            domain: decision.reason.domain,
+            correlationId: decision.reason.correlationId ?? null,
+            message: decision.reason.message,
+            uiMode: decision.uiMode,
           });
         }
 

@@ -65,6 +65,7 @@ export function normalizeGateCodeRaw(
     case "READ_RECEIPTS_CAP_REACHED":
     case "PLAYBACK_CAP_REACHED":
     case "JOURNAL_READ_CAP_REACHED":
+    case "EXEGESIS_THREAD_READ_CAP_REACHED":
     case "INVALID_REQUEST":
       return c;
 

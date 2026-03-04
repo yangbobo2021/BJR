@@ -838,10 +838,10 @@ export default function PortalArea(props: {
     ? brokerGate.active.message
     : null;
 
+  // PortalArea is now broker-driven for gating presentation.
+  // PlayerState may still hold transport safety state, but it must not drive UI gating.
   const derivedAttentionMessage =
-    attentionMessage ??
-    brokerAttentionMessage ??
-    (p.shouldShowTopbarBlockMessage ? (p.lastError ?? null) : null);
+    attentionMessage ?? brokerAttentionMessage ?? null;
 
   const dbgForceSpotlight =
     process.env.NEXT_PUBLIC_ADMIN_DEBUG === "1" &&
@@ -856,12 +856,9 @@ export default function PortalArea(props: {
   const qShareToken = (sp.get("st") ?? sp.get("share") ?? "").trim() || null;
   const hasSt = Boolean(qShareToken);
 
-  const effectiveUiMode =
-    brokerGate.uiMode !== "none" ? brokerGate.uiMode : p.blockUiMode;
-
   const spotlightAttention =
     !!derivedAttentionMessage &&
-    effectiveUiMode === "spotlight" &&
+    brokerGate.uiMode === "spotlight" &&
     (!isSignedIn || dbgForceSpotlight);
 
   const forcedPlayerRef = React.useRef(false);

@@ -8,9 +8,14 @@ import { usePlayer } from "./PlayerState";
 import { muxSignedHlsUrl } from "@/lib/mux";
 import { mediaSurface } from "./mediaSurface";
 import { audioSurface } from "./audioSurface";
-import type { GatePayload, GateDomain } from "@/app/home/gating/gateTypes";
-import { canonicalizeLegacyCapCode } from "@/app/home/gating/gateTypes";
-import { gate } from "@/app/home/gating/gate";
+import type {
+  GatePayload,
+  GateDomain,
+  GateAction,
+  GateCodeRaw,
+} from "@/app/home/gating/gateTypes";
+import { normalizeGateCodeRaw } from "@/app/home/gating/gateTypes";
+import { gateResultFromPayload } from "@/app/home/gating/fromPayload";
 import { useGateBroker } from "@/app/home/gating/GateBroker";
 
 type TokenResponse =
@@ -54,8 +59,10 @@ export default function AudioEngine() {
   );
   const blockedNonceRef = React.useRef(new Map<string, number>()); // playbackId -> reloadNonce at time of block
 
-  const pRef = React.useRef(p);
+  // NEW: local invariant flag (since PlayerState is no longer the gating channel)
+  const engineBlockedRef = React.useRef(false);
 
+  const pRef = React.useRef(p);
   React.useEffect(() => {
     pRef.current = p;
   }, [p]);
@@ -94,6 +101,74 @@ export default function AudioEngine() {
     } catch {}
   }, []);
 
+  const inferIntentForGate = React.useCallback(() => {
+    const s = pRef.current;
+    const lastAttempt = s.lastPlayAttemptAtMs;
+    const explicitIntent =
+      s.intent === "play" ||
+      (typeof lastAttempt === "number" &&
+        Number.isFinite(lastAttempt) &&
+        Date.now() - lastAttempt < 12_000);
+    return explicitIntent ? ("explicit" as const) : ("passive" as const);
+  }, []);
+
+  const clearPlaybackGate = React.useCallback(() => {
+    engineBlockedRef.current = false;
+    clearGate({ domain: "playback" });
+  }, [clearGate]);
+
+  const reportPlaybackGate = React.useCallback(
+    (payload: GatePayload, corrFromHeader: string | null) => {
+      const domain: GateDomain = (payload.domain ?? "playback") as GateDomain;
+
+      const decision = gateResultFromPayload({
+        payload: {
+          ...payload,
+          domain,
+          correlationId: payload.correlationId ?? corrFromHeader ?? null,
+        },
+        attempt: { verb: "play", domain: "playback" },
+        isSignedIn,
+        intent: inferIntentForGate(),
+      });
+
+      if (!decision.ok) {
+        engineBlockedRef.current = true;
+
+        reportGate({
+          code: decision.reason.code,
+          action: decision.reason.action,
+          domain: decision.reason.domain,
+          correlationId: decision.reason.correlationId ?? null,
+          message: decision.reason.message,
+          uiMode: decision.uiMode,
+        });
+        return;
+      }
+
+      // If engine says ok, clear only the relevant domain channel.
+      if (domain === "playback") clearPlaybackGate();
+      else clearGate({ domain });
+    },
+    [clearGate, clearPlaybackGate, inferIntentForGate, isSignedIn, reportGate],
+  );
+
+  const reportLocalPlaybackErrorAsGate = React.useCallback(
+    (code: GateCodeRaw, message: string, corr?: string | null) => {
+      // This is a client-only failure (unsupported HLS / fatal decode).
+      // We still route it through GateBroker so PortalArea can spotlight/blur consistently.
+      const payload: GatePayload = {
+        domain: "playback",
+        code,
+        action: "wait",
+        message,
+        correlationId: corr ?? null,
+      };
+      reportPlaybackGate(payload, corr ?? null);
+    },
+    [reportPlaybackGate],
+  );
+
   // ---- Final unmount cleanup (tab-lifetime leaks: AudioContext + WebAudio graph + HLS) ----
   React.useEffect(() => {
     // Snapshot ref values NOW so cleanup doesn’t read mutable .current later.
@@ -110,13 +185,11 @@ export default function AudioEngine() {
     const tokenAbort = tokenAbortRef.current;
 
     return () => {
-      // stop any in-flight token request
       try {
         tokenAbort?.abort();
       } catch {}
       tokenAbortRef.current = null;
 
-      // teardown HLS instance
       if (hls) {
         try {
           hls.destroy();
@@ -124,7 +197,6 @@ export default function AudioEngine() {
       }
       hlsRef.current = null;
 
-      // hard-stop media element
       if (a) {
         try {
           a.pause();
@@ -137,7 +209,6 @@ export default function AudioEngine() {
         } catch {}
       }
 
-      // disconnect WebAudio graph
       try {
         analyser?.disconnect();
       } catch {}
@@ -148,22 +219,18 @@ export default function AudioEngine() {
       } catch {}
       srcNodeRef.current = null;
 
-      // release typed arrays
       freqDataRef.current = null;
       timeDataRef.current = null;
 
-      // close AudioContext
       audioCtxRef.current = null;
       if (ctx) {
         ctx.close().catch(() => {});
       }
 
-      // clear caches (use snapshots)
       tokenCache.clear();
       blockedNonce.clear();
       playthroughSent.clear();
 
-      // neutralize surfaces (optional)
       try {
         audioSurface.set({
           rms: 0,
@@ -180,16 +247,13 @@ export default function AudioEngine() {
     };
   }, []);
 
-  /* ---------------- NEW: global "blocked means SILENCE" invariant ---------------- */
+  /* ---------------- global "blocked means SILENCE" invariant ---------------- */
   React.useEffect(() => {
-    // If UI is blocked for ANY reason (token gate, access-check, etc),
-    // guarantee the media element is not still running behind the blur.
-    if (p.status !== "blocked") return;
-
+    if (!engineBlockedRef.current) return;
     playIntentRef.current = false;
     hardStopAndDetach();
     mediaSurface.setStatus("blocked");
-  }, [p.status, hardStopAndDetach]);
+  }, [hardStopAndDetach]);
 
   /* ---------------- AudioContext + analyser (ONCE) ---------------- */
 
@@ -254,8 +318,6 @@ export default function AudioEngine() {
       const st = pRef.current.status;
       const active = st === "playing" || st === "loading";
 
-      // If we have no analyser yet, poll slowly until user gesture creates it.
-      // IMPORTANT: still feed a tiny "alive" signal so idle visuals aren't dead.
       if (!analyser || !freq || !time) {
         audioSurface.set({
           rms: 0,
@@ -263,13 +325,12 @@ export default function AudioEngine() {
           mid: 0,
           treble: 0,
           centroid: 0,
-          energy: 0.08, // tiny idle energy pre-gesture
+          energy: 0.08,
         });
         to = window.setTimeout(tick, 250);
         return;
       }
 
-      // If not active, don’t burn RAF. Keep visuals softly alive at low rate.
       if (!active) {
         analyser.getByteTimeDomainData(time);
         let sum = 0;
@@ -286,11 +347,10 @@ export default function AudioEngine() {
           centroid: 0,
           energy: Math.min(1, rms * 1.2),
         });
-        to = window.setTimeout(tick, 180); // ~5.5 fps
+        to = window.setTimeout(tick, 180);
         return;
       }
 
-      // Active: full-rate RAF
       analyser.getByteFrequencyData(freq);
       analyser.getByteTimeDomainData(time);
 
@@ -370,8 +430,8 @@ export default function AudioEngine() {
 
     mediaSurface.setTrack(s.current?.id ?? null);
 
-    // If we're blocked, never attach.
-    if (s.status === "blocked") return;
+    // If the engine is blocked, never attach.
+    if (engineBlockedRef.current) return;
 
     const armed =
       s.status === "loading" ||
@@ -439,7 +499,10 @@ export default function AudioEngine() {
         a.load();
       } else {
         if (!Hls.isSupported()) {
-          pRef.current.setBlocked("This browser cannot play HLS.");
+          reportLocalPlaybackErrorAsGate(
+            "INVALID_REQUEST",
+            "This browser cannot play HLS.",
+          );
           mediaSurface.setStatus("blocked");
           hardStopAndDetach();
           return;
@@ -450,7 +513,10 @@ export default function AudioEngine() {
 
         hls.on(Hls.Events.ERROR, (_e, err) => {
           if (err?.fatal) {
-            pRef.current.setBlocked(`HLS fatal: ${err.details ?? "error"}`);
+            reportLocalPlaybackErrorAsGate(
+              "INVALID_REQUEST",
+              `HLS fatal: ${err.details ?? "error"}`,
+            );
             mediaSurface.setStatus("blocked");
             hardStopAndDetach();
           }
@@ -512,69 +578,37 @@ export default function AudioEngine() {
 
         // ----- GATED / ERROR PATH -----
         if (!res.ok || !data || !("ok" in data) || data.ok !== true) {
-          const gatePayload =
+          const gatePayloadRaw =
             data && "ok" in data && data.ok === false
               ? (data.gate ?? null)
               : null;
 
-          const reason =
-            gatePayload?.message?.trim() ||
+          const msg =
+            gatePayloadRaw?.message?.trim() ||
             (data && "ok" in data && data.ok === false ? data.error : "") ||
             `Token error (${res.status})`;
 
-          // Always stop the media element.
           hardStopAndDetach();
-
           blockedNonceRef.current.set(playbackId, s.reloadNonce);
           playIntentRef.current = false;
 
-          // 1) Feed PlayerState (legacy local channel)
-          pRef.current.setBlocked(reason, {
-            code: gatePayload?.code,
-            action: gatePayload?.action,
-            correlationId: gatePayload?.correlationId ?? corr,
-          });
-
-          // 2) Feed GateBroker (global channel) — NOW: engine-derived uiMode (no fallback).
-          if (gatePayload) {
-            const domain: GateDomain = gatePayload.domain ?? "playback";
-
-            const lastAttempt = s.lastPlayAttemptAtMs;
-            const explicitIntent =
-              s.intent === "play" ||
-              (typeof lastAttempt === "number" &&
-                Number.isFinite(lastAttempt) &&
-                Date.now() - lastAttempt < 12_000);
-
-            const normalized = canonicalizeLegacyCapCode(
-              gatePayload.code,
-              "playback",
-            );
-
-            const decision = gate(
-              { verb: "play", domain: "playback" },
-              {
-                isSignedIn,
-                intent: explicitIntent ? "explicit" : "passive",
-                playbackCapReached: normalized === "PLAYBACK_CAP_REACHED",
-              },
-            );
-
-            if (!decision.ok) {
-              reportGate({
-                domain,
-                code: normalized,
-                action: gatePayload.action,
-                message: gatePayload.message,
-                correlationId: gatePayload.correlationId ?? corr,
-                uiMode: decision.uiMode,
-              });
-            } else {
-              clearGate({ domain: "playback" });
-            }
+          if (gatePayloadRaw) {
+            // Be defensive: payload from server might have drift during migration.
+            const rawCode =
+              normalizeGateCodeRaw(gatePayloadRaw.code) ?? "INVALID_REQUEST";
+            const action: GateAction = gatePayloadRaw.action ?? "wait";
+            const payload: GatePayload = {
+              domain: (gatePayloadRaw.domain ?? "playback") as GateDomain,
+              code: rawCode,
+              action,
+              message: gatePayloadRaw.message ?? msg,
+              correlationId: gatePayloadRaw.correlationId ?? corr ?? null,
+              reason: gatePayloadRaw.reason,
+            };
+            reportPlaybackGate(payload, corr);
           } else {
-            // If server didn't send a payload, keep broker clear.
-            clearGate({ domain: "playback" });
+            // No payload => don’t invent policy; just clear broker.
+            clearPlaybackGate();
           }
 
           mediaSurface.setStatus("blocked");
@@ -595,9 +629,8 @@ export default function AudioEngine() {
 
         blockedNonceRef.current.delete(playbackId);
 
-        // Token success implies we’re no longer blocked (both channels).
-        pRef.current.clearBlocked();
-        clearGate({ domain: "playback" });
+        // Token success implies we’re no longer blocked (broker channel).
+        clearPlaybackGate();
 
         attachSrc(muxSignedHlsUrl(playbackId, data.token));
       } catch {
@@ -614,9 +647,9 @@ export default function AudioEngine() {
     p.intent,
     p.status,
     hardStopAndDetach,
-    clearGate,
-    reportGate,
-    isSignedIn,
+    clearPlaybackGate,
+    reportPlaybackGate,
+    reportLocalPlaybackErrorAsGate,
   ]);
 
   /* ---------------- Media element -> time + duration + state ---------------- */
@@ -659,11 +692,11 @@ export default function AudioEngine() {
         Number.isFinite(a.duration) && a.duration > 0
           ? Math.floor(a.duration * 1000)
           : 0;
+
       const durMs = durFromState || durFromEl;
 
       if (durMs > 0) {
-        const pct = ms / durMs;
-        reportPlaythroughComplete(pct);
+        reportPlaythroughComplete(ms / durMs);
       }
     };
 
@@ -684,8 +717,7 @@ export default function AudioEngine() {
     };
 
     const markPlaying = () => {
-      // If we’re blocked, don’t let media events resurrect UI state.
-      if (pRef.current.status === "blocked") {
+      if (engineBlockedRef.current) {
         hardStopAndDetach();
         mediaSurface.setStatus("blocked");
         return;
@@ -701,7 +733,7 @@ export default function AudioEngine() {
     };
 
     const markPaused = () => {
-      if (pRef.current.status === "blocked") return;
+      if (engineBlockedRef.current) return;
       mediaSurface.setStatus("paused");
       pRef.current.setStatusExternal("paused");
       pRef.current.setLoadingReasonExternal(undefined);
@@ -709,18 +741,20 @@ export default function AudioEngine() {
     };
 
     const markBuffering = () => {
+      if (engineBlockedRef.current) return;
+
       const s = pRef.current;
-      if (s.status === "blocked") return;
       const shouldBePlaying =
         s.intent === "play" || s.status === "playing" || s.status === "loading";
       if (!shouldBePlaying) return;
+
       mediaSurface.setStatus("loading");
       s.setStatusExternal("loading");
       s.setLoadingReasonExternal("buffering");
     };
 
     const clearBuffering = () => {
-      if (pRef.current.status === "blocked") return;
+      if (engineBlockedRef.current) return;
       pRef.current.setLoadingReasonExternal(undefined);
       applyPendingSeek();
     };
@@ -779,8 +813,7 @@ export default function AudioEngine() {
     const a = audioRef.current;
     if (!a) return;
 
-    if (p.status === "blocked") {
-      // A final guard: blocked means no play/pause intent should do anything.
+    if (engineBlockedRef.current) {
       playIntentRef.current = false;
       return;
     }
@@ -803,7 +836,7 @@ export default function AudioEngine() {
         },
       );
     }
-  }, [p.intent, p.status]);
+  }, [p.intent]);
 
   /* ---------------- User gesture bridge ---------------- */
 
@@ -812,7 +845,7 @@ export default function AudioEngine() {
     if (!a) return;
 
     const resume = () => {
-      if (pRef.current.status === "blocked") return;
+      if (engineBlockedRef.current) return;
 
       if (audioCtxRef.current?.state === "suspended") {
         audioCtxRef.current.resume().catch(() => {});

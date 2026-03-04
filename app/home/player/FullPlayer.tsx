@@ -713,24 +713,30 @@ export default function FullPlayer(props: {
             (queueIsThisAlbum && hasPlaybackIntentForThisAlbum);
 
           // Extra hardening: auth/cap blocks should *never* fire from passive hydration.
+          // FullPlayer must not drive gating UI/state.
+          // Access-check denial can disable local UI (canPlay), but gating presentation is AudioEngine→GateBroker.
           if (
             shouldBlockThisAlbum &&
             (!isAuthOrCap || hasPlaybackIntentForThisAlbum)
           ) {
-            player.setBlocked(next.reason ?? "Playback blocked.", {
-              code: next.code,
-              action: next.action,
-              correlationId: next.corr ?? null,
-            });
+            // Keep transport sane: don't let a stale loading/play intent spin.
+            try {
+              player.pause();
+            } catch {
+              // ignore
+            }
+            if (player.status === "loading") {
+              player.setStatusExternal("idle");
+            }
           }
         } else {
-          if (
-            player.lastError ||
-            player.blockedCode ||
-            player.blockedAction ||
-            player.status === "blocked"
-          ) {
+          // No PlayerState "blocked UI" semantics here; just clear transient error noise.
+          if (player.lastError) {
             player.clearError();
+          }
+          if (player.status === "blocked") {
+            // Legacy state might still exist until PlayerState cleanup lands.
+            player.setStatusExternal("idle");
           }
         }
       } catch (e) {
@@ -751,8 +757,7 @@ export default function FullPlayer(props: {
         setAccess(fallback);
 
         const player = pRef.current;
-        if (player.lastError || player.blockedCode || player.blockedAction)
-          player.clearError();
+        if (player.lastError) player.clearError();
         if (player.status === "blocked") player.setStatusExternal("idle");
       }
     })();
