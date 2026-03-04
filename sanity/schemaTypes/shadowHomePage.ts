@@ -26,7 +26,7 @@ export const shadowHomePage = defineType({
       validation: (Rule) => Rule.required(),
     }),
 
-    // ✅ NEW: Top logo image + display height
+    // Top logo image + display height
     defineField({
       name: "topLogo",
       title: "Top Logo",

@@ -802,7 +802,10 @@ export default function PortalArea(props: {
   return (
     <>
       {/* ✅ All spotlight overlay mechanics are now owned by GateSpotlightOverlay */}
-      <GateSpotlightOverlay active={spotlightAttention} gateNode={gateNodeModal} />
+      <GateSpotlightOverlay
+        active={spotlightAttention}
+        gateNode={gateNodeModal}
+      />
 
       <div
         style={{ height: "100%", minHeight: 0, minWidth: 0, display: "grid" }}
@@ -849,6 +852,27 @@ export default function PortalArea(props: {
 .afTopBarLogoInner { width:fit-content; display:grid; place-items:end center; }
 .afTopBarRight { grid-column:3; grid-row:1; min-width:0; display:flex; align-items:flex-end; justify-content:flex-end; align-self:stretch; }
 .afTopBarRightInner { max-width:520px; min-width:0; height:100%; display:flex; flex-direction:column; justify-content:flex-end; }
+
+/* --- Logo “veil” effect (subtle drifting shadow pass) --- */
+@keyframes afLogoVeilDrift {
+  0%, 100% { transform: translateX(-7%) translateY(0%); opacity: 0.18; }
+  50%      { transform: translateX(7%)  translateY(0%); opacity: 0.30; }
+}
+.afLogoVeilWrap { position: relative; display: inline-block; line-height: 0; }
+.afLogoVeil {
+  position: absolute;
+  inset: -18% -10%;
+  pointer-events: none;
+  opacity: 0.20;
+  mix-blend-mode: multiply;
+  background: radial-gradient(60% 120% at 30% 50%, rgba(0,0,0,0.50), rgba(0,0,0,0.00) 60%);
+  animation: afLogoVeilDrift 8.5s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+@media (prefers-reduced-motion: reduce) {
+  .afLogoVeil { animation: none !important; opacity: 0.18; }
+}
+
 @media (max-width:720px) {
   .afTopBar { grid-template-columns:1fr; grid-template-rows:auto auto; gap:10px; align-items:stretch; justify-items:stretch; }
   .afTopBarLogo { grid-row:1; grid-column:1 / -1; width:100%; padding:10px 0 0; display:flex; align-items:flex-end; justify-content:center; }
@@ -866,30 +890,35 @@ export default function PortalArea(props: {
                   <div className="afTopBarLogo">
                     <div className="afTopBarLogoInner">
                       {props.topLogoUrl ? (
-                        <Image
-                          src={props.topLogoUrl}
-                          alt="Logo"
-                          height={Math.max(
-                            16,
-                            Math.min(120, props.topLogoHeight ?? 38),
-                          )}
-                          width={Math.max(
-                            16,
-                            Math.min(120, props.topLogoHeight ?? 38),
-                          )}
-                          sizes="(max-width: 720px) 120px, 160px"
-                          style={{
-                            height: Math.max(
+                        <div className="afLogoVeilWrap">
+                          <Image
+                            src={props.topLogoUrl}
+                            alt="Logo"
+                            height={Math.max(
                               16,
                               Math.min(120, props.topLogoHeight ?? 38),
-                            ),
-                            width: "auto",
-                            objectFit: "contain",
-                            opacity: 0.94,
-                            userSelect: "none",
-                            filter: "drop-shadow(0 10px 22px rgba(0,0,0,0.28))",
-                          }}
-                        />
+                            )}
+                            width={Math.max(
+                              16,
+                              Math.min(120, props.topLogoHeight ?? 38),
+                            )}
+                            sizes="(max-width: 720px) 120px, 160px"
+                            style={{
+                              height: Math.max(
+                                16,
+                                Math.min(120, props.topLogoHeight ?? 38),
+                              ),
+                              width: "auto",
+                              objectFit: "contain",
+                              opacity: 0.94,
+                              userSelect: "none",
+                              // keep your existing base shadow; veil adds the “passing” feel
+                              filter:
+                                "drop-shadow(0 10px 22px rgba(0,0,0,0.28))",
+                            }}
+                          />
+                          <div aria-hidden="true" className="afLogoVeil" />
+                        </div>
                       ) : (
                         <div
                           aria-label="AF"
