@@ -303,7 +303,7 @@ export default function LyricsOverlay(props: {
   // - sidePad: reduce padding to increase usable line width (fewer wraps)
   // - lineMax: a centered column so text stays centered even with a right-side icon
   const sidePadPx = isInline ? 10 : 18;
-  const lineMax = isInline ? "min(840px, 100%)" : "min(980px, 100%)";
+  const lineMax = isInline ? "min(820px, 100%)" : "min(980px, 100%)";
 
   const styleVars: React.CSSProperties &
     Record<`--af-lyrics-${string}`, string> = {
@@ -515,7 +515,7 @@ export default function LyricsOverlay(props: {
                     // Negative margin “eats” into the side padding a bit.
                     marginRight: isInline ? -10 : 0,
 
-                    transform: `${showDiscourse ? "scale(1)" : "scale(0.98)"}`,
+                    transform: `translateY(3px) ${showDiscourse ? "scale(1)" : "scale(0.98)"}`,
                     width: iconSize,
                     height: iconSize,
                     borderRadius: 0,
