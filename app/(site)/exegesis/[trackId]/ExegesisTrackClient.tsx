@@ -18,6 +18,7 @@ import type { GatePayload } from "@/app/home/gating/gateTypes";
 import TipTapEditor from "./TipTapEditor";
 import TipTapReadOnly from "./TipTapReadOnly";
 import type { LyricCue, LyricGroupMap } from "@/lib/types";
+import { isParaBreakCue } from "@/app/home/player/lyrics/lyricBreaks";
 import { GeniusIcon, MedalIcon, ReplyIcon, ShieldAlertIcon } from "./icons";
 
 type LyricsApiOk = {
@@ -2064,6 +2065,16 @@ export default function ExegesisTrackClient(props: {
             onPointerLeave={clearHover}
           >
             {(lyrics.cues ?? []).map((c) => {
+              if (isParaBreakCue(c)) {
+                return (
+                  <div
+                    key={`br-${c.lineKey}`}
+                    aria-hidden="true"
+                    className="h-3"
+                  />
+                );
+              }
+
               const isSelected = selected?.lineKey === c.lineKey;
 
               const gk = cueCanonicalGroupKey(lyrics, c);

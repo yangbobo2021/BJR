@@ -245,14 +245,14 @@ export default function AdminDebugBar(props: { isAdmin: boolean }) {
           }}
         >
           <button type="button" style={btn} onClick={() => openAdmin("access")}>
-            Access
+            Member Access
           </button>
           <button
             type="button"
             style={btn}
             onClick={() => openAdmin("share_tokens")}
           >
-            Share tokens
+            Share Tokens
           </button>
           <button
             type="button"
@@ -266,7 +266,7 @@ export default function AdminDebugBar(props: { isAdmin: boolean }) {
             style={btn}
             onClick={() => openAdmin("exegesis")}
           >
-            Exegesis
+            Exegesis Mod
           </button>
           <Link
             href="/admin/campaigns"
@@ -278,6 +278,17 @@ export default function AdminDebugBar(props: { isAdmin: boolean }) {
             }}
           >
             Campaigns
+          </Link>
+          <Link
+            href="/studio"
+            style={{
+              ...btn,
+              display: "inline-flex",
+              alignItems: "center",
+              textDecoration: "none",
+            }}
+          >
+            Sanity Studio
           </Link>
         </div>
       </div>

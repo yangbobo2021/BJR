@@ -159,7 +159,10 @@ export async function GET(req: Request) {
   const groupMap = await fetchGroupMap(trackId);
 
   // Annotate cues with canonicalGroupKey when mapped (unmapped cues omit the field)
+  const PARA_BREAK = "__PARA_BREAK__";
+
   const cuesWithGroups: LyricCue[] = cues.map((c) => {
+    if (c.text === PARA_BREAK) return c; // never group-map paragraph breaks
     const hit = groupMap[c.lineKey];
     return hit ? { ...c, canonicalGroupKey: hit.canonicalGroupKey } : c;
   });

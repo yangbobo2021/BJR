@@ -77,17 +77,29 @@ export default defineType({
       validation: (r) =>
         r.custom((value: unknown) => {
           if (!Array.isArray(value) || value.length === 0) return true;
+
+          const PARA_BREAK = "__PARA_BREAK__";
+
           let prev = -1;
           for (const item of value) {
             if (!item || typeof item !== "object")
               return "Each cue must be an object.";
+
             const tMs = (item as Record<string, unknown>).tMs;
             const text = (item as Record<string, unknown>).text;
+
             if (typeof tMs !== "number" || !Number.isFinite(tMs))
               return "Each cue needs a numeric tMs.";
             if (tMs < 0) return "Cue tMs must be >= 0.";
-            if (typeof text !== "string" || text.trim().length === 0)
-              return "Each cue needs non-empty text.";
+
+            if (typeof text !== "string") return "Each cue needs text.";
+
+            const isBreak = text === PARA_BREAK;
+            const hasVisibleText = text.trim().length > 0;
+
+            if (!isBreak && !hasVisibleText)
+              return "Each cue needs non-empty text (or a paragraph break).";
+
             if (tMs < prev) return "Cues must be sorted by tMs ascending.";
             prev = tMs;
           }

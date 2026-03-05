@@ -34,6 +34,8 @@ function parseTimestampToMs(ts: string): number | null {
   return ms >= 0 ? ms : null;
 }
 
+const PARA_BREAK = "__PARA_BREAK__" as const;
+
 function parseLrc(text: string): { cues: ImportLyricCue[]; offsetMs?: number } {
   const lines = text.split(/\r?\n/);
   const cues: ImportLyricCue[] = [];
@@ -68,12 +70,17 @@ function parseLrc(text: string): { cues: ImportLyricCue[]; offsetMs?: number } {
     }
     if (times.length === 0) continue;
 
-    const textOnly = line.replace(timeTag, "").trim();
-    if (!textOnly) continue; // ignore blank lyric lines like "[00:35.583]"
+    const textOnlyRaw = line.replace(timeTag, "");
+    const textOnly = textOnlyRaw.trim();
+
+    // IMPORTANT:
+    // A timestamped blank line in LRC (e.g. "[00:35.583]") is meaningful for us:
+    // it represents a paragraph break. Preserve it as a sentinel cue.
+    const payloadText = textOnly ? textOnly : PARA_BREAK;
 
     for (const baseMs of times) {
       const tMs = baseMs + (globalOffsetMs ?? 0);
-      if (tMs >= 0) cues.push({ tMs, text: textOnly });
+      if (tMs >= 0) cues.push({ tMs, text: payloadText });
     }
   }
 

@@ -5,6 +5,7 @@ import React from "react";
 import { mediaSurface } from "../mediaSurface";
 import { useRouter } from "next/navigation";
 import type { LyricCue } from "@/lib/types";
+import { isParaBreakCue } from "@/app/home/player/lyrics/lyricBreaks";
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n));
@@ -415,6 +416,25 @@ export default function LyricsOverlay(props: {
           }}
         >
           {cues.map((cue, idx) => {
+            if (isParaBreakCue(cue)) {
+              // Paragraph break row: spacing only, no seek, no discourse affordance.
+              return (
+                <div
+                  key={`br-${cue.tMs}-${idx}`}
+                  aria-hidden="true"
+                  data-lyric-idx={idx}
+                  className="af-lyric-row"
+                  data-af-inline={isInline ? "1" : "0"}
+                  style={{
+                    width: "100%",
+                    minWidth: 0,
+                    display: "block",
+                    height: isInline ? 10 : 14,
+                  }}
+                />
+              );
+            }
+
             const isActive = idx === activeIdx;
 
             const textShadow = isInline
@@ -491,7 +511,8 @@ export default function LyricsOverlay(props: {
                     opacity: showDiscourse && trackId ? 1 : 0,
                     display: isInline ? "grid" : "none",
                     overflow: "visible",
-                    transition: "opacity 140ms ease, transform 160ms ease, filter 160ms ease",
+                    transition:
+                      "opacity 140ms ease, transform 160ms ease, filter 160ms ease",
                   }}
                 >
                   <svg
