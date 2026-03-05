@@ -305,10 +305,12 @@ export default function LyricsOverlay(props: {
   const sidePadPx = isInline ? 10 : 18;
   const lineMax = isInline ? "min(820px, 100%)" : "min(980px, 100%)";
 
-  const styleVars: React.CSSProperties &
-    Record<`--af-lyrics-${string}`, string> = {
+  const discourseYOffsetPx = isInline ? 3 : 0;
+
+  const styleVars: React.CSSProperties & Record<`--af-${string}`, string> = {
     "--af-lyrics-side-pad": `${sidePadPx}px`,
     "--af-lyrics-line-max": lineMax,
+    "--af-discourse-y": `${discourseYOffsetPx}px`,
 
     "--af-lyrics-reserved-bottom": `${Math.max(0, Math.floor(reservedBottomPx))}px`,
     "--af-lyrics-fade-top": `${fadeTopPx}px`,
@@ -515,7 +517,7 @@ export default function LyricsOverlay(props: {
                     // Negative margin “eats” into the side padding a bit.
                     marginRight: isInline ? -10 : 0,
 
-                    transform: `translateY(3px) ${showDiscourse ? "scale(1)" : "scale(0.98)"}`,
+                    transform: `${showDiscourse ? "scale(1)" : "scale(0.98)"}`,
                     width: iconSize,
                     height: iconSize,
                     borderRadius: 0,
@@ -732,17 +734,17 @@ export default function LyricsOverlay(props: {
                     /* Inline-only: reveal discourse affordance on hover even if React hover state misses. */
           .af-lyric-row[data-af-inline="1"][data-af-has-track="1"]:hover .af-discourse-btn {
   opacity: 1 !important;
-  transform: translateY(-50%) scale(1) !important;
+  transform: translateY(var(--af-discourse-y, 0px)) scale(1) !important;
 }
 
 .af-discourse-btn:hover {
-  transform: translateY(-50%) scale(1.12) !important;
+  transform: translateY(var(--af-discourse-y, 0px)) scale(1.12) !important;
   filter: brightness(1.15);
 }
 
 /* Subtle radial glow behind discourse icon */
 .af-discourse-btn {
-  position: absolute; /* already true, but ensures pseudo works */
+  position: relative; /* keep pseudo positioning context without breaking grid layout */
 }
 
 .af-discourse-btn::before {
@@ -771,9 +773,9 @@ export default function LyricsOverlay(props: {
 
           /* Touch reveal path: when we set revealIdx, make sure it shows regardless of hover. */
           .af-lyric-row[data-af-inline="1"][data-af-has-track="1"][data-af-reveal="1"] .af-discourse-btn {
-            opacity: 1 !important;
-            transform: translateY(-50%) scale(1) !important;
-          }
+  opacity: 1 !important;
+  transform: translateY(var(--af-discourse-y, 0px)) scale(1) !important;
+}
         `}</style>
       </div>
     </div>
