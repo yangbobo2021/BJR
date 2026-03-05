@@ -279,7 +279,7 @@ export default function LyricsOverlay(props: {
 
   // Typography
   const lineFontSize = isInline
-    ? "clamp(12px, 1.15vw, 14px)"
+    ? "clamp(11px, 1.15vw, 13px)"
     : "clamp(18px, 2.2vw, 26px)";
 
   // Padding: keep breathing room so lines “emerge” into focus.
@@ -303,7 +303,7 @@ export default function LyricsOverlay(props: {
   // - sidePad: reduce padding to increase usable line width (fewer wraps)
   // - lineMax: a centered column so text stays centered even with a right-side icon
   const sidePadPx = isInline ? 10 : 18;
-  const lineMax = isInline ? "min(860px, 100%)" : "min(980px, 100%)";
+  const lineMax = isInline ? "min(840px, 100%)" : "min(980px, 100%)";
 
   const styleVars: React.CSSProperties &
     Record<`--af-lyrics-${string}`, string> = {
@@ -513,7 +513,7 @@ export default function LyricsOverlay(props: {
 
                     // Nudge it further toward the scroller edge (without changing lyric centering).
                     // Negative margin “eats” into the side padding a bit.
-                    marginRight: isInline ? -8 : 0,
+                    marginRight: isInline ? -10 : 0,
 
                     transform: `${showDiscourse ? "scale(1)" : "scale(0.98)"}`,
                     width: iconSize,
