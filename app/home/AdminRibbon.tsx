@@ -10,14 +10,15 @@ const ENABLED = process.env.NEXT_PUBLIC_ADMIN_DEBUG === "1";
 function ChevronIcon(props: { collapsed: boolean }) {
   return (
     <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
       aria-hidden="true"
       style={{
         display: "block",
         transform: props.collapsed ? "rotate(180deg)" : "rotate(0deg)",
         transition: "transform 160ms ease",
+        overflow: "visible",
       }}
     >
       <defs>
@@ -32,12 +33,26 @@ function ChevronIcon(props: { collapsed: boolean }) {
           <stop offset="48%" stopColor="rgba(255, 215, 130, 0.96)" />
           <stop offset="100%" stopColor="rgba(255, 244, 210, 0.88)" />
         </linearGradient>
+        <linearGradient id="admin-ribbon-tab-gold" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="rgba(255, 223, 150, 0.90)" />
+          <stop offset="60%" stopColor="rgba(255, 215, 130, 0.72)" />
+          <stop offset="100%" stopColor="rgba(255, 244, 210, 0.42)" />
+        </linearGradient>
       </defs>
+
+      {props.collapsed ? (
+        <path
+          d="M4.4 6.2 L9 11.6 L13.6 6.2 Z"
+          fill="url(#admin-ribbon-tab-gold)"
+          opacity="0.95"
+        />
+      ) : null}
+
       <path
-        d="M3.25 9.75 8 5.25l4.75 4.5"
+        d="M4.1 10.6 9 5.8l4.9 4.8"
         fill="none"
         stroke="url(#admin-ribbon-chevron-gold)"
-        strokeWidth="1.9"
+        strokeWidth="2.1"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -117,9 +132,8 @@ export default function AdminRibbon(props: { isAdmin: boolean }) {
               borderTop: "none",
               borderBottom: "1px solid rgba(255,255,255,0.08)",
               display: "grid",
-              gridTemplateColumns: collapsed ? "1fr" : "28px minmax(0, 1fr)",
+              gridTemplateColumns: "1fr",
               alignItems: "center",
-              columnGap: 12,
               padding: collapsed ? "0 14px" : "9px 14px",
               background: `
                 radial-gradient(circle at 12% 0%, rgba(255,223,160,0.12), transparent 24%),
@@ -140,26 +154,24 @@ export default function AdminRibbon(props: { isAdmin: boolean }) {
               title={collapsed ? "Expand" : "Collapse"}
               onClick={() => setCollapsed((v) => !v)}
               style={{
-                width: 28,
-                height: 28,
+                width: 30,
+                height: 30,
                 padding: 0,
                 margin: 0,
                 border: "none",
                 outline: "none",
                 background: "transparent",
-                color: "rgba(255,235,190,0.96)",
+                color: "rgba(255,235,190,0.98)",
                 cursor: "pointer",
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
                 lineHeight: 0,
-                opacity: collapsed ? 1 : 0.96,
-                justifySelf: "start",
-                alignSelf: "center",
-                position: collapsed ? "absolute" : "relative",
-                left: 14,
+                opacity: 1,
+                position: "absolute",
+                left: 13,
                 top: collapsed ? "100%" : "50%",
-                transform: collapsed ? "translateY(-6px)" : "translateY(-50%)",
+                transform: collapsed ? "translateY(-10px)" : "translateY(-50%)",
                 zIndex: 3,
                 pointerEvents: "auto",
               }}
@@ -175,6 +187,7 @@ export default function AdminRibbon(props: { isAdmin: boolean }) {
                 alignItems: "center",
                 justifyContent: "flex-end",
                 minWidth: 0,
+                paddingLeft: 40,
                 opacity: collapsed ? 0 : 1,
                 pointerEvents: collapsed ? "none" : "auto",
                 transition: "opacity 120ms ease",
