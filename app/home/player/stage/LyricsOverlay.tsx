@@ -603,6 +603,8 @@ export default function LyricsOverlay(props: {
                     background: "transparent",
                     padding: 0,
                     width: isInline ? `calc(100% - ${iconGutter}px)` : "100%",
+                    marginLeft: isInline ? iconGutter / 2 : 0,
+                    marginRight: isInline ? -(iconGutter / 2) : 0,
                     minWidth: 0,
                     display: "grid",
                     justifyItems: "center",

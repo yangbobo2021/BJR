@@ -429,7 +429,7 @@ function TypeBadge(props: { t?: PostType | null }) {
         padding: "0 8px",
         borderRadius: 5,
         border: "none",
-        background: "rgba(225, 192, 253, 0.16)",
+        background: "rgba(225, 192, 253, 0.3)",
         color: "rgba(0,0,0,0.92)",
         fontSize: 10,
         fontWeight: 750,
