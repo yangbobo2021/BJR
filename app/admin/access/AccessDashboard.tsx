@@ -8,6 +8,7 @@ import { sql } from "@vercel/postgres";
 import { ENTITLEMENTS } from "@/lib/vocab";
 import { checkAccess } from "@/lib/access";
 import { listAlbumsForBrowse } from "@/lib/albums";
+import AdminPageFrame from "../AdminPageFrame";
 
 // Reuse existing panels (leave them where they are for now)
 import AdminMintShareTokenForm from "../share-tokens/AdminMintShareTokenForm";
@@ -72,36 +73,22 @@ export default async function AccessDashboard(props: {
 
   const albums = await listAlbumsForBrowse();
 
-  const shellStyle: React.CSSProperties = embed
-    ? { padding: 0, margin: 0 }
-    : { padding: 24, maxWidth: 980 };
-
   return (
-    <div style={shellStyle}>
-      <div style={{ padding: embed ? 16 : 0 }}>
-        <h1 style={{ fontSize: 22, margin: "0 0 10px" }}>
-          {tab === "entitlements" ? "Member access" : "Share tokens"}
-        </h1>
-      </div>
-
-      <div style={{ padding: embed ? 16 : 0, paddingTop: 0 }}>
-        {tab === "entitlements" ? (
-          <AdminEntitlementsPanel albums={albums} />
-        ) : (
-          <>
-            <h2 style={{ fontSize: 16, margin: "0 0 10px" }}>
-              Mint share / press tokens
-            </h2>
-            <AdminMintShareTokenForm albums={albums} />
-          </>
-        )}
-      </div>
-
-      {embed ? (
-        <style>{`
-          html, body { background: transparent !important; }
-        `}</style>
-      ) : null}
-    </div>
+    <AdminPageFrame
+      embed={embed}
+      maxWidth={980}
+      title={tab === "entitlements" ? "Member access" : "Share tokens"}
+      subtitle={
+        tab === "entitlements"
+          ? "Search members, inspect derived access, and grant or revoke entitlements."
+          : "Mint scoped share tokens for albums and generate ready-to-send deep links."
+      }
+    >
+      {tab === "entitlements" ? (
+        <AdminEntitlementsPanel albums={albums} />
+      ) : (
+        <AdminMintShareTokenForm albums={albums} />
+      )}
+    </AdminPageFrame>
   );
 }

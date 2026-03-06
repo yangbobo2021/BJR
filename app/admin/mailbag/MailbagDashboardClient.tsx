@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import AdminPageFrame from "../AdminPageFrame";
 
 type Status = "open" | "answered" | "discarded";
 type Visibility = "public" | "friend" | "patron" | "partner";
@@ -232,54 +233,45 @@ export default function MailbagDashboardClient(props: { embed?: boolean }) {
 
   const canAnswer = status === "open" && selectedCount > 0;
 
+  const statusActions = (
+    <>
+      {(["open", "answered", "discarded"] as Status[]).map((s) => (
+        <button
+          key={s}
+          type="button"
+          onClick={() => setStatus(s)}
+          style={{
+            height: 32,
+            padding: "0 12px",
+            borderRadius: 999,
+            border: "1px solid rgba(255,255,255,0.14)",
+            background:
+              status === s
+                ? "rgba(255,255,255,0.10)"
+                : "rgba(255,255,255,0.04)",
+            color: "rgba(255,255,255,0.92)",
+            cursor: "pointer",
+            fontSize: 12,
+            fontWeight: 700,
+            opacity: status === s ? 1 : 0.82,
+          }}
+        >
+          {s}
+        </button>
+      ))}
+    </>
+  );
+
   return (
-    <div
-      style={{
-        padding: embed ? 12 : 18,
-        maxWidth: embed ? undefined : 1050,
-      }}
+    <AdminPageFrame
+      embed={embed}
+      maxWidth={1050}
+      title="Mailbag"
+      subtitle="Review incoming questions, manage selection, and publish a Q&A post from chosen submissions."
+      headerActions={statusActions}
     >
       <div
         style={{
-          display: "flex",
-          alignItems: "baseline",
-          justifyContent: "space-between",
-          gap: 12,
-        }}
-      >
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 800 }}>Mailbag</div>
-          <div style={{ marginTop: 6, fontSize: 12, opacity: 0.7 }}>
-            Review questions. Publish a Q&A post from selected items.
-          </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {(["open", "answered", "discarded"] as Status[]).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setStatus(s)}
-              style={{
-                height: 32,
-                padding: "0 12px",
-                borderRadius: 999,
-                border: "1px solid rgba(0,0,0,0.10)",
-                background: status === s ? "rgba(0,0,0,0.06)" : "transparent",
-                cursor: "pointer",
-                fontSize: 12,
-                fontWeight: 700,
-              }}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div
-        style={{
-          marginTop: 14,
           display: "flex",
           gap: 10,
           alignItems: "center",
@@ -294,8 +286,9 @@ export default function MailbagDashboardClient(props: { embed?: boolean }) {
             height: 30,
             padding: "0 10px",
             borderRadius: 10,
-            border: "1px solid rgba(0,0,0,0.10)",
-            background: "transparent",
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(255,255,255,0.04)",
+            color: "rgba(255,255,255,0.92)",
             cursor: "pointer",
             fontSize: 12,
           }}
@@ -311,8 +304,9 @@ export default function MailbagDashboardClient(props: { embed?: boolean }) {
             height: 30,
             padding: "0 10px",
             borderRadius: 10,
-            border: "1px solid rgba(0,0,0,0.10)",
-            background: "transparent",
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(255,255,255,0.04)",
+            color: "rgba(255,255,255,0.92)",
             cursor: "pointer",
             fontSize: 12,
             opacity: selectedCount ? 1 : 0.5,
@@ -335,8 +329,9 @@ export default function MailbagDashboardClient(props: { embed?: boolean }) {
                 height: 30,
                 padding: "0 12px",
                 borderRadius: 10,
-                border: "1px solid rgba(160,0,0,0.18)",
-                background: "rgba(160,0,0,0.06)",
+                border: "1px solid rgba(255,120,120,0.22)",
+                background: "rgba(120,0,0,0.16)",
+                color: "rgba(255,255,255,0.92)",
                 cursor: selectedCount ? "pointer" : "default",
                 fontSize: 12,
                 fontWeight: 800,
@@ -396,10 +391,10 @@ export default function MailbagDashboardClient(props: { embed?: boolean }) {
         <div
           style={{
             marginTop: 14,
-            border: "1px solid rgba(0,0,0,0.10)",
+            border: "1px solid rgba(255,255,255,0.12)",
             borderRadius: 14,
-            padding: 12,
-            background: "rgba(0,0,0,0.02)",
+            padding: 14,
+            background: "rgba(255,255,255,0.04)",
           }}
         >
           <div
@@ -428,9 +423,11 @@ export default function MailbagDashboardClient(props: { embed?: boolean }) {
               style={{
                 marginTop: 6,
                 width: "100%",
-                height: 34,
+                height: 36,
                 borderRadius: 10,
-                border: "1px solid rgba(0,0,0,0.12)",
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.92)",
                 padding: "0 10px",
                 fontSize: 13,
               }}
@@ -457,7 +454,9 @@ export default function MailbagDashboardClient(props: { embed?: boolean }) {
               style={{
                 height: 32,
                 borderRadius: 10,
-                border: "1px solid rgba(0,0,0,0.12)",
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.92)",
                 padding: "0 8px",
                 fontSize: 12,
               }}
@@ -499,7 +498,9 @@ export default function MailbagDashboardClient(props: { embed?: boolean }) {
                 width: "100%",
                 minHeight: 160,
                 borderRadius: 10,
-                border: "1px solid rgba(0,0,0,0.12)",
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.92)",
                 padding: "10px 10px",
                 fontSize: 13,
                 lineHeight: 1.6,
@@ -525,8 +526,9 @@ export default function MailbagDashboardClient(props: { embed?: boolean }) {
                 height: 32,
                 padding: "0 12px",
                 borderRadius: 10,
-                border: "1px solid rgba(0,0,0,0.12)",
-                background: "rgba(0,0,0,0.06)",
+                border: "1px solid rgba(255,255,255,0.16)",
+                background: "rgba(255,255,255,0.12)",
+                color: "rgba(255,255,255,0.94)",
                 cursor: "pointer",
                 fontSize: 12,
                 fontWeight: 900,
@@ -546,13 +548,14 @@ export default function MailbagDashboardClient(props: { embed?: boolean }) {
       <div
         style={{
           marginTop: 14,
-          border: "1px solid rgba(0,0,0,0.10)",
+          border: "1px solid rgba(255,255,255,0.12)",
           borderRadius: 14,
           overflow: "hidden",
+          background: "rgba(255,255,255,0.03)",
         }}
       >
         {items.length === 0 && !loading ? (
-          <div style={{ padding: 14, fontSize: 12, opacity: 0.75 }}>
+          <div style={{ padding: 14, fontSize: 12, opacity: 0.72 }}>
             No items.
           </div>
         ) : null}
@@ -567,8 +570,8 @@ export default function MailbagDashboardClient(props: { embed?: boolean }) {
                 gridTemplateColumns: "28px 1fr",
                 gap: 10,
                 padding: 12,
-                borderTop: "1px solid rgba(0,0,0,0.08)",
-                background: on ? "rgba(0,0,0,0.03)" : "transparent",
+                borderTop: "1px solid rgba(255,255,255,0.08)",
+                background: on ? "rgba(255,255,255,0.06)" : "transparent",
               }}
             >
               <input
@@ -622,7 +625,7 @@ export default function MailbagDashboardClient(props: { embed?: boolean }) {
         })}
 
         {loading ? (
-          <div style={{ padding: 12, fontSize: 12, opacity: 0.7 }}>
+          <div style={{ padding: 12, fontSize: 12, opacity: 0.72 }}>
             Loading…
           </div>
         ) : null}
@@ -638,8 +641,9 @@ export default function MailbagDashboardClient(props: { embed?: boolean }) {
             height: 32,
             padding: "0 12px",
             borderRadius: 12,
-            border: "1px solid rgba(0,0,0,0.10)",
-            background: "transparent",
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(255,255,255,0.04)",
+            color: "rgba(255,255,255,0.92)",
             cursor: "pointer",
             fontSize: 12,
             fontWeight: 800,
@@ -648,6 +652,6 @@ export default function MailbagDashboardClient(props: { embed?: boolean }) {
           Load more
         </button>
       ) : null}
-    </div>
+    </AdminPageFrame>
   );
 }
