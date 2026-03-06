@@ -20,11 +20,24 @@ function ChevronIcon(props: { collapsed: boolean }) {
         transition: "transform 160ms ease",
       }}
     >
+      <defs>
+        <linearGradient
+          id="admin-ribbon-chevron-gold"
+          x1="0"
+          y1="0"
+          x2="1"
+          y2="1"
+        >
+          <stop offset="0%" stopColor="rgba(255, 234, 170, 0.98)" />
+          <stop offset="48%" stopColor="rgba(255, 215, 130, 0.96)" />
+          <stop offset="100%" stopColor="rgba(255, 244, 210, 0.88)" />
+        </linearGradient>
+      </defs>
       <path
         d="M3.25 9.75 8 5.25l4.75 4.5"
         fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
+        stroke="url(#admin-ribbon-chevron-gold)"
+        strokeWidth="1.9"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -57,7 +70,8 @@ export default function AdminRibbon(props: { isAdmin: boolean }) {
     cursor: "pointer",
     whiteSpace: "nowrap",
     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
-    transition: "background 140ms ease, opacity 140ms ease, transform 140ms ease",
+    transition:
+      "background 140ms ease, opacity 140ms ease, transform 140ms ease",
   };
 
   const modal = (
@@ -103,7 +117,7 @@ export default function AdminRibbon(props: { isAdmin: boolean }) {
               borderTop: "none",
               borderBottom: "1px solid rgba(255,255,255,0.08)",
               display: "grid",
-              gridTemplateColumns: "28px minmax(0, 1fr)",
+              gridTemplateColumns: collapsed ? "1fr" : "28px minmax(0, 1fr)",
               alignItems: "center",
               columnGap: 12,
               padding: collapsed ? "0 14px" : "9px 14px",
@@ -112,13 +126,17 @@ export default function AdminRibbon(props: { isAdmin: boolean }) {
                 linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015)),
                 rgba(10,10,14,0.92)
               `,
-              overflow: "hidden",
-              transition: "height 160ms ease, padding 160ms ease, background 160ms ease",
+              overflow: collapsed ? "visible" : "hidden",
+              position: "relative",
+              transition:
+                "height 160ms ease, padding 160ms ease, background 160ms ease",
             }}
           >
             <button
               type="button"
-              aria-label={collapsed ? "Expand admin ribbon" : "Collapse admin ribbon"}
+              aria-label={
+                collapsed ? "Expand admin ribbon" : "Collapse admin ribbon"
+              }
               title={collapsed ? "Expand" : "Collapse"}
               onClick={() => setCollapsed((v) => !v)}
               style={{
@@ -129,15 +147,21 @@ export default function AdminRibbon(props: { isAdmin: boolean }) {
                 border: "none",
                 outline: "none",
                 background: "transparent",
-                color: "rgba(255,255,255,0.92)",
+                color: "rgba(255,235,190,0.96)",
                 cursor: "pointer",
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
+                lineHeight: 0,
+                opacity: collapsed ? 1 : 0.96,
                 justifySelf: "start",
                 alignSelf: "center",
-                lineHeight: 0,
-                opacity: collapsed ? 0.82 : 0.94,
+                position: collapsed ? "absolute" : "relative",
+                left: 14,
+                top: collapsed ? "100%" : "50%",
+                transform: collapsed ? "translateY(-6px)" : "translateY(-50%)",
+                zIndex: 3,
+                pointerEvents: "auto",
               }}
             >
               <ChevronIcon collapsed={collapsed} />
@@ -154,6 +178,7 @@ export default function AdminRibbon(props: { isAdmin: boolean }) {
                 opacity: collapsed ? 0 : 1,
                 pointerEvents: collapsed ? "none" : "auto",
                 transition: "opacity 120ms ease",
+                visibility: collapsed ? "hidden" : "visible",
               }}
             >
               <button
