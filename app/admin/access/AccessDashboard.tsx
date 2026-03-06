@@ -79,7 +79,9 @@ export default async function AccessDashboard(props: {
   return (
     <div style={shellStyle}>
       <div style={{ padding: embed ? 16 : 0 }}>
-        <h1 style={{ fontSize: 22, margin: "0 0 10px" }}>Access dashboard</h1>
+        <h1 style={{ fontSize: 22, margin: "0 0 10px" }}>
+          {tab === "entitlements" ? "Member access" : "Share tokens"}
+        </h1>
       </div>
 
       <div style={{ padding: embed ? 16 : 0, paddingTop: 0 }}>
