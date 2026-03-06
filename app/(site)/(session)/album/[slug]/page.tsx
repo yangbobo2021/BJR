@@ -36,7 +36,7 @@ export async function generateMetadata(props: {
   const display =
     normTitle(doc?.displayTitle) || normTitle(doc?.title) || decodedSlug;
 
-  const canonicalPath = `/album/${encodeURIComponent(decodedSlug)}`;
+  const canonicalPath = `/${encodeURIComponent(decodedSlug)}`;
   const canonical = appUrl ? `${appUrl}${canonicalPath}` : canonicalPath;
 
   return {

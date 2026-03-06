@@ -445,12 +445,44 @@ function parsePublicAlbumPath(pathname: string | null): {
   displayId: string | null;
 } {
   const p = (pathname ?? "").trim();
-  // /album/:slug
-  // /album/:slug/track/:displayId
-  const m = p.match(/^\/album\/([^\/?#]+)(?:\/track\/([^\/?#]+))?\/?$/i);
-  if (!m) return { albumSlug: null, displayId: null };
-  const albumSlug = decodeURIComponent(m[1] ?? "").trim() || null;
-  const displayId = decodeURIComponent(m[2] ?? "").trim() || null;
+
+  // canonical music surfaces:
+  // /:slug
+  // /:slug/:displayId
+  //
+  // exclude obvious non-music reserved roots
+  const reserved = new Set([
+    "",
+    "player",
+    "journal",
+    "portal",
+    "posts",
+    "extras",
+    "download",
+    "gift",
+    "unsubscribe",
+    "studio",
+    "admin",
+    "api",
+  ]);
+
+  const parts = p
+    .split("?")[0]
+    .split("#")[0]
+    .split("/")
+    .filter(Boolean)
+    .map((x) => decodeURIComponent(x).trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) return { albumSlug: null, displayId: null };
+  if (parts.length > 2) return { albumSlug: null, displayId: null };
+
+  const albumSlug = parts[0] ?? null;
+  if (!albumSlug || reserved.has(albumSlug)) {
+    return { albumSlug: null, displayId: null };
+  }
+
+  const displayId = parts[1] ?? null;
   return { albumSlug, displayId };
 }
 
@@ -541,9 +573,9 @@ export default function FullPlayer(props: {
       if (!isPublicAlbumRoute) return;
 
       const qs = canonicalCarryQuery();
-      const base = `/album/${encodeURIComponent(effAlbumSlug)}`;
+      const base = `/${encodeURIComponent(effAlbumSlug)}`;
       const href = displayId
-        ? `${base}/track/${encodeURIComponent(displayId)}${qs}`
+        ? `${base}/${encodeURIComponent(displayId)}${qs}`
         : `${base}${qs}`;
 
       if (mode === "replace") router.replace(href, { scroll: false });
@@ -590,7 +622,8 @@ export default function FullPlayer(props: {
 
     const cur = p.current;
     const curInThisAlbum = Boolean(
-      cur?.recordingId && effTracks.some((t) => t.recordingId === cur.recordingId),
+      cur?.recordingId &&
+      effTracks.some((t) => t.recordingId === cur.recordingId),
     );
     const trackTitle = curInThisAlbum
       ? cur?.title?.trim() || cur?.recordingId || ""
@@ -682,7 +715,9 @@ export default function FullPlayer(props: {
         if (!next.allowed) {
           const cur = player.current;
           const set = effRecordingIdSetRef.current;
-          const curInThisAlbum = Boolean(cur?.recordingId && set.has(cur.recordingId));
+          const curInThisAlbum = Boolean(
+            cur?.recordingId && set.has(cur.recordingId),
+          );
 
           const queueIsThisAlbum = Boolean(
             albumKey && player.queueContextId === albumKey,
@@ -833,7 +868,8 @@ export default function FullPlayer(props: {
     window.dispatchEvent(new Event("af:play-intent"));
   };
 
-  const getDurMs = (t: PlayerTrack) => p.durationByRecordingId?.[t.recordingId] ?? t.durationMs;
+  const getDurMs = (t: PlayerTrack) =>
+    p.durationByRecordingId?.[t.recordingId] ?? t.durationMs;
   const renderDur = (t: PlayerTrack) => {
     const ms = getDurMs(t) ?? 0;
     return ms > 0 ? fmtTime(ms) : "—";
@@ -846,9 +882,9 @@ export default function FullPlayer(props: {
     albumId: albumKey ?? undefined,
   });
 
-  const [selectedRecordingId, setSelectedRecordingId] = React.useState<string | null>(
-    null,
-  );
+  const [selectedRecordingId, setSelectedRecordingId] = React.useState<
+    string | null
+  >(null);
 
   const isCoarsePointer = (() => {
     if (typeof window === "undefined") return false;
@@ -863,7 +899,9 @@ export default function FullPlayer(props: {
   // Only operate within effTracks. Never call p.prev()/p.next() here.
 
   const curId = p.current?.recordingId ?? "";
-  const albumIdx = curId ? effTracks.findIndex((t) => t.recordingId === curId) : -1;
+  const albumIdx = curId
+    ? effTracks.findIndex((t) => t.recordingId === curId)
+    : -1;
   const albumHasCurrent = albumIdx >= 0;
 
   const albumAtStart = albumHasCurrent ? albumIdx === 0 : true;

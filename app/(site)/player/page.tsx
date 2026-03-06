@@ -54,8 +54,8 @@ export default async function PlayerAlias(props: {
   const featured = await getFeaturedAlbumSlugFromSanity();
   const slug = featured.slug ?? featured.fallbackSlug ?? "god-defend";
   redirect(
-    `/album/${encodeURIComponent(slug)}${preservedQueryFromSearchParams(sp)}`,
+    `/${encodeURIComponent(slug)}${preservedQueryFromSearchParams(sp)}`,
   );
 
-  redirect(`/album/${encodeURIComponent(slug)}${preservedQuery(sp)}`);
+  redirect(`/${encodeURIComponent(slug)}${preservedQuery(sp)}`);
 }

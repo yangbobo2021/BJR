@@ -294,7 +294,7 @@ export default function PortalArea(props: {
 
   const pathTab = portalTabFromPathname(pathname);
 
-  // ✅ Player surface is any /album/:slug(/track/:id) route.
+  // ✅ Player surface is any /:slug/:id) route.
   // Portal surface is /{tab}.
   const isPlayer = isPublicAlbumRoute;
   const portalTabId = !isPlayer ? pathTab : null;
@@ -359,7 +359,7 @@ export default function PortalArea(props: {
     }
 
     const base = opts.toPlayer
-      ? `/album/${encodeURIComponent(opts.albumSlugForPlayer)}`
+      ? `/${encodeURIComponent(opts.albumSlugForPlayer)}`
       : `/${encodeURIComponent(opts.tab ?? DEFAULT_PORTAL_TAB)}`;
 
     const q = next.toString();
@@ -588,7 +588,7 @@ export default function PortalArea(props: {
       }
 
       const q = out.toString();
-      router.push(`/album/${encodeURIComponent(slug)}${q ? `?${q}` : ""}`, {
+      router.push(`/${encodeURIComponent(slug)}${q ? `?${q}` : ""}`, {
         scroll: false,
       });
     },

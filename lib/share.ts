@@ -144,7 +144,7 @@ export function buildShareTarget(
         : "Album";
 
   // ✅ canonical album base path
-  const basePath = `/album/${encodePathSeg(input.album.slug)}`;
+  const basePath = `/${encodePathSeg(input.album.slug)}`;
   const baseAbs = origin ? `${origin}${basePath}` : basePath;
 
   if (input.type === "album") {
@@ -173,7 +173,7 @@ export function buildShareTarget(
 
   // ✅ canonical track path (no query-based player state)
   const trackTitle = input.track.title?.trim() || "Track";
-  const trackPath = `/album/${encodePathSeg(input.album.slug)}/track/${encodePathSeg(
+  const trackPath = `/${encodePathSeg(input.album.slug)}/${encodePathSeg(
     input.track.displayId,
   )}`;
   const trackAbs = origin ? `${origin}${trackPath}` : trackPath;

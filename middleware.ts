@@ -26,11 +26,7 @@ function pickPreservedParams(url: URL): URLSearchParams {
   const out = new URLSearchParams();
 
   // unify share token into st
-  const st = (
-    url.searchParams.get("st") ??
-    url.searchParams.get("share") ??
-    ""
-  ).trim();
+  const st = (url.searchParams.get("st") ?? url.searchParams.get("share") ?? "").trim();
   if (st) out.set("st", st);
 
   // keep autoplay if present
@@ -55,10 +51,7 @@ function filteredCanonicalParams(url: URL): URLSearchParams {
   const out = new URLSearchParams();
   for (const [k, v] of url.searchParams.entries()) {
     if (STRIP_KEYS.has(k)) continue;
-    if (
-      PRESERVE_KEYS.has(k) ||
-      PRESERVE_PREFIXES.some((p) => k.startsWith(p))
-    ) {
+    if (PRESERVE_KEYS.has(k) || PRESERVE_PREFIXES.some((p) => k.startsWith(p))) {
       const vv = (v ?? "").trim();
       if (vv) out.set(k, vv);
     }
@@ -90,6 +83,39 @@ function redirect308(reqUrl: URL, pathname: string, qp: URLSearchParams) {
   return res;
 }
 
+function rewriteTo(reqUrl: URL, pathname: string) {
+  const dest = new URL(reqUrl.toString());
+  dest.pathname = pathname;
+  const res = NextResponse.rewrite(dest);
+  res.headers.set("x-af-mw-rewrite", `${reqUrl.pathname} -> ${dest.pathname}`);
+  return res;
+}
+
+// Roots that must never be interpreted as music slugs.
+const RESERVED_ROOTS = new Set<string>([
+  // system / infra
+  "api",
+  "admin",
+  "_next",
+  "trpc",
+  "studio",
+  "favicon.ico",
+  "robots.txt",
+  "sitemap.xml",
+
+  // your canonical surfaces / tabs
+  "portal",
+  "journal",
+  "player",
+  "download",
+  "gift",
+  "posts",   // legacy tab
+  "extras",  // legacy tab
+
+  // other known surfaces you use in-repo
+  "exegesis",
+]);
+
 export default clerkMiddleware((auth, req) => {
   // Force Clerk to initialize on every matched request
   auth();
@@ -116,18 +142,18 @@ export default clerkMiddleware((auth, req) => {
     );
   }
 
-  // ---- B) Hard upgrades: legacy /albums family -> canonical /album ----
+  // ---- B) Hard upgrades: legacy /albums family -> new canonical music URLs ----
   if (pathname.startsWith("/albums/")) {
     const parts = splitPath(pathname); // ["albums", ":slug", ...]
     const slug = (parts[1] ?? "").trim();
     if (slug) {
       const preserved = pickPreservedParams(url);
 
-      // /albums/:slug/track/:displayId
+      // /albums/:slug/track/:displayId  ->  /:slug/:displayId
       if ((parts[2] ?? "") === "track" && parts[3]) {
         return redirect308(
           url,
-          `/album/${encodeURIComponent(slug)}/track/${encodeURIComponent(parts[3])}`,
+          `/${encodeURIComponent(slug)}/${encodeURIComponent(parts[3])}`,
           preserved,
         );
       }
@@ -135,15 +161,16 @@ export default clerkMiddleware((auth, req) => {
       // /albums/:slug?track=...
       const trackQ = (url.searchParams.get("track") ?? "").trim();
       if (trackQ) {
+        // ✅ FIX: new canonical is /:slug/:displayId (no /track/)
         return redirect308(
           url,
-          `/album/${encodeURIComponent(slug)}/track/${encodeURIComponent(trackQ)}`,
+          `/${encodeURIComponent(slug)}/${encodeURIComponent(trackQ)}`,
           preserved,
         );
       }
 
-      // /albums/:slug
-      return redirect308(url, `/album/${encodeURIComponent(slug)}`, preserved);
+      // /albums/:slug -> /:slug
+      return redirect308(url, `/${encodeURIComponent(slug)}`, preserved);
     }
   }
 
@@ -157,11 +184,11 @@ export default clerkMiddleware((auth, req) => {
 
     const preserved = pickPreservedParams(url);
 
-    // /home?p=player&album=:slug&track=:id -> /album/:slug/track/:id
+    // /home?p=player&album=:slug&track=:id -> /:slug/:id
     if (p === "player" && album) {
       const target = track
-        ? `/album/${encodeURIComponent(album)}/track/${encodeURIComponent(track)}`
-        : `/album/${encodeURIComponent(album)}`;
+        ? `/${encodeURIComponent(album)}/${encodeURIComponent(track)}`
+        : `/${encodeURIComponent(album)}`;
       return redirect308(url, target, preserved);
     }
 
@@ -197,6 +224,29 @@ export default clerkMiddleware((auth, req) => {
       const current = new URLSearchParams(url.searchParams.toString());
       if (!sameParams(filtered, current)) {
         return redirect308(url, pathname, filtered);
+      }
+    }
+  }
+
+  // ---- E) New canonical music URLs: rewrite /:slug(/:displayId) -> existing page tree ----
+  // NOTE: rewrite (not redirect) so the browser URL stays clean.
+  {
+    const parts = splitPath(pathname);
+
+    // only root-level 1 or 2 segment paths qualify
+    if (parts.length === 1 || parts.length === 2) {
+      const first = (parts[0] ?? "").trim().toLowerCase();
+      if (first && !RESERVED_ROOTS.has(first)) {
+        // Keep segments exactly as encoded in the incoming URL.
+        const slugSeg = parts[0];
+        if (parts.length === 1) {
+          // /:slug -> /album/:slug
+          return rewriteTo(url, `/album/${slugSeg}`);
+        } else {
+          const displaySeg = parts[1];
+          // /:slug/:displayId -> /album/:slug/track/:displayId
+          return rewriteTo(url, `/album/${slugSeg}/track/${displaySeg}`);
+        }
       }
     }
   }

@@ -19,21 +19,42 @@ function splitPath(pathname: string): string[] {
 // Keep this conservative: only allow your canonical surfaces.
 function isAllowedPath(pathname: string): boolean {
   if (pathname === "/" || pathname === "/player") return true;
-  // Accept both new canonical paths and legacy ones (so old links/bookmarks don't break auth flows).
+
   if (
     pathname === "/journal" ||
     pathname === "/portal" ||
     pathname === "/posts" || // legacy
     pathname === "/extras" || // legacy
-    pathname === "/download"
-  )
-    return true; // extend to your real tab ids
-  if (pathname.startsWith("/album/")) return true;
-  // allow generic tab root-level pages: "/<tab>"
+    pathname === "/download" ||
+    pathname === "/gift" ||
+    pathname === "/unsubscribe"
+  ) {
+    return true;
+  }
+
   const parts = splitPath(pathname);
-  if (parts.length === 1) return true;
-  // allow "/album/:slug/track/:id"
-  if (parts[0] === "album" && parts[2] === "track" && parts[3]) return true;
+
+  // allow generic single-segment root pages, but exclude known reserved/system roots
+  const reserved = new Set([
+    "player",
+    "journal",
+    "portal",
+    "posts",
+    "extras",
+    "download",
+    "gift",
+    "unsubscribe",
+    "studio",
+    "admin",
+    "api",
+  ]);
+
+  // allow "/:slug"
+  if (parts.length === 1 && !reserved.has(parts[0])) return true;
+
+  // allow "/:slug/:displayId"
+  if (parts.length === 2 && !reserved.has(parts[0])) return true;
+
   return false;
 }
 

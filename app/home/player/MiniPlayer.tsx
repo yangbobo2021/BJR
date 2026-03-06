@@ -358,14 +358,14 @@ export default function MiniPlayer(props: {
 
     if (slug && tid) {
       router.push(
-        `/album/${encodeURIComponent(slug)}/track/${encodeURIComponent(tid)}${qs}`,
+        `/${encodeURIComponent(slug)}/${encodeURIComponent(tid)}${qs}`,
         { scroll: false },
       );
     } else if (slug) {
-      router.push(`/album/${encodeURIComponent(slug)}${qs}`, { scroll: false });
+      router.push(`/${encodeURIComponent(slug)}${qs}`, { scroll: false });
     } else {
       // Fallback: go to featured album directly (no more /player alias hop)
-      router.push(`/album${qs}`, { scroll: false });
+      router.push(`${qs}`, { scroll: false });
     }
 
     onExpand?.();

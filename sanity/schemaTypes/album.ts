@@ -261,7 +261,7 @@ export default defineType({
               title: "Display ID",
               type: "string",
               description:
-                "Per-album unique URL identifier for this track. Used in /album/:slug/track/:displayId.",
+                "Per-album unique URL identifier for this track. Used in /:slug/:displayId.",
               validation: (r) =>
                 r
                   .required()
