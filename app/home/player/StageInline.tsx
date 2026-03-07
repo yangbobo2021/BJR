@@ -5,6 +5,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { usePlayer } from "./PlayerState";
 import StageCore from "./StageCore";
+import StageTransportBar from "./StageTransportBar";
 import StageNowPlayingBadge from "./stage/StageNowPlayingBadge";
 import { ensureLyricsForTrack } from "./lyrics/ensureLyricsForTrack";
 
@@ -323,6 +324,8 @@ export default function StageInline(props: { height?: number }) {
                   <IconClose />
                 </RoundIconButton>
               </div>
+
+              <StageTransportBar />
             </div>
           </div>,
           document.body,

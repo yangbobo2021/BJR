@@ -4,7 +4,6 @@
 import React from "react";
 import FullPlayer from "./FullPlayer";
 import type { AlbumPlayerBundle, AlbumNavItem, Tier } from "@/lib/types";
-import StageOverlay from "./stage/StageOverlay";
 
 export default function PlayerController(props: {
   openPlayerPanel: () => void;
@@ -22,20 +21,13 @@ export default function PlayerController(props: {
     viewerTier = "none",
   } = props;
 
-  const [stageOpen, setStageOpen] = React.useState(false);
-  const closeStage = React.useCallback(() => setStageOpen(false), []);
-
   return (
-    <>
-      <FullPlayer
-        bundle={bundle}
-        albums={albums}
-        onSelectAlbum={onSelectAlbum}
-        isBrowsingAlbum={isBrowsingAlbum}
-        viewerTier={viewerTier}
-      />
-
-      <StageOverlay open={stageOpen} onClose={closeStage} />
-    </>
+    <FullPlayer
+      bundle={bundle}
+      albums={albums}
+      onSelectAlbum={onSelectAlbum}
+      isBrowsingAlbum={isBrowsingAlbum}
+      viewerTier={viewerTier}
+    />
   );
 }

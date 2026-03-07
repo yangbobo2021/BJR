@@ -6,9 +6,7 @@ import { usePlayer } from "./PlayerState";
 import VisualizerCanvas from "./VisualizerCanvas";
 import LyricsOverlay from "./stage/LyricsOverlay";
 import type { LyricCue } from "@/lib/types";
-import StageTransportBar, {
-  STAGE_TRANSPORT_FOOTER_PX,
-} from "./StageTransportBar";
+import { STAGE_TRANSPORT_FOOTER_PX } from "./StageTransportBar";
 import { mediaSurface } from "./mediaSurface";
 import { useLyricsSnapshot } from "./lyrics/useLyricsSurface";
 
@@ -50,14 +48,15 @@ export default function StageCore(props: {
 
   // ✅ prefer props when provided; otherwise use lyricsSurface
   const cuesByRecordingId = cuesByRecordingIdProp ?? snap.cuesByRecordingId;
-  const offsetByRecordingId = offsetByRecordingIdProp ?? snap.offsetByRecordingId;
+  const offsetByRecordingId =
+    offsetByRecordingIdProp ?? snap.offsetByRecordingId;
 
   // Register stage presence; fullscreen wins if it exists.
   React.useEffect(() => mediaSurface.registerStage(variant), [variant]);
 
-  const [surfaceRecordingId, setSurfaceRecordingId] = React.useState<string | null>(
-    () => mediaSurface.getRecordingId(),
-  );
+  const [surfaceRecordingId, setSurfaceRecordingId] = React.useState<
+    string | null
+  >(() => mediaSurface.getRecordingId());
 
   React.useEffect(() => {
     const unsub = mediaSurface.subscribe((e) => {
@@ -151,8 +150,6 @@ export default function StageCore(props: {
           />
         ) : null}
       </div>
-
-      {variant === "fullscreen" ? <StageTransportBar /> : null}
     </div>
   );
 }
