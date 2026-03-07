@@ -58,8 +58,6 @@ export default function StageNowPlayingBadge() {
           overflow: "hidden",
           borderRadius: 16,
           boxShadow: "0 14px 36px rgba(0,0,0,0.28)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
         }}
       >
         <div
@@ -82,51 +80,87 @@ export default function StageNowPlayingBadge() {
         <div
           style={{
             minWidth: 0,
+            position: "relative",
             display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            gap: 2,
-            padding: "10px 16px 10px 12px",
+            alignItems: "center",
             marginLeft: -1,
-            borderTop: "1px solid rgba(255,255,255,0.12)",
-            borderRight: "1px solid rgba(255,255,255,0.10)",
-            borderBottom: "1px solid rgba(255,255,255,0.12)",
             borderTopRightRadius: 16,
             borderBottomRightRadius: 16,
-            background: "rgba(0,0,0,0.42)",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-            maskImage:
-              "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 58%, rgba(0,0,0,0.70) 78%, rgba(0,0,0,0.00) 100%)",
-            WebkitMaskImage:
-              "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 58%, rgba(0,0,0,0.70) 78%, rgba(0,0,0,0.00) 100%)",
+            overflow: "hidden",
           }}
         >
           <div
+            aria-hidden="true"
             style={{
-              fontSize: 12,
-              lineHeight: 1.15,
-              fontWeight: 700,
-              color: "rgba(255,255,255,0.95)",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
+              position: "absolute",
+              inset: 0,
+              background: "rgba(0,0,0,0.42)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              maskImage:
+                "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 58%, rgba(0,0,0,0.70) 78%, rgba(0,0,0,0.00) 100%)",
+              WebkitMaskImage:
+                "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 58%, rgba(0,0,0,0.70) 78%, rgba(0,0,0,0.00) 100%)",
             }}
-          >
-            {title}
-          </div>
+          />
+
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderTop: "1px solid rgba(255,255,255,0.12)",
+              borderRight: "1px solid rgba(255,255,255,0.10)",
+              borderBottom: "1px solid rgba(255,255,255,0.12)",
+              borderTopRightRadius: 16,
+              borderBottomRightRadius: 16,
+              pointerEvents: "none",
+              maskImage:
+                "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 50%, rgba(0,0,0,0.85) 65%, rgba(0,0,0,0.45) 82%, rgba(0,0,0,0.00) 100%)",
+              WebkitMaskImage:
+                "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 50%, rgba(0,0,0,0.85) 65%, rgba(0,0,0,0.45) 82%, rgba(0,0,0,0.00) 100%)",
+            }}
+          />
 
           <div
             style={{
-              fontSize: 11,
-              lineHeight: 1.15,
-              color: "rgba(255,255,255,0.62)",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
+              minWidth: 0,
+              width: "100%",
+              position: "relative",
+              zIndex: 1,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              gap: 2,
+              padding: "10px 16px 10px 12px",
             }}
           >
-            {artist}
+            <div
+              style={{
+                fontSize: 12,
+                lineHeight: 1.15,
+                fontWeight: 700,
+                color: "rgba(255,255,255,0.95)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {title}
+            </div>
+
+            <div
+              style={{
+                fontSize: 11,
+                lineHeight: 1.15,
+                color: "rgba(255,255,255,0.62)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {artist}
+            </div>
           </div>
         </div>
       </div>
