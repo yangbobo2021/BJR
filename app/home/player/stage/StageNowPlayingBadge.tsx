@@ -116,9 +116,9 @@ export default function StageNowPlayingBadge() {
               borderBottomRightRadius: 16,
               pointerEvents: "none",
               maskImage:
-                "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 50%, rgba(0,0,0,0.85) 65%, rgba(0,0,0,0.45) 82%, rgba(0,0,0,0.00) 100%)",
+                "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 48%, rgba(0,0,0,0.82) 62%, rgba(0,0,0,0.34) 76%, rgba(0,0,0,0.08) 86%, rgba(0,0,0,0.00) 91%, rgba(0,0,0,0.00) 100%)",
               WebkitMaskImage:
-                "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 50%, rgba(0,0,0,0.85) 65%, rgba(0,0,0,0.45) 82%, rgba(0,0,0,0.00) 100%)",
+                "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 48%, rgba(0,0,0,0.82) 62%, rgba(0,0,0,0.34) 76%, rgba(0,0,0,0.08) 86%, rgba(0,0,0,0.00) 91%, rgba(0,0,0,0.00) 100%)",
             }}
           />
 
