@@ -485,6 +485,11 @@ export class VisualizerEngine {
       // Ensure FBO sizes match backing store
       this.ensurePresentFboSized();
 
+      if (!this.presentProg || !this.presentTri || !this.presentFbo) {
+        this.raf = window.requestAnimationFrame(loop);
+        return;
+      }
+
       const gl = this.gl;
       const audio = this.getAudio();
       const time = tNowMs / 1000;
@@ -753,8 +758,13 @@ export class VisualizerEngine {
     }
 
     this.ensurePresentFboSized();
+    if (!this.presentProg || !this.presentTri || !this.presentFbo) {
+      this.mode = this.wantPlaying ? { mode: "playing" } : { mode: "idle" };
+      return;
+    }
+
     this.ensureTransitionResources();
-    this.resizeTransitionResources(this.presentFbo!.w, this.presentFbo!.h);
+    this.resizeTransitionResources(this.presentFbo.w, this.presentFbo.h);
 
     const gl = this.gl;
     const fromFbo = this.fromFbo!;
@@ -854,19 +864,39 @@ export class VisualizerEngine {
 
   private ensurePresentResources() {
     const gl = this.gl;
+
     if (!this.presentProg) {
-      this.presentProg = createProgram(gl, PRESENT_VS, PRESENT_FS);
-      this.uPresentTex = gl.getUniformLocation(this.presentProg, "uTex");
-      this.uPresentFlipY = gl.getUniformLocation(this.presentProg, "uFlipY");
+      try {
+        this.presentProg = createProgram(gl, PRESENT_VS, PRESENT_FS);
+        this.uPresentTex = gl.getUniformLocation(this.presentProg, "uTex");
+        this.uPresentFlipY = gl.getUniformLocation(this.presentProg, "uFlipY");
+      } catch (err) {
+        console.error("[VisualizerEngine] present shader setup failed", err);
+        this.presentProg = null;
+        this.uPresentTex = null;
+        this.uPresentFlipY = null;
+        return;
+      }
     }
+
     if (!this.presentTri) {
-      this.presentTri = makeFullscreenTriangle(gl);
+      try {
+        this.presentTri = makeFullscreenTriangle(gl);
+      } catch (err) {
+        console.error(
+          "[VisualizerEngine] fullscreen triangle setup failed",
+          err,
+        );
+        this.presentTri = null;
+      }
     }
   }
 
   private ensurePresentFboSized() {
     const gl = this.gl;
     this.ensurePresentResources();
+
+    if (!this.presentProg || !this.presentTri) return;
 
     const W = Math.max(2, this.canvas.width);
     const H = Math.max(2, this.canvas.height);
