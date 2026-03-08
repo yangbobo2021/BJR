@@ -167,9 +167,10 @@ export default function VisualizerCanvas(props: { variant: StageVariant }) {
     // Prime target theme once for the freshly mounted engine.
     let cancelled = false;
     (async () => {
-      const factory = await loadThemeFactory(themeNameRef.current);
-      if (cancelled) return;
-      engine.setThemeDebugName(themeNameRef.current);
+      const nextThemeName = themeNameRef.current;
+      const factory = await loadThemeFactory(nextThemeName);
+      if (cancelled || engineRef.current !== engine) return;
+      engine.setThemeDebugName(nextThemeName);
       engine.setTargetTheme(factory());
     })().catch(() => {});
 
@@ -247,7 +248,7 @@ export default function VisualizerCanvas(props: { variant: StageVariant }) {
     let cancelled = false;
     (async () => {
       const factory = await loadThemeFactory(themeName);
-      if (cancelled) return;
+      if (cancelled || engineRef.current !== engine) return;
       engine.setTargetTheme(factory());
     })().catch(() => {});
 

@@ -272,6 +272,7 @@ export class VisualizerEngine {
   private lastPerfPublishAtMs = 0;
   private didLogPresentFailure = false;
   private contextLost = false;
+  private disposed = false;
 
   // Always create ImageData by dimensions (avoids TypedArray overload issues in TS)
   private snapImageData: ImageData = new ImageData(2, 2);
@@ -299,6 +300,8 @@ export class VisualizerEngine {
     this.themeDebugName = opts.initialThemeName ?? "blank";
     this.snapCapPx = pickSnapshotCapPx(this.performanceProfile);
     this.snapFps = this.performanceProfile === "fullscreen" ? 8 : 12;
+
+    this.disposed = false;
 
     const gl = this.canvas.getContext("webgl2", {
       alpha: false,
@@ -456,7 +459,7 @@ export class VisualizerEngine {
     }
   }
 
-  /** Convenience: swap "current main" theme without recreating canvas/GL/RAF. */
+  /** Promote an already-initialized theme to current without re-initializing it. */
   private setCurrentTheme(next: Theme) {
     if (
       !next ||
@@ -469,25 +472,23 @@ export class VisualizerEngine {
     const gl = this.gl;
     const prevCurrent = this.currentTheme;
 
-    try {
-      next.init(gl);
-      this.currentTheme = next;
+    this.currentTheme = next;
 
-      if (prevCurrent && prevCurrent !== next) {
-        try {
-          prevCurrent.dispose(gl);
-        } catch {}
-      }
-    } catch (err) {
-      console.error("[VisualizerEngine] current theme init failed", err);
-      this.currentTheme = prevCurrent;
+    if (
+      prevCurrent &&
+      prevCurrent !== next &&
+      prevCurrent !== this.idleTheme &&
+      prevCurrent !== this.targetTheme
+    ) {
       try {
-        next.dispose?.(gl);
+        prevCurrent.dispose(gl);
       } catch {}
     }
   }
 
   start() {
+    if (this.disposed || this.contextLost) return;
+
     const parent = this.canvas.parentElement;
     if (!parent) return;
 
@@ -547,7 +548,7 @@ export class VisualizerEngine {
     this.lastDrawMs = 0;
 
     const loop = (tNowMs: number) => {
-      if (this.contextLost) {
+      if (this.disposed || this.contextLost) {
         this.raf = null;
         return;
       }
@@ -755,6 +756,9 @@ export class VisualizerEngine {
   }
 
   dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+
     this.stop();
 
     const gl = this.gl;
@@ -948,7 +952,7 @@ export class VisualizerEngine {
   private ensurePresentResources() {
     const gl = this.gl;
 
-    if (this.contextLost) return;
+    if (this.disposed || this.contextLost) return;
 
     if (!this.presentProg) {
       try {

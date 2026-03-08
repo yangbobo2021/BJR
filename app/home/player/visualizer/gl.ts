@@ -1,4 +1,6 @@
 // web/app/home/player/visualizer/gl.ts
+const VERBOSE_GL_DEBUG = false;
+
 function shaderTypeName(gl: WebGL2RenderingContext, type: number): string {
   if (type === gl.VERTEX_SHADER) return "VERTEX";
   if (type === gl.FRAGMENT_SHADER) return "FRAGMENT";
@@ -50,14 +52,15 @@ export function createShader(
 
     console.error(`[gl] ${typeName} shader compile failed`, {
       infoLog: infoLog || null,
-      source,
-      numberedSource,
       version,
       shadingLanguageVersion,
       isContextLost,
       glError,
+      ...(VERBOSE_GL_DEBUG ? { source, numberedSource } : {}),
     });
-    console.error(`[gl] ${typeName} shader source:\n${numberedSource}`);
+    if (VERBOSE_GL_DEBUG) {
+      console.error(`[gl] ${typeName} shader source:\n${numberedSource}`);
+    }
     gl.deleteShader(sh);
     throw err;
   }
@@ -92,13 +95,19 @@ export function createProgram(
 
       console.error("[gl] program link failed", {
         infoLog: infoLog || null,
-        vsSource,
-        fsSource,
-        numberedVsSource,
-        numberedFsSource,
+        ...(VERBOSE_GL_DEBUG
+          ? {
+              vsSource,
+              fsSource,
+              numberedVsSource,
+              numberedFsSource,
+            }
+          : {}),
       });
-      console.error(`[gl] LINK vertex shader source:\n${numberedVsSource}`);
-      console.error(`[gl] LINK fragment shader source:\n${numberedFsSource}`);
+      if (VERBOSE_GL_DEBUG) {
+        console.error(`[gl] LINK vertex shader source:\n${numberedVsSource}`);
+        console.error(`[gl] LINK fragment shader source:\n${numberedFsSource}`);
+      }
 
       gl.deleteProgram(p);
       throw new Error(`program link failed: ${infoLog || "empty info log"}`);
