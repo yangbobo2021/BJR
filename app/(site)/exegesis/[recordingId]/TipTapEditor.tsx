@@ -1,4 +1,3 @@
-// web/app/(site)/exegesis/[recordingId]/TipTapEditor.tsx
 "use client";
 
 import React from "react";
@@ -14,6 +13,12 @@ export type TipTapDoc = {
   content?: unknown[];
 };
 
+type LinkDraft = {
+  open: boolean;
+  href: string;
+  text: string;
+};
+
 function makeLinkSafe(href: string): string | null {
   const h = (href ?? "").trim();
   if (!h) return null;
@@ -21,7 +26,9 @@ function makeLinkSafe(href: string): string | null {
   if (h.startsWith("#") || h.startsWith("/")) return h;
 
   try {
-    const u = new URL(h);
+    const withProtocol =
+      /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(h) ? h : `https://${h}`;
+    const u = new URL(withProtocol);
     const p = (u.protocol || "").toLowerCase();
     if (p === "http:" || p === "https:" || p === "mailto:") return u.toString();
     return null;
@@ -233,25 +240,123 @@ function ToolbarBtn({
   );
 }
 
-function setOrEditLink(editor: Editor) {
-  const prev = String(editor.getAttributes("link")?.href ?? "").trim();
-  const raw = window.prompt("Link URL:", prev);
-  if (raw === null) return;
+function applyListToggle(editor: Editor, mode: "bullet" | "ordered") {
+  const chain = editor.chain().focus();
 
-  const safe = makeLinkSafe(raw);
-  if (!safe) {
+  if (mode === "bullet") {
+    if (editor.isActive("orderedList")) {
+      chain.liftListItem("listItem").toggleBulletList().run();
+      return;
+    }
+    chain.toggleBulletList().run();
+    return;
+  }
+
+  if (editor.isActive("bulletList")) {
+    chain.liftListItem("listItem").toggleOrderedList().run();
+    return;
+  }
+  chain.toggleOrderedList().run();
+}
+
+function applyBlockquoteToggle(editor: Editor) {
+  editor.chain().focus().toggleBlockquote().run();
+}
+
+function getSelectedText(editor: Editor): string {
+  const { from, to, empty } = editor.state.selection;
+  if (empty) return "";
+  return editor.state.doc.textBetween(from, to, " ").trim();
+}
+
+function openLinkDraft(editor: Editor, setDraft: (next: LinkDraft) => void) {
+  const selectedText = getSelectedText(editor);
+  const currentHref = String(editor.getAttributes("link")?.href ?? "").trim();
+
+  setDraft({
+    open: true,
+    href: currentHref,
+    text: selectedText,
+  });
+}
+
+function submitLinkDraft(
+  editor: Editor,
+  draft: LinkDraft,
+  close: () => void,
+) {
+  const safeHref = makeLinkSafe(draft.href);
+  if (!safeHref) {
+    close();
     editor.chain().focus().extendMarkRange("link").unsetLink().run();
     return;
   }
 
-  editor.chain().focus().extendMarkRange("link").setLink({ href: safe }).run();
+  const selectedText = getSelectedText(editor);
+  const explicitText = draft.text.trim();
+
+  editor.chain().focus().extendMarkRange("link").unsetLink().run();
+
+  if (selectedText) {
+    editor.chain().focus().setLink({ href: safeHref }).run();
+    close();
+    return;
+  }
+
+  const textToInsert = explicitText || safeHref;
+  editor
+    .chain()
+    .focus()
+    .insertContent(textToInsert)
+    .setTextSelection({
+      from: editor.state.selection.from - textToInsert.length,
+      to: editor.state.selection.from,
+    })
+    .setLink({ href: safeHref })
+    .run();
+
+  close();
 }
 
-function TipTapToolbar(props: { editor: Editor | null; disabled?: boolean }) {
+function TipTapToolbar(props: {
+  editor: Editor | null;
+  disabled?: boolean;
+}) {
   const editor = props.editor;
-  if (!editor) return null;
-
   const disabled = Boolean(props.disabled);
+
+  const [linkDraft, setLinkDraft] = React.useState<LinkDraft>({
+    open: false,
+    href: "",
+    text: "",
+  });
+
+  const hrefInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  React.useEffect(() => {
+    if (!linkDraft.open) return;
+    const t = window.setTimeout(() => hrefInputRef.current?.focus(), 0);
+    return () => window.clearTimeout(t);
+  }, [linkDraft.open]);
+
+  React.useEffect(() => {
+    if (!editor) return;
+    const handleSelectionUpdate = () => {
+      if (!linkDraft.open) return;
+      const selectedText = getSelectedText(editor);
+      setLinkDraft((prev) => ({
+        ...prev,
+        text: selectedText || prev.text,
+      }));
+    };
+
+    editor.on("selectionUpdate", handleSelectionUpdate);
+    return () => {
+      editor.off("selectionUpdate", handleSelectionUpdate);
+    };
+  }, [editor, linkDraft.open]);
+
+  if (!editor) return null;
 
   return (
     <div className="px-3 py-2">
@@ -297,8 +402,8 @@ function TipTapToolbar(props: { editor: Editor | null; disabled?: boolean }) {
         <ToolbarBtn
           title="Add/edit link"
           disabled={disabled}
-          active={editor.isActive("link")}
-          onClick={() => setOrEditLink(editor)}
+          active={editor.isActive("link") || linkDraft.open}
+          onClick={() => openLinkDraft(editor, setLinkDraft)}
         >
           <IconLink />
         </ToolbarBtn>
@@ -307,7 +412,7 @@ function TipTapToolbar(props: { editor: Editor | null; disabled?: boolean }) {
           title="Bullet list"
           disabled={disabled}
           active={editor.isActive("bulletList")}
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
+          onClick={() => applyListToggle(editor, "bullet")}
         >
           <IconBulletList />
         </ToolbarBtn>
@@ -316,7 +421,7 @@ function TipTapToolbar(props: { editor: Editor | null; disabled?: boolean }) {
           title="Numbered list"
           disabled={disabled}
           active={editor.isActive("orderedList")}
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          onClick={() => applyListToggle(editor, "ordered")}
         >
           <IconOrderedList />
         </ToolbarBtn>
@@ -327,7 +432,7 @@ function TipTapToolbar(props: { editor: Editor | null; disabled?: boolean }) {
           title="Blockquote"
           disabled={disabled}
           active={editor.isActive("blockquote")}
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          onClick={() => applyBlockquoteToggle(editor)}
         >
           <IconQuote />
         </ToolbarBtn>
@@ -335,13 +440,67 @@ function TipTapToolbar(props: { editor: Editor | null; disabled?: boolean }) {
         <ToolbarBtn
           title="Remove formatting"
           disabled={disabled}
-          onClick={() =>
-            editor.chain().focus().unsetAllMarks().clearNodes().run()
-          }
+          onClick={() => {
+            setLinkDraft({ open: false, href: "", text: "" });
+            editor.chain().focus().unsetAllMarks().clearNodes().run();
+          }}
         >
           <IconClear />
         </ToolbarBtn>
       </div>
+
+      {linkDraft.open ? (
+        <div className="mt-3 rounded-xl bg-white/[0.04] p-3">
+          <div className="grid gap-2">
+            <input
+              ref={hrefInputRef}
+              type="text"
+              value={linkDraft.href}
+              disabled={disabled}
+              onChange={(e) =>
+                setLinkDraft((prev) => ({ ...prev, href: e.target.value }))
+              }
+              placeholder="Paste link URL"
+              className="h-10 rounded-lg bg-black/[0.16] px-3 text-sm text-white/90 outline-none placeholder:text-white/30"
+            />
+
+            <input
+              type="text"
+              value={linkDraft.text}
+              disabled={disabled}
+              onChange={(e) =>
+                setLinkDraft((prev) => ({ ...prev, text: e.target.value }))
+              }
+              placeholder="Link text"
+              className="h-10 rounded-lg bg-black/[0.16] px-3 text-sm text-white/90 outline-none placeholder:text-white/30"
+            />
+          </div>
+
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => setLinkDraft({ open: false, href: "", text: "" })}
+              className="inline-flex h-9 items-center justify-center rounded-lg px-3 text-sm text-white/60 transition hover:bg-white/[0.06] hover:text-white/92 disabled:opacity-35"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              disabled={disabled || !linkDraft.href.trim()}
+              onClick={() =>
+                submitLinkDraft(editor, linkDraft, () =>
+                  setLinkDraft({ open: false, href: "", text: "" }),
+                )
+              }
+              className="inline-flex h-9 items-center justify-center rounded-lg bg-white/[0.08] px-3 text-sm text-white/92 transition hover:bg-white/[0.14] disabled:opacity-35"
+            >
+              Apply link
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -376,12 +535,29 @@ export default function TipTapEditor(props: {
         codeBlock: false,
         horizontalRule: false,
         link: false,
+        blockquote: {
+          HTMLAttributes: {
+            class: "af-tiptap-blockquote",
+          },
+        },
+        bulletList: {
+          keepMarks: true,
+          keepAttributes: false,
+        },
+        orderedList: {
+          keepMarks: true,
+          keepAttributes: false,
+        },
       }),
       Link.configure({
-        openOnClick: false,
+        openOnClick: true,
         linkOnPaste: true,
         autolink: true,
-        HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" },
+        HTMLAttributes: {
+          rel: "noopener noreferrer",
+          target: "_blank",
+          class: "af-tiptap-link",
+        },
         validate: (href) => Boolean(makeLinkSafe(href)),
       }),
       Placeholder.configure({
@@ -415,6 +591,14 @@ export default function TipTapEditor(props: {
           "[&_.ProseMirror-focused]:outline-none",
         ].join(" "),
       },
+      handleDOMEvents: {
+        mousedown: (_view, event) => {
+          const target = event.target;
+          if (!(target instanceof HTMLElement)) return false;
+          if (target.closest("[data-af-link-toolbar]")) return true;
+          return false;
+        },
+      },
     },
     onUpdate: ({ editor: nextEditor }) => {
       const plain = (nextEditor.getText({ blockSeparator: "\n" }) ?? "").trim();
@@ -447,7 +631,9 @@ export default function TipTapEditor(props: {
   return (
     <div className="bg-black/[0.16]">
       {showToolbar ? (
-        <TipTapToolbar editor={editor} disabled={disabled} />
+        <div data-af-link-toolbar="true">
+          <TipTapToolbar editor={editor} disabled={disabled} />
+        </div>
       ) : null}
       <EditorContent editor={editor} />
     </div>
