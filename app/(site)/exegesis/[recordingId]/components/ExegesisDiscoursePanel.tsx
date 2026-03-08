@@ -9,7 +9,6 @@ import ExegesisThreadList from "./ExegesisThreadList";
 import type {
   CommentDTO,
   EditDraft,
-  IdentityDTO,
   LyricsApiOk,
   ReplyDraft,
   ReportDraft,
@@ -42,7 +41,6 @@ export default function ExegesisDiscoursePanel(props: {
   isLocked: boolean;
   showIdentityPanel: boolean;
   viewerAuthorIdentity: ResolvedDisplayIdentity | null;
-  viewerIdentity?: IdentityDTO;
   claimOpen: boolean;
   claimName: string;
   claimErr: string;

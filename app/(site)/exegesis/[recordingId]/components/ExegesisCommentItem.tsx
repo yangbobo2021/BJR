@@ -146,7 +146,7 @@ export default function ExegesisCommentItem(props: {
           <div
             className={
               isAdminAuthor
-                ? "font-semibold text-[var(--lxSelected)]"
+                ? "text-xs font-semibold text-[var(--lxSelected)]"
                 : "text-xs opacity-70"
             }
           >

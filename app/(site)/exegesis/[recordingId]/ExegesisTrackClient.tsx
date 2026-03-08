@@ -959,7 +959,6 @@ export default function ExegesisTrackClient(props: {
               isLocked={isLocked}
               showIdentityPanel={showIdentityPanel}
               viewerAuthorIdentity={viewerAuthorIdentity}
-              viewerIdentity={viewerIdentity}
               claimOpen={claimOpen}
               claimName={claimName}
               claimErr={claimErr}
