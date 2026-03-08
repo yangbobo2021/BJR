@@ -270,6 +270,7 @@ export class VisualizerEngine {
   private perfWindowStartMs = 0;
   private fpsObserved = 0;
   private lastPerfPublishAtMs = 0;
+  private didLogPresentFailure = false;
 
   // Always create ImageData by dimensions (avoids TypedArray overload issues in TS)
   private snapImageData: ImageData = new ImageData(2, 2);
@@ -309,6 +310,42 @@ export class VisualizerEngine {
     });
     if (!gl) throw new Error("WebGL2 not available");
     this.gl = gl;
+
+    try {
+      const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+      const renderer = debugInfo
+        ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
+        : gl.getParameter(gl.RENDERER);
+      const vendor = debugInfo
+        ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL)
+        : gl.getParameter(gl.VENDOR);
+
+      console.log("[VisualizerEngine] GL context created", {
+        stageVariant: opts.stageVariant,
+        performanceProfile: opts.performanceProfile ?? "inline",
+        isContextLost:
+          typeof gl.isContextLost === "function" ? gl.isContextLost() : false,
+        version: gl.getParameter(gl.VERSION),
+        shadingLanguageVersion: gl.getParameter(gl.SHADING_LANGUAGE_VERSION),
+        vendor,
+        renderer,
+      });
+    } catch (err) {
+      console.warn("[VisualizerEngine] GL context diagnostics failed", err);
+    }
+
+    this.canvas.addEventListener("webglcontextlost", (e) => {
+      e.preventDefault();
+      console.error("[VisualizerEngine] webglcontextlost", {
+        stageVariant: this.stageVariant,
+      });
+    });
+
+    this.canvas.addEventListener("webglcontextrestored", () => {
+      console.warn("[VisualizerEngine] webglcontextrestored", {
+        stageVariant: this.stageVariant,
+      });
+    });
 
     // Stable snapshot canvas (2D) used for sip.
     const sc = document.createElement("canvas");
@@ -914,7 +951,10 @@ export class VisualizerEngine {
         this.uPresentTex = gl.getUniformLocation(this.presentProg, "uTex");
         this.uPresentFlipY = gl.getUniformLocation(this.presentProg, "uFlipY");
       } catch (err) {
-        console.error("[VisualizerEngine] present shader setup failed", err);
+        if (!this.didLogPresentFailure) {
+          console.error("[VisualizerEngine] present shader setup failed", err);
+          this.didLogPresentFailure = true;
+        }
         this.presentProg = null;
         this.uPresentTex = null;
         this.uPresentFlipY = null;

@@ -31,10 +31,31 @@ export function createShader(
       `shader compile failed (${typeName}): ${infoLog || "empty info log"}`,
     );
 
+    let version: string | null = null;
+    let shadingLanguageVersion: string | null = null;
+    let isContextLost = false;
+    let glError: number | null = null;
+
+    try {
+      version = String(gl.getParameter(gl.VERSION));
+      shadingLanguageVersion = String(
+        gl.getParameter(gl.SHADING_LANGUAGE_VERSION),
+      );
+      isContextLost =
+        typeof gl.isContextLost === "function" ? gl.isContextLost() : false;
+      glError = gl.getError();
+    } catch {
+      // ignore diagnostic failures
+    }
+
     console.error(`[gl] ${typeName} shader compile failed`, {
       infoLog: infoLog || null,
       source,
       numberedSource,
+      version,
+      shadingLanguageVersion,
+      isContextLost,
+      glError,
     });
     console.error(`[gl] ${typeName} shader source:\n${numberedSource}`);
     gl.deleteShader(sh);
