@@ -44,49 +44,67 @@ export default function ExegesisRichComposer({
 
   return (
     <>
-      <div className="mt-2 overflow-hidden rounded-xl border border-white/10 bg-white/5">
-        <div className="[&_.tiptap-editor-shell]:rounded-none [&_.tiptap-editor-shell]:border-0 [&_.tiptap-editor-shell]:bg-transparent [&_.tiptap-editor-shell]:shadow-none [&_.tiptap-editor]:rounded-none [&_.tiptap-editor]:border-0 [&_.tiptap-editor]:bg-transparent [&_.tiptap-editor]:shadow-none [&_.tiptap-editor]:rounded-b-none">
-          <TipTapEditor
-            key={editorKey}
-            valuePlain={valuePlain}
-            valueDoc={valueDoc}
-            disabled={disabled}
-            showToolbar={showToolbar}
-            autofocus={autofocus}
-            placeholder={placeholder}
-            onChangePlain={onChangePlain}
-            onChangeDoc={onChangeDoc}
-          />
-        </div>
+      <div className="[&_.tiptap-editor]:rounded-none [&_.tiptap-editor]:border-0 [&_.tiptap-editor]:bg-transparent [&_.tiptap-editor]:shadow-none">
+        <TipTapEditor
+          key={editorKey}
+          valuePlain={valuePlain}
+          valueDoc={valueDoc}
+          disabled={disabled}
+          showToolbar={showToolbar}
+          autofocus={autofocus}
+          placeholder={placeholder}
+          onChangePlain={onChangePlain}
+          onChangeDoc={onChangeDoc}
+        />
+      </div>
 
-        <div className="flex items-stretch justify-between border-t border-white/10 bg-white/[0.03]">
-          <button
-            type="button"
-            className="rounded-none rounded-bl-xl border-r border-white/10 bg-transparent px-3 py-2 text-xs hover:bg-white/5 disabled:opacity-40"
-            disabled={disabled}
-            onClick={onToggleToolbar}
-            title={showToolbar ? "Hide formatting" : "Formatting"}
-          >
-            Aa
-          </button>
+      <div className="flex items-center justify-between px-2 pb-2">
+        <button
+          type="button"
+          className={[
+            "inline-flex h-9 w-9 items-center justify-center rounded-full text-white/60 transition",
+            "hover:bg-white/[0.06] hover:text-white/95",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20",
+            showToolbar ? "bg-white/[0.08] text-white/95" : "",
+            disabled ? "cursor-not-allowed opacity-35" : "",
+          ].join(" ")}
+          disabled={disabled}
+          onClick={onToggleToolbar}
+          title={showToolbar ? "Hide formatting" : "Formatting"}
+          aria-label={showToolbar ? "Hide formatting" : "Show formatting"}
+        >
+          <span className="text-sm font-medium tracking-[0.01em]">Aa</span>
+        </button>
 
-          <div className="flex items-center gap-3 pl-3">
-            {showCharWarning ? (
-              <div className="text-xs opacity-70">{charCount}/5000</div>
-            ) : null}
-
-            <button
-              className="rounded-none rounded-br-xl bg-white/10 px-4 py-2 text-sm hover:bg-white/15 disabled:opacity-40"
-              disabled={submitDisabled}
-              onClick={onSubmit}
+        <div className="flex items-center gap-3">
+          {showCharWarning ? (
+            <div
+              className={[
+                "text-xs tabular-nums transition",
+                charCount >= 4900 ? "text-white/90" : "text-white/55",
+              ].join(" ")}
             >
-              {posting ? `${submitLabel}…` : submitLabel}
-            </button>
-          </div>
+              {charCount}/5000
+            </div>
+          ) : null}
+
+          <button
+            className={[
+              "inline-flex h-9 items-center justify-center rounded-lg px-4 text-sm font-medium transition",
+              "bg-white/[0.08] text-white/92",
+              "hover:bg-white/[0.14] hover:text-white",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20",
+              submitDisabled ? "cursor-not-allowed opacity-35" : "",
+            ].join(" ")}
+            disabled={submitDisabled}
+            onClick={onSubmit}
+          >
+            {posting ? `${submitLabel}…` : submitLabel}
+          </button>
         </div>
       </div>
 
-      {error ? <div className="mt-2 text-xs opacity-75">{error}</div> : null}
+      {error ? <div className="mt-2 text-xs text-white/70">{error}</div> : null}
     </>
   );
 }
