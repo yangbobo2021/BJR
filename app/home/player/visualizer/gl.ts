@@ -36,7 +36,7 @@ export function createShader(
       source,
       numberedSource,
     });
-
+    console.error(`[gl] ${typeName} shader source:\n${numberedSource}`);
     gl.deleteShader(sh);
     throw err;
   }
@@ -66,13 +66,18 @@ export function createProgram(
     if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
       const infoLog = (gl.getProgramInfoLog(p) || "").trim();
 
+      const numberedVsSource = numberSourceLines(vsSource);
+      const numberedFsSource = numberSourceLines(fsSource);
+
       console.error("[gl] program link failed", {
         infoLog: infoLog || null,
         vsSource,
         fsSource,
-        numberedVsSource: numberSourceLines(vsSource),
-        numberedFsSource: numberSourceLines(fsSource),
+        numberedVsSource,
+        numberedFsSource,
       });
+      console.error(`[gl] LINK vertex shader source:\n${numberedVsSource}`);
+      console.error(`[gl] LINK fragment shader source:\n${numberedFsSource}`);
 
       gl.deleteProgram(p);
       throw new Error(`program link failed: ${infoLog || "empty info log"}`);

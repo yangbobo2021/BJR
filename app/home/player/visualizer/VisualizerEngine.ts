@@ -317,7 +317,12 @@ export class VisualizerEngine {
     this.snapCanvas = sc;
     this.snapCtx = sctx;
 
-    this.currentTheme.init(this.gl);
+    try {
+      this.currentTheme.init(this.gl);
+    } catch (err) {
+      console.error("[VisualizerEngine] initial theme init failed", err);
+    }
+
     this.ensurePresentResources();
   }
 
@@ -342,11 +347,24 @@ export class VisualizerEngine {
     if (this.idleTheme === next) return;
 
     const gl = this.gl;
+    const prevIdle = this.idleTheme;
+
     try {
-      this.idleTheme?.dispose(gl);
-    } catch {}
-    this.idleTheme = next;
-    this.idleTheme.init(gl);
+      next.init(gl);
+      this.idleTheme = next;
+
+      if (prevIdle && prevIdle !== next) {
+        try {
+          prevIdle.dispose(gl);
+        } catch {}
+      }
+    } catch (err) {
+      console.error("[VisualizerEngine] idle theme init failed", err);
+      this.idleTheme = prevIdle ?? null;
+      try {
+        next.dispose?.(gl);
+      } catch {}
+    }
   }
 
   /** Request "playing" vs "idle". This is the state machine input. */
@@ -376,12 +394,24 @@ export class VisualizerEngine {
     if (this.targetTheme === next) return;
 
     const gl = this.gl;
-    try {
-      this.targetTheme?.dispose(gl);
-    } catch {}
+    const prevTarget = this.targetTheme;
 
-    this.targetTheme = next;
-    this.targetTheme.init(gl);
+    try {
+      next.init(gl);
+      this.targetTheme = next;
+
+      if (prevTarget && prevTarget !== next) {
+        try {
+          prevTarget.dispose(gl);
+        } catch {}
+      }
+    } catch (err) {
+      console.error("[VisualizerEngine] target theme init failed", err);
+      this.targetTheme = prevTarget ?? null;
+      try {
+        next.dispose?.(gl);
+      } catch {}
+    }
   }
 
   /** Convenience: swap "current main" theme without recreating canvas/GL/RAF. */
@@ -395,11 +425,24 @@ export class VisualizerEngine {
     if (next === this.currentTheme) return;
 
     const gl = this.gl;
+    const prevCurrent = this.currentTheme;
+
     try {
-      this.currentTheme.dispose(gl);
-    } catch {}
-    this.currentTheme = next;
-    this.currentTheme.init(gl);
+      next.init(gl);
+      this.currentTheme = next;
+
+      if (prevCurrent && prevCurrent !== next) {
+        try {
+          prevCurrent.dispose(gl);
+        } catch {}
+      }
+    } catch (err) {
+      console.error("[VisualizerEngine] current theme init failed", err);
+      this.currentTheme = prevCurrent;
+      try {
+        next.dispose?.(gl);
+      } catch {}
+    }
   }
 
   start() {
