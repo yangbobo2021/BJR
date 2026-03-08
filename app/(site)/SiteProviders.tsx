@@ -11,6 +11,18 @@ export default function SiteProviders(props: {
   children: React.ReactNode;
   isAdmin: boolean;
 }) {
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const body = document.body;
+    if (props.isAdmin) body.dataset.afIsAdmin = "1";
+    else delete body.dataset.afIsAdmin;
+
+    return () => {
+      delete body.dataset.afIsAdmin;
+    };
+  }, [props.isAdmin]);
+
   return (
     <GateBrokerProvider>
       <MembershipModalProvider>

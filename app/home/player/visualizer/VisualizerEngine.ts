@@ -4,6 +4,8 @@
 import type { Theme, AudioFeatures } from "./types";
 import { createProgram, makeFullscreenTriangle } from "./gl";
 import { createPortalWipe, type PortalWipe } from "./transition/portalWipe";
+import type { StageVariant } from "../mediaSurface";
+import { visualizerPerfSurface } from "./visualizerPerfSurface";
 
 type PerformanceProfile = "inline" | "fullscreen";
 
@@ -12,6 +14,8 @@ type EngineOpts = {
   getAudio: () => AudioFeatures;
   theme: Theme; // initial (can be blank)
   performanceProfile?: PerformanceProfile;
+  stageVariant: StageVariant;
+  initialThemeName?: string;
 };
 
 type StageTier = "idle" | "active" | "transition";
@@ -260,6 +264,13 @@ export class VisualizerEngine {
   private snapBufAB: ArrayBuffer = new ArrayBuffer(2 * 2 * 4);
   private snapBufU8: Uint8Array = new Uint8Array(this.snapBufAB);
 
+  private stageVariant: StageVariant;
+  private themeDebugName = "blank";
+  private perfFrames = 0;
+  private perfWindowStartMs = 0;
+  private fpsObserved = 0;
+  private lastPerfPublishAtMs = 0;
+
   // Always create ImageData by dimensions (avoids TypedArray overload issues in TS)
   private snapImageData: ImageData = new ImageData(2, 2);
   private snapBufClamp: Uint8ClampedArray = this.snapImageData.data;
@@ -282,6 +293,8 @@ export class VisualizerEngine {
     this.getAudio = opts.getAudio;
     this.currentTheme = opts.theme;
     this.performanceProfile = opts.performanceProfile ?? "inline";
+    this.stageVariant = opts.stageVariant;
+    this.themeDebugName = opts.initialThemeName ?? "blank";
     this.snapCapPx = pickSnapshotCapPx(this.performanceProfile);
     this.snapFps = this.performanceProfile === "fullscreen" ? 8 : 12;
 
@@ -311,6 +324,11 @@ export class VisualizerEngine {
   /** The stable 2D snapshot canvas that should be registered into visualSurface for sip consumers. */
   getStableSnapshotCanvas(): HTMLCanvasElement {
     return this.snapCanvas;
+  }
+
+  setThemeDebugName(name: string) {
+    const next = name.trim();
+    this.themeDebugName = next.length > 0 ? next : "blank";
   }
 
   /** Set the always-available idle theme. Engine owns it and will dispose on replacement. */
@@ -582,6 +600,50 @@ export class VisualizerEngine {
       const cfg = getTierConfig(this.tier, this.performanceProfile);
       this.dprScale = clamp(this.dprScale, cfg.dprMin, cfg.dprMax);
 
+      this.perfFrames += 1;
+      if (!this.perfWindowStartMs) this.perfWindowStartMs = tNowMs;
+
+      const perfElapsedMs = tNowMs - this.perfWindowStartMs;
+      if (perfElapsedMs >= 500) {
+        this.fpsObserved =
+          (this.perfFrames * 1000) / Math.max(1, perfElapsedMs);
+        this.perfFrames = 0;
+        this.perfWindowStartMs = tNowMs;
+      }
+
+      if (
+        !this.lastPerfPublishAtMs ||
+        tNowMs - this.lastPerfPublishAtMs >= 250
+      ) {
+        const modeName =
+          this.mode.mode === "transition"
+            ? "transition"
+            : this.mode.mode === "playing"
+              ? "playing"
+              : "idle";
+
+        visualizerPerfSurface.setMetrics(this.stageVariant, {
+          variant: this.stageVariant,
+          profile: this.performanceProfile,
+          themeName: this.themeDebugName,
+          tier: this.tier,
+          mode: modeName,
+          fpsCap: cfg.fpsCap,
+          fpsObserved: this.fpsObserved,
+          avgFrameCostMs: this.avgFrameCostMs,
+          baseDpr: this.baseDpr,
+          dprScale: this.dprScale,
+          appliedDpr: this.appliedDpr || this.baseDpr * this.dprScale,
+          canvasPxW: this.canvas.width,
+          canvasPxH: this.canvas.height,
+          snapshotPxW: this.snapW,
+          snapshotPxH: this.snapH,
+          snapshotFps: this.snapFps,
+          updatedAt: tNowMs,
+        });
+        this.lastPerfPublishAtMs = tNowMs;
+      }
+
       this.raf = window.requestAnimationFrame(loop);
     };
 
@@ -594,6 +656,7 @@ export class VisualizerEngine {
     this.ro?.disconnect();
     this.ro = null;
     this.parent = null;
+    visualizerPerfSurface.clearMetrics(this.stageVariant);
   }
 
   dispose() {

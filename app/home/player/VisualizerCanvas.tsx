@@ -157,6 +157,8 @@ export default function VisualizerCanvas(props: { variant: StageVariant }) {
       getAudio,
       theme: createBlankTheme(),
       performanceProfile: variant === "fullscreen" ? "fullscreen" : "inline",
+      stageVariant: variant,
+      initialThemeName: themeName,
     });
 
     engine.setIdleTheme(createIdleMistTheme());
@@ -179,7 +181,7 @@ export default function VisualizerCanvas(props: { variant: StageVariant }) {
         engineRef.current = null;
       }
     };
-  }, [variant]);
+  }, [themeName, variant]);
 
   // IMPORTANT: only register the canvas as the visual source when this variant
   // is the authoritative stage. Otherwise samplers may lock onto a blank/stopped canvas.
@@ -238,6 +240,8 @@ export default function VisualizerCanvas(props: { variant: StageVariant }) {
   React.useEffect(() => {
     const engine = engineRef.current;
     if (!engine) return;
+
+    engine.setThemeDebugName(themeName);
 
     let cancelled = false;
     (async () => {

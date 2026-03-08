@@ -7,6 +7,7 @@ import { usePlayer } from "./PlayerState";
 import StageCore from "./StageCore";
 import StageTransportBar from "./StageTransportBar";
 import StageNowPlayingBadge from "./stage/StageNowPlayingBadge";
+import StagePerfHud from "./stage/StagePerfHud";
 import { ensureLyricsForTrack } from "./lyrics/ensureLyricsForTrack";
 
 function lockBodyScroll(lock: boolean) {
@@ -36,6 +37,29 @@ function useIsMobile(breakpointPx = 640) {
   }, [breakpointPx]);
 
   return isMobile;
+}
+
+function useIsAdminBodyFlag() {
+  const [isAdmin, setIsAdmin] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const body = document.body;
+    const apply = () => setIsAdmin(body.dataset.afIsAdmin === "1");
+
+    apply();
+
+    const mo = new MutationObserver(() => apply());
+    mo.observe(body, {
+      attributes: true,
+      attributeFilter: ["data-af-is-admin"],
+    });
+
+    return () => mo.disconnect();
+  }, []);
+
+  return isAdmin;
 }
 
 function useIdleCursor(active: boolean, timeoutMs: number) {
@@ -157,6 +181,7 @@ const FullscreenStageOverlay = React.memo(
   function FullscreenStageOverlay(props: {
     cursorHidden: boolean;
     isMobile: boolean;
+    showPerfHud: boolean;
     onBackdropMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void;
     onRequestFullscreen: () => void;
     onClose: () => void;
@@ -164,6 +189,7 @@ const FullscreenStageOverlay = React.memo(
     const {
       cursorHidden,
       isMobile,
+      showPerfHud,
       onBackdropMouseDown,
       onRequestFullscreen,
       onClose,
@@ -213,6 +239,8 @@ const FullscreenStageOverlay = React.memo(
               <StageNowPlayingBadge />
             </div>
           )}
+
+          {showPerfHud ? <StagePerfHud /> : null}
 
           <div
             aria-hidden
@@ -279,6 +307,7 @@ export default function StageInline(props: { height?: number }) {
   }, [currentRecordingId]);
 
   const isMobile = useIsMobile(640);
+  const isAdmin = useIsAdminBodyFlag();
   const inlineHeight = isMobile
     ? Math.max(140, Math.round(height * 0.5))
     : height;
@@ -368,6 +397,7 @@ export default function StageInline(props: { height?: number }) {
           <FullscreenStageOverlay
             cursorHidden={cursorHidden}
             isMobile={isMobile}
+            showPerfHud={isAdmin}
             onBackdropMouseDown={handleOverlayBackdropMouseDown}
             onRequestFullscreen={handleOverlayRequestFullscreen}
             onClose={handleOverlayClose}
