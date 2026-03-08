@@ -1,3 +1,4 @@
+// web/app/(site)/exegesis/[recordingId]/components/ExegesisCommentItem.tsx
 "use client";
 
 import React from "react";
@@ -5,12 +6,23 @@ import TipTapReadOnly from "../TipTapReadOnly";
 import { MedalIcon, ReplyIcon, ShieldAlertIcon } from "../icons";
 import ExegesisReportForm from "./ExegesisReportForm";
 import ExegesisRichComposer from "./ExegesisRichComposer";
-import type { CommentDTO, EditDraft, ReplyDraft, ReportDraft } from "../exegesisTypes";
-import { formatAgo, isTipTapDoc, medalClassForTier, medalTier } from "../exegesisUi";
+import type {
+  CommentDTO,
+  EditDraft,
+  ReplyDraft,
+  ReportDraft,
+} from "../exegesisTypes";
+import {
+  formatAgo,
+  isTipTapDoc,
+  medalClassForTier,
+  medalTier,
+} from "../exegesisUi";
 
 export default function ExegesisCommentItem(props: {
   comment: CommentDTO;
   commenterName: string;
+  isAdminAuthor: boolean;
   canPost: boolean;
   canReport: boolean;
   canVote: boolean;
@@ -42,6 +54,7 @@ export default function ExegesisCommentItem(props: {
   const {
     comment: c,
     commenterName,
+    isAdminAuthor,
     canPost,
     canReport,
     canVote,
@@ -83,17 +96,37 @@ export default function ExegesisCommentItem(props: {
   return (
     <div
       id={`exegesis-c-${c.id}`}
-      className="group py-2 scroll-mt-4"
+      className={[
+        "group py-2 scroll-mt-4",
+        isAdminAuthor ? "relative" : "",
+      ].join(" ")}
       style={{
         paddingLeft: Math.min(72, (c.depth ?? 0) * 12),
-        borderLeft:
-          (c.depth ?? 0) > 0 ? "1px solid rgba(255,255,255,0.08)" : "none",
-        marginLeft: (c.depth ?? 0) > 0 ? 6 : 0,
+        borderLeft: isAdminAuthor
+          ? "2px solid var(--lxSelected)"
+          : (c.depth ?? 0) > 0
+            ? "1px solid rgba(255,255,255,0.08)"
+            : "none",
+        marginLeft: (c.depth ?? 0) > 0 || isAdminAuthor ? 6 : 0,
       }}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <div className="text-xs opacity-70">{commenterName}</div>
+          <div
+            className={
+              isAdminAuthor
+                ? "text-xs font-medium text-[var(--lxSelected)]"
+                : "text-xs opacity-70"
+            }
+          >
+            {commenterName}
+          </div>
+
+          {isAdminAuthor ? (
+            <div className="rounded-full bg-[color:var(--lxSelected)]/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--lxSelected)]">
+              Artist
+            </div>
+          ) : null}
 
           {ago ? <div className="text-[11px] opacity-45">· {ago}</div> : null}
 
@@ -172,7 +205,7 @@ bg-[rgb(var(--voteBgRgb)/0.55)] hover:bg-[rgb(var(--voteBgRgb)/0.55)]`}
           This comment is hidden.
         </div>
       ) : (
-        <div className="mt-1">
+        <div className={isAdminAuthor ? "mt-1 text-white/95" : "mt-1"}>
           {isTipTapDoc(c.bodyRich) ? (
             <TipTapReadOnly doc={c.bodyRich} />
           ) : (
@@ -211,7 +244,9 @@ bg-[rgb(var(--voteBgRgb)/0.55)] hover:bg-[rgb(var(--voteBgRgb)/0.55)]`}
             error={editDraft.err ?? ""}
             posting={Boolean(editDraft.posting)}
             submitLabel="Save edit"
-            submitDisabled={Boolean(editDraft.posting) || !(editDraft.plain ?? "").trim()}
+            submitDisabled={
+              Boolean(editDraft.posting) || !(editDraft.plain ?? "").trim()
+            }
             onChangePlain={(plain) =>
               onChangeEditDraft(c.id, {
                 ...editDraft,
@@ -254,7 +289,9 @@ bg-[rgb(var(--voteBgRgb)/0.55)] hover:bg-[rgb(var(--voteBgRgb)/0.55)]`}
             error={replyDraft.err ?? ""}
             posting={Boolean(replyDraft.posting)}
             submitLabel="Post reply"
-            submitDisabled={Boolean(replyDraft.posting) || !(replyDraft.plain ?? "").trim()}
+            submitDisabled={
+              Boolean(replyDraft.posting) || !(replyDraft.plain ?? "").trim()
+            }
             onChangePlain={(plain) =>
               onChangeReplyDraft(c.id, {
                 ...replyDraft,

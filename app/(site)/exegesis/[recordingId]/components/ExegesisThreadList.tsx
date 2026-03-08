@@ -1,3 +1,4 @@
+// web/app/(site)/exegesis/[recordingId]/components/ExegesisThreadList.tsx
 "use client";
 
 import React from "react";
@@ -28,9 +29,15 @@ export default function ExegesisThreadList(props: {
   previewMaxDepth: number;
   previewMaxComments: number;
   rootElByIdRef: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
-  editWrapByIdRef: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
-  replyWrapByIdRef: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
-  reportWrapByIdRef: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
+  editWrapByIdRef: React.MutableRefObject<
+    Record<string, HTMLDivElement | null>
+  >;
+  replyWrapByIdRef: React.MutableRefObject<
+    Record<string, HTMLDivElement | null>
+  >;
+  reportWrapByIdRef: React.MutableRefObject<
+    Record<string, HTMLDivElement | null>
+  >;
   onOpenReply: (commentId: string) => void;
   onOpenReport: (commentId: string) => void;
   onToggleVote: (commentId: string) => void;
@@ -111,8 +118,15 @@ export default function ExegesisThreadList(props: {
           >
             {visibleComments.map((c) => {
               const ident = identities?.[c.createdByMemberId];
-              const name =
-                ident?.publicName || ident?.anonLabel || "Anonymous";
+              const isAdminAuthor = Boolean(
+                ident &&
+                typeof ident === "object" &&
+                "isAdmin" in ident &&
+                ident.isAdmin === true,
+              );
+              const commenterName = isAdminAuthor
+                ? "Brendan John Roch"
+                : ident?.publicName || ident?.anonLabel || "Anonymous";
               const replyBusy = Boolean(replyByCommentId[c.id]?.posting);
               const isAuthor =
                 Boolean(viewerMemberId) &&
@@ -125,7 +139,8 @@ export default function ExegesisThreadList(props: {
                 <ExegesisCommentItem
                   key={c.id}
                   comment={c}
-                  commenterName={name}
+                  commenterName={commenterName}
+                  isAdminAuthor={isAdminAuthor}
                   canPost={canPost}
                   canReport={canReport}
                   canVote={canVote}

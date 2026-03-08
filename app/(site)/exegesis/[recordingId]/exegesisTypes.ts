@@ -20,6 +20,7 @@ export type IdentityDTO = {
   publicName: string | null;
   publicNameUnlockedAt: string | null;
   contributionCount: number;
+  isAdmin: boolean;
 };
 
 export type CommentDTO = {

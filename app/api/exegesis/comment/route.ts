@@ -43,6 +43,7 @@ type IdentityDTO = {
   publicName: string | null;
   publicNameUnlockedAt: string | null;
   contributionCount: number;
+  isAdmin: boolean;
 };
 
 type CommentDTO = {
@@ -86,6 +87,13 @@ function isUuid(v: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     v,
   );
+}
+
+const ADMIN_MEMBER_ID = (process.env.EXEGESIS_ADMIN_MEMBER_ID ?? "").trim();
+
+function isAdminMemberId(memberId: string | null | undefined): boolean {
+  const id = (memberId ?? "").trim();
+  return Boolean(id && ADMIN_MEMBER_ID && id === ADMIN_MEMBER_ID);
 }
 
 function clampInt(v: unknown, min: number, max: number): number | null {
@@ -731,6 +739,7 @@ limit 1
         publicName: row.ident_public_name,
         publicNameUnlockedAt: row.ident_public_name_unlocked_at,
         contributionCount: row.ident_contribution_count,
+        isAdmin: isAdminMemberId(row.ident_member_id),
       },
     };
 

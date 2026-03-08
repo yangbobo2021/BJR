@@ -34,6 +34,7 @@ type IdentityDTO = {
   publicName: string | null;
   publicNameUnlockedAt: string | null;
   contributionCount: number;
+  isAdmin: boolean;
 };
 
 type CommentDTO = {
@@ -120,6 +121,13 @@ function isUuid(v: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     v,
   );
+}
+
+const ADMIN_MEMBER_ID = (process.env.EXEGESIS_ADMIN_MEMBER_ID ?? "").trim();
+
+function isAdminMemberId(memberId: string | null | undefined): boolean {
+  const id = (memberId ?? "").trim();
+  return Boolean(id && ADMIN_MEMBER_ID && id === ADMIN_MEMBER_ID);
 }
 
 async function getViewer(
@@ -484,6 +492,7 @@ export async function GET(req: NextRequest) {
         publicName: i.public_name,
         publicNameUnlockedAt: i.public_name_unlocked_at,
         contributionCount: i.contribution_count,
+        isAdmin: isAdminMemberId(i.member_id),
       };
     }
   }

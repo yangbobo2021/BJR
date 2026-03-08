@@ -5,7 +5,7 @@ import React from "react";
 
 export default function ExegesisDiscourseShimmer() {
   return (
-    <div className="rounded-xl bg-white/5 p-4">
+    <div className="rounded-xl p-1">
       <div className="mt-2 rounded-md bg-black/20 p-3">
         <div className="space-y-2">
           <div className="afShimmerBlock h-4 w-[90%] rounded bg-white/5" />
@@ -18,9 +18,6 @@ export default function ExegesisDiscourseShimmer() {
         <div className="mt-2 flex items-center justify-between">
           <div className="afShimmerBlock h-5 w-10 rounded-md bg-white/5" />
           <div className="afShimmerBlock h-4 w-16 rounded bg-white/5" />
-        </div>
-        <div className="mt-2 flex justify-end">
-          <div className="afShimmerBlock h-8 w-20 rounded-md bg-white/5" />
         </div>
       </div>
 
