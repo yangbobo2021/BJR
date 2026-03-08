@@ -31,6 +31,7 @@ import type {
   ThreadSort,
 } from "./exegesisTypes";
 import { isTipTapDoc, parseHash } from "./exegesisUi";
+import { resolveViewerAuthorIdentity } from "./exegesisIdentity";
 
 function useMediaQuery(query: string): boolean {
   const get = () =>
@@ -622,19 +623,27 @@ export default function ExegesisTrackClient(props: {
     return () => window.clearTimeout(t);
   }, [threadKey, pendingScrollCommentIdRef]);
 
-  const identityLabel =
-    viewerIdentity?.publicName || viewerIdentity?.anonLabel || "";
+  const viewerAuthorIdentity = React.useMemo(
+    () =>
+      resolveViewerAuthorIdentity({
+        identity: viewerIdentity,
+        canClaimName,
+      }),
+    [viewerIdentity, canClaimName],
+  );
 
   const showIdentityPanel =
-    thread?.viewer.kind === "member" && !!viewerMemberId && !!viewerIdentity;
+    thread?.viewer.kind === "member" &&
+    !!viewerMemberId &&
+    !!viewerAuthorIdentity;
 
   React.useEffect(() => {
-    if (viewerIdentity?.publicName) {
+    if (viewerAuthorIdentity?.hasClaimedPublicName) {
       setClaimOpen(false);
       setClaimErr("");
       setClaimName("");
     }
-  }, [viewerIdentity?.publicName]);
+  }, [viewerAuthorIdentity?.hasClaimedPublicName]);
 
   React.useEffect(() => {
     if (!isMobile) return;
@@ -948,8 +957,7 @@ export default function ExegesisTrackClient(props: {
               shouldShowInitialShimmer={shouldShowInitialShimmer}
               isLocked={isLocked}
               showIdentityPanel={showIdentityPanel}
-              canClaimName={canClaimName}
-              identityLabel={identityLabel}
+              viewerAuthorIdentity={viewerAuthorIdentity}
               viewerIdentity={viewerIdentity}
               claimOpen={claimOpen}
               claimName={claimName}

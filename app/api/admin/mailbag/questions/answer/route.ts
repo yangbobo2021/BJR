@@ -86,12 +86,21 @@ type Body = {
 };
 
 type PTSpan = { _type: "span"; _key: string; text: string; marks?: string[] };
+
+type PTMarkDef = {
+  _key: string;
+  _type: string;
+  href?: string;
+};
+
 type PTBlock = {
   _type: "block";
   _key: string;
   style: string;
   children: PTSpan[];
+  markDefs?: PTMarkDef[];
 };
+
 type PortableText = PTBlock[];
 
 function k(prefix = "k"): string {
@@ -245,12 +254,25 @@ export async function POST(req: NextRequest) {
   // - answer body ONCE
   const blocks: PortableText = [];
 
-  blocks.push(
-    block(
-      "normal",
-      "This post responds to mailbag questions from Patrons and Partners.",
-    ),
-  );
+  blocks.push({
+    _type: "block",
+    _key: k("intro"),
+    style: "normal",
+    markDefs: [
+      {
+        _key: "mailbagIntro",
+        _type: "mailbagIntro",
+      },
+    ],
+    children: [
+      {
+        _type: "span",
+        _key: k("s"),
+        text: "This post responds to mailbag questions from Patrons and Partners.",
+        marks: ["mailbagIntro"],
+      },
+    ],
+  });
 
   for (const q of qRes.rows) {
     const name = (q.asker_name ?? "").trim();

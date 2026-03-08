@@ -45,7 +45,7 @@ function TickIcon(props: { size?: number; stroke?: string }) {
 
 export default function ExegesisCommentItem(props: {
   comment: CommentDTO;
-  commenterName: string;
+  authorLabel: string;
   isAdminAuthor: boolean;
   canPost: boolean;
   canReport: boolean;
@@ -77,7 +77,7 @@ export default function ExegesisCommentItem(props: {
 }) {
   const {
     comment: c,
-    commenterName,
+    authorLabel,
     isAdminAuthor,
     canPost,
     canReport,
@@ -140,7 +140,7 @@ export default function ExegesisCommentItem(props: {
                 : "text-xs opacity-70"
             }
           >
-            {commenterName}
+            {authorLabel}
           </div>
 
           {isAdminAuthor ? (

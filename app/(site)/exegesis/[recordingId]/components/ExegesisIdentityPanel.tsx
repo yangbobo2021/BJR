@@ -5,10 +5,9 @@ import React from "react";
 
 type ExegesisIdentityPanelProps = {
   show: boolean;
+  authorLabel: string;
+  hasClaimedPublicName: boolean;
   canClaimName: boolean;
-  identityLabel: string;
-  publicName: string | null | undefined;
-  isAdminAuthor: boolean;
   claimOpen: boolean;
   claimName: string;
   claimErr: string;
@@ -21,10 +20,9 @@ type ExegesisIdentityPanelProps = {
 
 export default function ExegesisIdentityPanel({
   show,
+  authorLabel,
+  hasClaimedPublicName,
   canClaimName,
-  identityLabel,
-  publicName,
-  isAdminAuthor,
   claimOpen,
   claimName,
   claimErr,
@@ -36,20 +34,18 @@ export default function ExegesisIdentityPanel({
 }: ExegesisIdentityPanelProps) {
   if (!show) return null;
 
-  const effectivePublicName = isAdminAuthor ? null : publicName;
-
   return (
     <div className="min-w-0 flex-1 text-sm">
       <div className="flex min-w-0 items-center gap-2">
         <div className="min-w-0 text-xs text-white/72">
           Commenting as{" "}
-          <span className="font-semibold text-white">{identityLabel}</span>
-          {!effectivePublicName && canClaimName ? (
+          <span className="font-semibold text-white">{authorLabel}</span>
+          {!hasClaimedPublicName && canClaimName ? (
             <span className="ml-1 text-white/45">· Unlocked</span>
           ) : null}
         </div>
 
-        {canClaimName && !publicName ? (
+        {canClaimName && !hasClaimedPublicName ? (
           <button
             className="inline-flex h-7 shrink-0 items-center justify-center rounded-full px-2.5 text-[11px] text-white/65 transition hover:bg-white/[0.06] hover:text-white/95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
             onClick={onToggleClaim}

@@ -418,8 +418,41 @@ function ActionBtn(props: {
   );
 }
 
+function typeBadgeTheme(t: PostType): {
+  background: string;
+  color: string;
+} {
+  if (t === "qa") {
+    return {
+      background: "rgba(217, 184, 120, 0.82)",
+      color: "rgba(33, 24, 10, 0.96)",
+    };
+  }
+
+  if (t === "creative") {
+    return {
+      background: "rgba(201, 156, 163, 0.82)",
+      color: "rgba(34, 18, 20, 0.96)",
+    };
+  }
+
+  if (t === "civic") {
+    return {
+      background: "rgba(127, 150, 184, 0.80)",
+      color: "rgba(14, 21, 33, 0.96)",
+    };
+  }
+
+  return {
+    background: "rgba(141, 118, 186, 0.82)",
+    color: "rgba(20, 12, 34, 0.96)",
+  };
+}
+
 function TypeBadge(props: { t?: PostType | null }) {
   const t = asPostType(props.t ?? null) ?? "creative";
+  const theme = typeBadgeTheme(t);
+
   return (
     <span
       style={{
@@ -429,8 +462,8 @@ function TypeBadge(props: { t?: PostType | null }) {
         padding: "0 8px",
         borderRadius: 5,
         border: "none",
-        background: "rgba(225, 192, 253, 0.3)",
-        color: "rgba(0,0,0,0.92)",
+        background: theme.background,
+        color: theme.color,
         fontSize: 10,
         fontWeight: 750,
         letterSpacing: 0.35,
@@ -1262,6 +1295,18 @@ export default function PortalArtistPosts(props: {
           <strong style={{ fontWeight: 750, opacity: 0.98 }}>
             {props.children}
           </strong>
+        ),
+
+        mailbagIntro: (props: { children?: React.ReactNode }) => (
+          <span
+            style={{
+              fontSize: "0.92em",
+              color: "rgba(255,255,255,0.62)",
+              fontStyle: "italic",
+            }}
+          >
+            {props.children}
+          </span>
         ),
 
         // ✅ asker line hook: smaller + greyer, not italic

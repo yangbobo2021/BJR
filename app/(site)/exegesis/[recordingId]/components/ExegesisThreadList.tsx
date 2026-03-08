@@ -10,6 +10,7 @@ import type {
   ReportDraft,
   ThreadApiOk,
 } from "../exegesisTypes";
+import { resolveCommentAuthorIdentity } from "../exegesisIdentity";
 
 export default function ExegesisThreadList(props: {
   roots: Array<ThreadApiOk["roots"][number]>;
@@ -118,15 +119,7 @@ export default function ExegesisThreadList(props: {
           >
             {visibleComments.map((c) => {
               const ident = identities?.[c.createdByMemberId];
-              const isAdminAuthor = Boolean(
-                ident &&
-                typeof ident === "object" &&
-                "isAdmin" in ident &&
-                ident.isAdmin === true,
-              );
-              const commenterName = isAdminAuthor
-                ? "Brendan John Roch"
-                : ident?.publicName || ident?.anonLabel || "Anonymous";
+              const authorIdentity = resolveCommentAuthorIdentity(ident);
               const replyBusy = Boolean(replyByCommentId[c.id]?.posting);
               const isAuthor =
                 Boolean(viewerMemberId) &&
@@ -139,8 +132,8 @@ export default function ExegesisThreadList(props: {
                 <ExegesisCommentItem
                   key={c.id}
                   comment={c}
-                  commenterName={commenterName}
-                  isAdminAuthor={isAdminAuthor}
+                  authorLabel={authorIdentity.displayName}
+                  isAdminAuthor={authorIdentity.isAdmin}
                   canPost={canPost}
                   canReport={canReport}
                   canVote={canVote}

@@ -20,6 +20,7 @@ type IdentityDTO = {
   publicName: string | null;
   publicNameUnlockedAt: string | null;
   contributionCount: number;
+  isAdmin: boolean;
 };
 
 type ApiOk = { ok: true; identity: IdentityDTO };
@@ -42,6 +43,13 @@ function isUuid(v: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     v,
   );
+}
+
+const ADMIN_MEMBER_ID = (process.env.EXEGESIS_ADMIN_MEMBER_ID ?? "").trim();
+
+function isAdminMemberId(memberId: string | null | undefined): boolean {
+  const id = (memberId ?? "").trim();
+  return Boolean(id && ADMIN_MEMBER_ID && id === ADMIN_MEMBER_ID);
 }
 
 function validatePublicName(
@@ -277,6 +285,7 @@ export async function POST(req: NextRequest) {
           publicName: row.public_name ?? null,
           publicNameUnlockedAt: row.public_name_unlocked_at,
           contributionCount: Number(row.contribution_count ?? 0),
+          isAdmin: isAdminMemberId(row.member_id),
         },
       },
       { correlationId },

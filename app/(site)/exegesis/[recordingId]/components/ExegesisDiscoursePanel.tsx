@@ -1,3 +1,4 @@
+// web/app/(site)/exegesis/[recordingId]/components/ExegesisDiscoursePanel.tsx
 "use client";
 
 import React from "react";
@@ -15,6 +16,7 @@ import type {
   ThreadApiOk,
 } from "../exegesisTypes";
 import { cueCanonicalGroupKey, isSameGroup } from "../exegesisUi";
+import type { ResolvedAuthorIdentity } from "../exegesisIdentity";
 
 type SelectedLine = {
   lineKey: string;
@@ -39,8 +41,7 @@ export default function ExegesisDiscoursePanel(props: {
   shouldShowInitialShimmer: boolean;
   isLocked: boolean;
   showIdentityPanel: boolean;
-  canClaimName: boolean;
-  identityLabel: string;
+  viewerAuthorIdentity: ResolvedAuthorIdentity | null;
   viewerIdentity?: IdentityDTO;
   claimOpen: boolean;
   claimName: string;
@@ -105,9 +106,7 @@ export default function ExegesisDiscoursePanel(props: {
     shouldShowInitialShimmer,
     isLocked,
     showIdentityPanel,
-    canClaimName,
-    identityLabel,
-    viewerIdentity,
+    viewerAuthorIdentity,
     claimOpen,
     claimName,
     claimErr,
@@ -250,10 +249,11 @@ export default function ExegesisDiscoursePanel(props: {
                 <div className="mt-3 flex items-start justify-between gap-3">
                   <ExegesisIdentityPanel
                     show={showIdentityPanel}
-                    canClaimName={canClaimName}
-                    identityLabel={identityLabel}
-                    publicName={viewerIdentity?.publicName}
-                    isAdminAuthor={Boolean(viewerIdentity?.isAdmin)}
+                    authorLabel={viewerAuthorIdentity?.displayName ?? ""}
+                    hasClaimedPublicName={
+                      viewerAuthorIdentity?.hasClaimedPublicName ?? false
+                    }
+                    canClaimName={viewerAuthorIdentity?.canClaimName ?? false}
                     claimOpen={claimOpen}
                     claimName={claimName}
                     claimErr={claimErr}
