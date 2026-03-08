@@ -139,7 +139,7 @@ export default function VisualizerCanvas(props: { variant: StageVariant }) {
     themeNameRef.current = themeName;
   }, [themeName]);
 
-  // Mount engine once per canvas instance.
+  // Mount engine once per canvas instance / stage variant.
   React.useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -158,17 +158,18 @@ export default function VisualizerCanvas(props: { variant: StageVariant }) {
       theme: createBlankTheme(),
       performanceProfile: variant === "fullscreen" ? "fullscreen" : "inline",
       stageVariant: variant,
-      initialThemeName: themeName,
+      initialThemeName: themeNameRef.current,
     });
 
     engine.setIdleTheme(createIdleMistTheme());
     engineRef.current = engine;
 
-    // Prime target theme (async, engine-owned)
+    // Prime target theme once for the freshly mounted engine.
     let cancelled = false;
     (async () => {
       const factory = await loadThemeFactory(themeNameRef.current);
       if (cancelled) return;
+      engine.setThemeDebugName(themeNameRef.current);
       engine.setTargetTheme(factory());
     })().catch(() => {});
 
@@ -181,7 +182,7 @@ export default function VisualizerCanvas(props: { variant: StageVariant }) {
         engineRef.current = null;
       }
     };
-  }, [themeName, variant]);
+  }, [variant]);
 
   // IMPORTANT: only register the canvas as the visual source when this variant
   // is the authoritative stage. Otherwise samplers may lock onto a blank/stopped canvas.

@@ -271,6 +271,7 @@ export class VisualizerEngine {
   private fpsObserved = 0;
   private lastPerfPublishAtMs = 0;
   private didLogPresentFailure = false;
+  private contextLost = false;
 
   // Always create ImageData by dimensions (avoids TypedArray overload issues in TS)
   private snapImageData: ImageData = new ImageData(2, 2);
@@ -336,12 +337,16 @@ export class VisualizerEngine {
 
     this.canvas.addEventListener("webglcontextlost", (e) => {
       e.preventDefault();
+      this.contextLost = true;
+      this.stop();
       console.error("[VisualizerEngine] webglcontextlost", {
         stageVariant: this.stageVariant,
       });
     });
 
     this.canvas.addEventListener("webglcontextrestored", () => {
+      this.contextLost = false;
+      this.didLogPresentFailure = false;
       console.warn("[VisualizerEngine] webglcontextrestored", {
         stageVariant: this.stageVariant,
       });
@@ -542,6 +547,11 @@ export class VisualizerEngine {
     this.lastDrawMs = 0;
 
     const loop = (tNowMs: number) => {
+      if (this.contextLost) {
+        this.raf = null;
+        return;
+      }
+
       const dtSec = Math.min(0.05, (tNowMs - this.lastT) / 1000);
       this.lastT = tNowMs;
 
@@ -783,13 +793,6 @@ export class VisualizerEngine {
     try {
       this.targetTheme?.dispose(gl);
     } catch {}
-
-    try {
-      const lose = gl.getExtension("WEBGL_lose_context") as {
-        loseContext?: () => void;
-      } | null;
-      lose?.loseContext?.();
-    } catch {}
   }
 
   /** The state machine step: decides when to transition, and captures "from" when needed. */
@@ -944,6 +947,8 @@ export class VisualizerEngine {
 
   private ensurePresentResources() {
     const gl = this.gl;
+
+    if (this.contextLost) return;
 
     if (!this.presentProg) {
       try {
