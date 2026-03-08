@@ -48,7 +48,7 @@ export default function ExegesisIdentityPanel({
         </div>
       ) : null}
 
-      <div className="mt-1 text-sm">
+      <div className="mt-1 text-xs">
         Commenting as <span className="font-semibold">{identityLabel}</span>
       </div>
 
@@ -62,7 +62,7 @@ export default function ExegesisIdentityPanel({
         <div className="mt-3 space-y-2">
           <input
             className="w-full rounded-md bg-black/20 px-3 py-2 text-sm outline-none"
-            placeholder="Choose a public name"
+            placeholder="Choose a display name"
             value={claimName}
             onChange={(e) => onChangeClaimName(e.target.value)}
           />

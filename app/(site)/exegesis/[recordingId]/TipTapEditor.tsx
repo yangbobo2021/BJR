@@ -26,8 +26,9 @@ function makeLinkSafe(href: string): string | null {
   if (h.startsWith("#") || h.startsWith("/")) return h;
 
   try {
-    const withProtocol =
-      /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(h) ? h : `https://${h}`;
+    const withProtocol = /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(h)
+      ? h
+      : `https://${h}`;
     const u = new URL(withProtocol);
     const p = (u.protocol || "").toLowerCase();
     if (p === "http:" || p === "https:" || p === "mailto:") return u.toString();
@@ -280,11 +281,7 @@ function openLinkDraft(editor: Editor, setDraft: (next: LinkDraft) => void) {
   });
 }
 
-function submitLinkDraft(
-  editor: Editor,
-  draft: LinkDraft,
-  close: () => void,
-) {
+function submitLinkDraft(editor: Editor, draft: LinkDraft, close: () => void) {
   const safeHref = makeLinkSafe(draft.href);
   if (!safeHref) {
     close();
@@ -318,10 +315,7 @@ function submitLinkDraft(
   close();
 }
 
-function TipTapToolbar(props: {
-  editor: Editor | null;
-  disabled?: boolean;
-}) {
+function TipTapToolbar(props: { editor: Editor | null; disabled?: boolean }) {
   const editor = props.editor;
   const disabled = Boolean(props.disabled);
 
@@ -601,9 +595,11 @@ export default function TipTapEditor(props: {
       },
     },
     onUpdate: ({ editor: nextEditor }) => {
+      const json = nextEditor.getJSON() as TipTapDoc;
+      lastAppliedExternalRef.current = JSON.stringify(json);
       const plain = (nextEditor.getText({ blockSeparator: "\n" }) ?? "").trim();
       onChangePlain(plain);
-      onChangeDoc(nextEditor.getJSON() as TipTapDoc);
+      onChangeDoc(json);
     },
   });
 
@@ -612,20 +608,39 @@ export default function TipTapEditor(props: {
     editor.setEditable(!disabled);
   }, [editor, disabled]);
 
+  const lastAppliedExternalRef = React.useRef<string>("");
+
   React.useEffect(() => {
     if (!editor) return;
 
     const nextDoc = props.valueDoc;
+    const nextExternal = isJsonDoc(nextDoc)
+      ? JSON.stringify(nextDoc)
+      : JSON.stringify({ type: "plain", value: valuePlain ?? "" });
+
+    const currentJson = JSON.stringify(editor.getJSON());
+
+    if (nextExternal === lastAppliedExternalRef.current) return;
+    if (isJsonDoc(nextDoc) && currentJson === JSON.stringify(nextDoc)) {
+      lastAppliedExternalRef.current = nextExternal;
+      return;
+    }
+
     if (isJsonDoc(nextDoc)) {
       editor.commands.setContent(nextDoc as JSONContent, { emitUpdate: false });
+      lastAppliedExternalRef.current = nextExternal;
       return;
     }
 
     const current = (editor.getText({ blockSeparator: "\n" }) ?? "").trim();
     const next = (valuePlain ?? "").trim();
-    if (current === next) return;
+    if (current === next) {
+      lastAppliedExternalRef.current = nextExternal;
+      return;
+    }
 
     editor.commands.setContent(next, { emitUpdate: false });
+    lastAppliedExternalRef.current = nextExternal;
   }, [editor, valuePlain, props.valueDoc]);
 
   return (
