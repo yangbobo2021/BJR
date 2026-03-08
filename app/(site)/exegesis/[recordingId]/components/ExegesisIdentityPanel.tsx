@@ -35,54 +35,55 @@ export default function ExegesisIdentityPanel({
   if (!show) return null;
 
   return (
-    <div className="mt-3 rounded-md bg-black/20 p-3 text-sm">
-      {canClaimName && !publicName ? (
-        <div className="flex items-center justify-between gap-3">
+    <div className="min-w-0 flex-1 text-sm">
+      <div className="flex min-w-0 items-center gap-2">
+        <div className="min-w-0 text-xs text-white/72">
+          Commenting as{" "}
+          <span className="font-semibold text-white">{identityLabel}</span>
+          {!publicName && canClaimName ? (
+            <span className="ml-1 text-white/45">· Unlocked</span>
+          ) : null}
+        </div>
+
+        {canClaimName && !publicName ? (
           <button
-            className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
+            className="inline-flex h-7 shrink-0 items-center justify-center rounded-full px-2.5 text-[11px] text-white/65 transition hover:bg-white/[0.06] hover:text-white/95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
             onClick={onToggleClaim}
             title="Claim a public name"
+            type="button"
           >
             Claim name
           </button>
-        </div>
-      ) : null}
-
-      <div className="mt-1 text-xs">
-        Commenting as <span className="font-semibold">{identityLabel}</span>
+        ) : null}
       </div>
 
-      {!publicName ? (
-        <div className="mt-1 text-xs opacity-60">
-          {canClaimName ? " · Unlocked" : ""}
-        </div>
-      ) : null}
-
       {claimOpen ? (
-        <div className="mt-3 space-y-2">
+        <div className="mt-2 max-w-md space-y-2">
           <input
-            className="w-full rounded-md bg-black/20 px-3 py-2 text-sm outline-none"
+            className="h-10 w-full rounded-lg bg-black/[0.16] px-3 text-sm text-white/90 outline-none placeholder:text-white/30"
             placeholder="Choose a display name"
             value={claimName}
             onChange={(e) => onChangeClaimName(e.target.value)}
           />
 
           {claimErr ? (
-            <div className="text-xs opacity-70">{claimErr}</div>
+            <div className="text-xs text-white/70">{claimErr}</div>
           ) : null}
 
           <div className="flex items-center justify-end gap-2">
             <button
-              className="rounded-md bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
+              className="inline-flex h-9 items-center justify-center rounded-lg px-3 text-sm text-white/60 transition hover:bg-white/[0.06] hover:text-white/92 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
               onClick={onCancelClaim}
+              type="button"
             >
               Cancel
             </button>
 
             <button
-              className="rounded-md bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15 disabled:opacity-40"
+              className="inline-flex h-9 items-center justify-center rounded-lg bg-white/[0.08] px-3 text-sm text-white/92 transition hover:bg-white/[0.14] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 disabled:opacity-40"
               disabled={!canClaimName || !claimName.trim() || claimBusy}
               onClick={onSubmitClaim}
+              type="button"
             >
               {claimBusy ? "Saving…" : "Claim"}
             </button>

@@ -66,9 +66,15 @@ export default function ExegesisDiscoursePanel(props: {
   previewMaxDepth: number;
   previewMaxComments: number;
   rootElByIdRef: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
-  editWrapByIdRef: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
-  replyWrapByIdRef: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
-  reportWrapByIdRef: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
+  editWrapByIdRef: React.MutableRefObject<
+    Record<string, HTMLDivElement | null>
+  >;
+  replyWrapByIdRef: React.MutableRefObject<
+    Record<string, HTMLDivElement | null>
+  >;
+  reportWrapByIdRef: React.MutableRefObject<
+    Record<string, HTMLDivElement | null>
+  >;
   inlineGate: InlineGateState;
   onClearRootFocus: () => void;
   onSetSortTop: () => void;
@@ -196,19 +202,23 @@ export default function ExegesisDiscoursePanel(props: {
               ) : null}
 
               {selected ? (
-                <div className="mt-2 rounded-md bg-black/20 p-3 text-sm">
+                <div className="mt-2 border-l-2 border-[var(--lxSelected)] bg-black/20 pl-3 text-sm">
                   {(() => {
                     const gk = (selected.groupKey ?? "").trim();
-                    if (!gk) return <div className="mt-1">{selected.lineText}</div>;
+                    if (!gk) {
+                      return <div className="py-1">{selected.lineText}</div>;
+                    }
 
                     const lines = (lyrics.cues ?? [])
-                      .filter((c) => isSameGroup(cueCanonicalGroupKey(lyrics, c), gk))
+                      .filter((c) =>
+                        isSameGroup(cueCanonicalGroupKey(lyrics, c), gk),
+                      )
                       .map((c) => c.text);
 
                     const safe = lines.length > 0 ? lines : [selected.lineText];
 
                     return (
-                      <div className="mt-1 space-y-1">
+                      <div className="space-y-1 py-1">
                         {safe.map((t, i) => (
                           <div key={i}>{t}</div>
                         ))}
@@ -218,21 +228,6 @@ export default function ExegesisDiscoursePanel(props: {
                 </div>
               ) : null}
 
-              <ExegesisIdentityPanel
-                show={showIdentityPanel}
-                canClaimName={canClaimName}
-                identityLabel={identityLabel}
-                publicName={viewerIdentity?.publicName}
-                claimOpen={claimOpen}
-                claimName={claimName}
-                claimErr={claimErr}
-                claimBusy={claimBusy}
-                onToggleClaim={onToggleClaim}
-                onChangeClaimName={onChangeClaimName}
-                onCancelClaim={onCancelClaim}
-                onSubmitClaim={onSubmitClaim}
-              />
-
               {threadErr ? (
                 <div className="mt-3 rounded-md bg-white/5 p-3 text-sm">
                   {threadErr}
@@ -241,19 +236,34 @@ export default function ExegesisDiscoursePanel(props: {
 
               {composer}
 
-              <div className="mt-3 flex items-center justify-end">
-                {focusedRootId ? (
-                  <div className="w-full">
-                    <button
-                      type="button"
-                      className="w-full rounded-md bg-white/5 px-2 py-1 text-xs text-left opacity-80 hover:bg-white/10 hover:opacity-100"
-                      onClick={onClearRootFocus}
-                    >
-                      ← Back to all threads
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-end gap-1.5">
+              {focusedRootId ? (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    className="w-full rounded-md bg-white/5 px-2 py-1 text-xs text-left opacity-80 hover:bg-white/10 hover:opacity-100"
+                    onClick={onClearRootFocus}
+                  >
+                    ← Back to all threads
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-3 flex items-start justify-between gap-3">
+                  <ExegesisIdentityPanel
+                    show={showIdentityPanel}
+                    canClaimName={canClaimName}
+                    identityLabel={identityLabel}
+                    publicName={viewerIdentity?.publicName}
+                    claimOpen={claimOpen}
+                    claimName={claimName}
+                    claimErr={claimErr}
+                    claimBusy={claimBusy}
+                    onToggleClaim={onToggleClaim}
+                    onChangeClaimName={onChangeClaimName}
+                    onCancelClaim={onCancelClaim}
+                    onSubmitClaim={onSubmitClaim}
+                  />
+
+                  <div className="flex shrink-0 items-center justify-end gap-1.5">
                     <button
                       className={`rounded-md px-2 py-1 text-xs transition ${
                         sort === "top"
@@ -275,8 +285,8 @@ export default function ExegesisDiscoursePanel(props: {
                       Recent
                     </button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               <div
                 ref={threadScrollRef}
