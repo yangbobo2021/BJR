@@ -16,7 +16,7 @@ import type {
   ThreadApiOk,
 } from "../exegesisTypes";
 import { cueCanonicalGroupKey, isSameGroup } from "../exegesisUi";
-import type { ResolvedAuthorIdentity } from "../exegesisIdentity";
+import type { ResolvedDisplayIdentity } from "@/lib/memberIdentity";
 
 type SelectedLine = {
   lineKey: string;
@@ -41,7 +41,7 @@ export default function ExegesisDiscoursePanel(props: {
   shouldShowInitialShimmer: boolean;
   isLocked: boolean;
   showIdentityPanel: boolean;
-  viewerAuthorIdentity: ResolvedAuthorIdentity | null;
+  viewerAuthorIdentity: ResolvedDisplayIdentity | null;
   viewerIdentity?: IdentityDTO;
   claimOpen: boolean;
   claimName: string;
