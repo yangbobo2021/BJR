@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import { usePlayer } from "./PlayerState";
+import { usePlayerActions, usePlayerVisual } from "./PlayerState";
 import VisualizerCanvas from "./VisualizerCanvas";
 import LyricsOverlay from "./stage/LyricsOverlay";
 import type { LyricCue } from "@/lib/types";
@@ -43,7 +43,8 @@ function StageCore(props: {
     lyricsMode = "embedded",
   } = props;
 
-  const p = usePlayer();
+  const player = usePlayerVisual();
+  const actions = usePlayerActions();
   const snap = useLyricsSnapshot();
 
   // ✅ prefer props when provided; otherwise use lyricsSurface
@@ -65,8 +66,8 @@ function StageCore(props: {
     return unsub;
   }, []);
 
-  const playerRecordingId = p.current?.recordingId ?? null;
-  const playerMuxId = p.current?.muxPlaybackId ?? null;
+  const playerRecordingId = player.current?.recordingId ?? null;
+  const playerMuxId = player.current?.muxPlaybackId ?? null;
 
   const recordingId = pickKeyWithCues(cuesByRecordingId, [
     playerRecordingId,
@@ -89,21 +90,21 @@ function StageCore(props: {
       : 0;
 
   const effectiveOffsetMs = trackOffsetMs + globalOffsetMs;
+  const resumeTrack = player.current ?? player.firstQueuedTrack;
 
   const onSeek = React.useCallback(
     (tMs: number) => {
       const ms = Math.max(0, Math.floor(tMs));
-      p.seek(ms);
+      actions.seek(ms);
 
       if (autoResumeOnSeek) {
-        const t = p.current ?? p.queue[0];
-        if (!t) return;
-        p.setIntent("play");
-        p.play(t);
+        if (!resumeTrack) return;
+        actions.setIntent("play");
+        actions.play(resumeTrack);
         window.dispatchEvent(new Event("af:play-intent"));
       }
     },
-    [autoResumeOnSeek, p],
+    [actions, autoResumeOnSeek, resumeTrack],
   );
 
   const lyricsVariant = variant === "inline" ? "inline" : "stage";

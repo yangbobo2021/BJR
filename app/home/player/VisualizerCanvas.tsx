@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import { usePlayer } from "./PlayerState";
+import { usePlayerVisual } from "./PlayerState";
 import { VisualizerEngine } from "./visualizer/VisualizerEngine";
 import { audioSurface } from "./audioSurface";
 import { mediaSurface, type StageVariant } from "./mediaSurface";
@@ -117,7 +117,7 @@ function createBlankTheme(): Theme {
 
 export default function VisualizerCanvas(props: { variant: StageVariant }) {
   const { variant } = props;
-  const p = usePlayer();
+  const player = usePlayerVisual();
 
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const engineRef = React.useRef<VisualizerEngine | null>(null);
@@ -132,7 +132,7 @@ export default function VisualizerCanvas(props: { variant: StageVariant }) {
     });
   }, []);
 
-  const themeName: ThemeName = canonicalThemeName(p.current?.visualTheme);
+  const themeName: ThemeName = canonicalThemeName(player.current?.visualTheme);
 
   const themeNameRef = React.useRef<ThemeName>(themeName);
   React.useEffect(() => {
@@ -196,10 +196,13 @@ export default function VisualizerCanvas(props: { variant: StageVariant }) {
     unregRef.current = null;
 
     if (activeStage === variant) {
-      // Register the *stable snapshot canvas* (2D) as the sip source.
-      // This avoids sampling WebGL's default framebuffer (esp. with preserveDrawingBuffer:false).
-      const src = engineRef.current?.getStableSnapshotCanvas?.() ?? canvas;
-      unregRef.current = visualSurface.registerCanvas(variant, src);
+      const snapshotCanvas =
+        engineRef.current?.getStableSnapshotCanvas?.() ?? null;
+      unregRef.current = visualSurface.registerCanvas(
+        variant,
+        canvas,
+        snapshotCanvas,
+      );
     }
 
     return () => {
@@ -220,10 +223,10 @@ export default function VisualizerCanvas(props: { variant: StageVariant }) {
 
   // Feed wantPlaying into engine.
   const wantPlaying =
-    p.status === "playing" ||
-    p.status === "loading" ||
-    p.status === "paused" ||
-    p.intent === "play";
+    player.status === "playing" ||
+    player.status === "loading" ||
+    player.status === "paused" ||
+    player.intent === "play";
 
   React.useEffect(() => {
     const engine = engineRef.current;

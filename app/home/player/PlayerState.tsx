@@ -87,7 +87,18 @@ type PlayerActions = {
   bumpReload: () => void;
 };
 
-const PlayerCtx = React.createContext<(PlayerState & PlayerActions) | null>(null);
+type PlayerVisualState = {
+  status: PlayerStatus;
+  intent: Intent;
+  current?: PlayerTrack;
+  firstQueuedTrack?: PlayerTrack;
+};
+
+const PlayerCtx = React.createContext<(PlayerState & PlayerActions) | null>(
+  null,
+);
+const PlayerActionsCtx = React.createContext<PlayerActions | null>(null);
+const PlayerVisualCtx = React.createContext<PlayerVisualState | null>(null);
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n));
@@ -109,7 +120,10 @@ function hydrateTrack(
   return { ...t, durationMs: cached };
 }
 
-function hydrateTracks(ts: PlayerTrack[], durationByRecordingId: Record<string, number>) {
+function hydrateTracks(
+  ts: PlayerTrack[],
+  durationByRecordingId: Record<string, number>,
+) {
   let changed = false;
   const next = ts.map((t) => {
     const ht = hydrateTrack(t, durationByRecordingId);
@@ -128,7 +142,8 @@ function primeDurationByRecordingId(
     if (!t?.recordingId) continue;
     const ms = t.durationMs;
     if (typeof ms !== "number" || !Number.isFinite(ms) || ms <= 0) continue;
-    if (typeof next[t.recordingId] === "number" && next[t.recordingId] > 0) continue;
+    if (typeof next[t.recordingId] === "number" && next[t.recordingId] > 0)
+      continue;
     if (next === prev) next = { ...prev };
     next[t.recordingId] = ms;
   }
@@ -170,10 +185,8 @@ export function PlayerStateProvider(props: { children: React.ReactNode }) {
     durationByRecordingId: {},
   });
 
-  const api: PlayerState & PlayerActions = React.useMemo(() => {
+  const actions: PlayerActions = React.useMemo(() => {
     return {
-      ...state,
-
       setIntent: (i: Intent) =>
         setState((s) => ({
           ...s,
@@ -225,7 +238,9 @@ export function PlayerStateProvider(props: { children: React.ReactNode }) {
           }
 
           const nextTrack = hydrateTrack(rawNext, s.durationByRecordingId);
-          const sameTrack = Boolean(s.current && s.current.recordingId === nextTrack.recordingId);
+          const sameTrack = Boolean(
+            s.current && s.current.recordingId === nextTrack.recordingId,
+          );
 
           const base = {
             ...s,
@@ -272,7 +287,9 @@ export function PlayerStateProvider(props: { children: React.ReactNode }) {
           const cur = s.current;
           if (!cur || s.queue.length === 0) return s;
 
-          const idx = s.queue.findIndex((t) => t.recordingId === cur.recordingId);
+          const idx = s.queue.findIndex(
+            (t) => t.recordingId === cur.recordingId,
+          );
           const at = idx >= 0 ? idx : 0;
 
           if (s.repeat === "one") {
@@ -352,7 +369,9 @@ export function PlayerStateProvider(props: { children: React.ReactNode }) {
             };
           }
 
-          const idx = s.queue.findIndex((t) => t.recordingId === cur.recordingId);
+          const idx = s.queue.findIndex(
+            (t) => t.recordingId === cur.recordingId,
+          );
           const at = idx >= 0 ? idx : 0;
           const prevIdx = at - 1;
 
@@ -372,7 +391,10 @@ export function PlayerStateProvider(props: { children: React.ReactNode }) {
           }
 
           if (s.repeat === "all" && s.queue.length > 0) {
-            const t = hydrateTrack(s.queue[s.queue.length - 1], s.durationByRecordingId);
+            const t = hydrateTrack(
+              s.queue[s.queue.length - 1],
+              s.durationByRecordingId,
+            );
             return {
               ...s,
               current: t,
@@ -401,8 +423,14 @@ export function PlayerStateProvider(props: { children: React.ReactNode }) {
 
       setQueue: (tracks: PlayerTrack[], opts?: QueueContext) =>
         setState((s) => {
-          const nextDurationByRecordingId = primeDurationByRecordingId(s.durationByRecordingId, tracks);
-          const hydratedQueue = hydrateTracks(tracks, nextDurationByRecordingId);
+          const nextDurationByRecordingId = primeDurationByRecordingId(
+            s.durationByRecordingId,
+            tracks,
+          );
+          const hydratedQueue = hydrateTracks(
+            tracks,
+            nextDurationByRecordingId,
+          );
 
           const nextCurrentRaw = s.current ?? hydratedQueue[0];
           const nextCurrent = nextCurrentRaw
@@ -410,7 +438,9 @@ export function PlayerStateProvider(props: { children: React.ReactNode }) {
             : undefined;
 
           const slug =
-            typeof opts?.contextSlug === "string" ? opts.contextSlug.trim() : "";
+            typeof opts?.contextSlug === "string"
+              ? opts.contextSlug.trim()
+              : "";
           const title =
             typeof opts?.contextTitle === "string"
               ? opts.contextTitle.trim()
@@ -442,13 +472,17 @@ export function PlayerStateProvider(props: { children: React.ReactNode }) {
 
             current: nextCurrent,
             positionMs: s.current ? s.positionMs : 0,
-            selectedRecordingId: s.selectedRecordingId ?? nextCurrent?.recordingId,
+            selectedRecordingId:
+              s.selectedRecordingId ?? nextCurrent?.recordingId,
           };
         }),
 
       enqueue: (track: PlayerTrack) =>
         setState((s) => {
-          const nextDurationByRecordingId = primeDurationByRecordingId(s.durationByRecordingId, [track]);
+          const nextDurationByRecordingId = primeDurationByRecordingId(
+            s.durationByRecordingId,
+            [track],
+          );
           const t = hydrateTrack(track, nextDurationByRecordingId);
           return {
             ...s,
@@ -487,12 +521,16 @@ export function PlayerStateProvider(props: { children: React.ReactNode }) {
           if (!Number.isFinite(ms) || ms <= 0) return s;
 
           const alreadyCached =
-            typeof s.durationByRecordingId[cur.recordingId] === "number" && s.durationByRecordingId[cur.recordingId] > 0;
+            typeof s.durationByRecordingId[cur.recordingId] === "number" &&
+            s.durationByRecordingId[cur.recordingId] > 0;
           const alreadyOnTrack =
             typeof cur.durationMs === "number" && cur.durationMs > 0;
           if (alreadyCached || alreadyOnTrack) return s;
 
-          const nextDurationByRecordingId = { ...s.durationByRecordingId, [cur.recordingId]: ms };
+          const nextDurationByRecordingId = {
+            ...s.durationByRecordingId,
+            [cur.recordingId]: ms,
+          };
 
           const nextCurrent = { ...cur, durationMs: ms };
           let changed = false;
@@ -515,13 +553,17 @@ export function PlayerStateProvider(props: { children: React.ReactNode }) {
         setState((s) => (s.status === st ? s : { ...s, status: st })),
 
       setLoadingReasonExternal: (r?: LoadingReason) =>
-        setState((s) => (s.loadingReason === r ? s : { ...s, loadingReason: r })),
+        setState((s) =>
+          s.loadingReason === r ? s : { ...s, loadingReason: r },
+        ),
 
       seek: (ms: number) => {
         setState((s) => {
           const curId = s.current?.recordingId ?? "";
           const dur =
-            (curId ? s.durationByRecordingId[curId] : 0) || s.current?.durationMs || 0;
+            (curId ? s.durationByRecordingId[curId] : 0) ||
+            s.current?.durationMs ||
+            0;
           const next = dur > 0 ? clamp(ms, 0, dur) : Math.max(0, ms);
           return {
             ...s,
@@ -539,10 +581,12 @@ export function PlayerStateProvider(props: { children: React.ReactNode }) {
           return { ...s, seeking: false, pendingSeekMs: undefined };
         }),
 
-      setVolume: (v: number) => setState((s) => ({ ...s, volume: clamp(v, 0, 1) })),
+      setVolume: (v: number) =>
+        setState((s) => ({ ...s, volume: clamp(v, 0, 1) })),
       toggleMute: () => setState((s) => ({ ...s, muted: !s.muted })),
 
-      cycleRepeat: () => setState((s) => ({ ...s, repeat: nextRepeat(s.repeat) })),
+      cycleRepeat: () =>
+        setState((s) => ({ ...s, repeat: nextRepeat(s.repeat) })),
 
       tick: (deltaMs: number) => {
         setState((s) => {
@@ -550,7 +594,9 @@ export function PlayerStateProvider(props: { children: React.ReactNode }) {
 
           const curId = s.current?.recordingId ?? "";
           const dur =
-            (curId ? s.durationByRecordingId[curId] : 0) || s.current?.durationMs || 0;
+            (curId ? s.durationByRecordingId[curId] : 0) ||
+            s.current?.durationMs ||
+            0;
           const nextPos = Math.max(0, s.positionMs + Math.max(0, deltaMs));
 
           if (dur <= 0) return { ...s, positionMs: nextPos };
@@ -559,7 +605,9 @@ export function PlayerStateProvider(props: { children: React.ReactNode }) {
           if (s.repeat === "one") return { ...s, positionMs: 0 };
 
           const cur = s.current;
-          const idx = cur ? s.queue.findIndex((t) => t.recordingId === cur.recordingId) : -1;
+          const idx = cur
+            ? s.queue.findIndex((t) => t.recordingId === cur.recordingId)
+            : -1;
           const at = idx >= 0 ? idx : 0;
           const nextIdx = at + 1;
 
@@ -610,7 +658,33 @@ export function PlayerStateProvider(props: { children: React.ReactNode }) {
           };
         }),
     };
-  }, [state]);
+  }, []);
+
+  const api: PlayerState & PlayerActions = React.useMemo(() => {
+    return {
+      ...state,
+      ...actions,
+    };
+  }, [state, actions]);
+
+  const {
+    status: visualStatus,
+    intent: visualIntent,
+    current: visualCurrent,
+    queue: visualQueue,
+  } = state;
+
+  const firstQueuedTrack = visualQueue[0];
+
+  const visualState: PlayerVisualState = React.useMemo(
+    () => ({
+      status: visualStatus,
+      intent: visualIntent,
+      current: visualCurrent,
+      firstQueuedTrack,
+    }),
+    [visualStatus, visualIntent, visualCurrent, firstQueuedTrack],
+  );
 
   const currentId = state.current?.recordingId ?? null;
   const pendingId = state.pendingRecordingId ?? null;
@@ -627,11 +701,32 @@ export function PlayerStateProvider(props: { children: React.ReactNode }) {
     void ensureLyricsForTrack(id);
   }, [pendingId]);
 
-  return <PlayerCtx.Provider value={api}>{props.children}</PlayerCtx.Provider>;
+  return (
+    <PlayerActionsCtx.Provider value={actions}>
+      <PlayerVisualCtx.Provider value={visualState}>
+        <PlayerCtx.Provider value={api}>{props.children}</PlayerCtx.Provider>
+      </PlayerVisualCtx.Provider>
+    </PlayerActionsCtx.Provider>
+  );
 }
 
 export function usePlayer() {
   const ctx = React.useContext(PlayerCtx);
-  if (!ctx) throw new Error("usePlayer must be used within PlayerStateProvider");
+  if (!ctx)
+    throw new Error("usePlayer must be used within PlayerStateProvider");
+  return ctx;
+}
+
+export function usePlayerActions() {
+  const ctx = React.useContext(PlayerActionsCtx);
+  if (!ctx)
+    throw new Error("usePlayerActions must be used within PlayerStateProvider");
+  return ctx;
+}
+
+export function usePlayerVisual() {
+  const ctx = React.useContext(PlayerVisualCtx);
+  if (!ctx)
+    throw new Error("usePlayerVisual must be used within PlayerStateProvider");
   return ctx;
 }

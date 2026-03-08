@@ -242,7 +242,7 @@ const FullscreenStageOverlay = React.memo(
           >
             <RoundIconButton
               label="Fullscreen"
-              title="Request fullscreen"
+              title="Fullscreen"
               onClick={onRequestFullscreen}
             >
               <IconFullscreen />

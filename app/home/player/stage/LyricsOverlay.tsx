@@ -53,6 +53,7 @@ export default function LyricsOverlay(props: {
 
   const viewportRef = React.useRef<HTMLDivElement | null>(null);
   const scrollerRef = React.useRef<HTMLDivElement | null>(null);
+  const lineNodeRefs = React.useRef<Array<HTMLElement | null>>([]);
   const rafTimeRef = React.useRef<number | null>(null);
 
   // Focus is DOM-driven (CSS vars) to avoid React re-renders during scroll.
@@ -145,10 +146,11 @@ export default function LyricsOverlay(props: {
 
     const sc = scrollerRef.current;
     if (sc) sc.scrollTop = 0;
-    if (sc) {
-      const nodes = sc.querySelectorAll<HTMLElement>("[data-lyric-idx]");
-      nodes.forEach((el) => el.style.removeProperty("--af-focus"));
-    }
+
+    lineNodeRefs.current.forEach((el) => {
+      el?.style.removeProperty("--af-focus");
+    });
+    lineNodeRefs.current.length = cues?.length ?? 0;
   }, [cues]);
 
   // RAF: compute active index from mediaSurface time
@@ -232,13 +234,13 @@ export default function LyricsOverlay(props: {
       if (Math.abs(center - lastFocusCenterRef.current) < 0.5) return;
       lastFocusCenterRef.current = center;
 
-      const nodes = sc.querySelectorAll<HTMLElement>("[data-lyric-idx]");
-      nodes.forEach((el) => {
+      for (const el of lineNodeRefs.current) {
+        if (!el) continue;
         const mid = el.offsetTop + el.offsetHeight / 2;
         const raw = 1 - Math.abs(mid - center) / falloff;
         const f = clamp(raw, 0, 1);
         el.style.setProperty("--af-focus", String(f));
-      });
+      }
     });
   }, [isInline]);
 
@@ -436,6 +438,9 @@ export default function LyricsOverlay(props: {
               return (
                 <div
                   key={`br-${cue.tMs}-${idx}`}
+                  ref={(el) => {
+                    lineNodeRefs.current[idx] = el;
+                  }}
                   aria-hidden="true"
                   data-lyric-idx={idx}
                   className="af-lyric-row"
@@ -468,6 +473,9 @@ export default function LyricsOverlay(props: {
             return (
               <div
                 key={`${cue.tMs}-${idx}`}
+                ref={(el) => {
+                  lineNodeRefs.current[idx] = el;
+                }}
                 data-lyric-idx={idx}
                 className="af-lyric-row"
                 data-af-inline={isInline ? "1" : "0"}
