@@ -225,7 +225,7 @@ async function getRecentDedupe(): Promise<PlaybackAdminDedupeRow[]> {
     from member_playback_telemetry_dedupe d
     left join members m
       on m.id = d.member_id
-    left join lateral (
+        left join lateral (
       select
         me.payload->>'recording_id' as recording_id
       from member_events me
@@ -233,7 +233,7 @@ async function getRecentDedupe(): Promise<PlaybackAdminDedupeRow[]> {
         me.member_id = d.member_id
         and me.event_type = d.event_type
         and me.payload->>'playback_id' = d.playback_id
-      order by me.created_at desc
+      order by me.occurred_at desc
       limit 1
     ) evt on true
     order by d.created_at desc
