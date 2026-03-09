@@ -57,44 +57,65 @@ function StatTile(props: {
 function BadgeRow(props: { labels: string[] }) {
   const { labels } = props;
 
-  if (labels.length === 0) {
-    return (
-      <div
-        style={{
-          fontSize: 13,
-          lineHeight: 1.5,
-          opacity: 0.56,
-        }}
-      >
-        No badges unlocked yet.
-      </div>
-    );
-  }
+  const lockedSilhouettes = Array.from({ length: 6 }, (_, i) => i);
 
   return (
     <div
       style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 8,
+        display: "grid",
+        gap: 12,
       }}
     >
-      {labels.map((label) => (
+      {labels.length > 0 ? (
         <div
-          key={label}
           style={{
-            borderRadius: 999,
-            border: "1px solid rgba(255,255,255,0.10)",
-            background: "rgba(255,255,255,0.045)",
-            padding: "7px 10px",
-            fontSize: 12,
-            lineHeight: 1,
-            opacity: 0.86,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 8,
           }}
         >
-          {label}
+          {labels.map((label) => (
+            <div
+              key={label}
+              style={{
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.10)",
+                background: "rgba(255,255,255,0.045)",
+                padding: "7px 10px",
+                fontSize: 12,
+                lineHeight: 1,
+                opacity: 0.86,
+              }}
+            >
+              {label}
+            </div>
+          ))}
         </div>
-      ))}
+      ) : null}
+
+      <div
+        aria-hidden="true"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+          gap: 8,
+        }}
+      >
+        {lockedSilhouettes.map((index) => (
+          <div
+            key={index}
+            style={{
+              aspectRatio: "1 / 1",
+              borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.06)",
+              background:
+                "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.10), rgba(255,255,255,0.025) 58%, rgba(255,255,255,0.01) 100%)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+              opacity: 0.28,
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -106,7 +127,9 @@ export default function PortalMemberPanel(props: Props) {
   const contributionCount = summary.contributionCount;
   const minutesStreamed = summary.minutesStreamed;
   const favouriteTrack = summary.favouriteTrack;
-  const badgeLabels = summary.badges.map((badge) => badge.label).filter(Boolean);
+  const badgeLabels = summary.badges
+    .map((badge) => badge.label?.trim())
+    .filter((label): label is string => Boolean(label));
 
   return (
     <div
@@ -175,14 +198,14 @@ export default function PortalMemberPanel(props: Props) {
           }}
         >
           <StatTile
-            label="Contributions"
+            label="Exegesis contributions"
             value={contributionCount ?? "—"}
             muted={contributionCount == null}
           />
 
           <StatTile
             label="Minutes streamed"
-            value={minutesStreamed ?? "Not available yet"}
+            value={minutesStreamed ?? "—"}
             muted={minutesStreamed == null}
           />
         </div>
@@ -224,7 +247,7 @@ export default function PortalMemberPanel(props: Props) {
                 {favouriteTrack.artist ? ` — ${favouriteTrack.artist}` : ""}
               </>
             ) : (
-              "Not available yet"
+              "—"
             )}
           </div>
         </div>
@@ -250,7 +273,7 @@ export default function PortalMemberPanel(props: Props) {
             Badges
           </div>
 
-          <div style={{ marginTop: 10 }}>
+          <div style={{ marginTop: 10, minWidth: 0 }}>
             <BadgeRow labels={badgeLabels} />
           </div>
         </div>

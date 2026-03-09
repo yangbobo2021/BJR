@@ -6,7 +6,6 @@ import { client } from "@/sanity/lib/client";
 import { urlFor } from "@/sanity/lib/image";
 
 import { ensureMemberByClerk } from "@/lib/members";
-import { buildMemberIdentityState } from "@/lib/memberIdentityServer";
 import { listCurrentEntitlementKeys } from "@/lib/entitlements";
 import { deriveTier } from "@/lib/vocab";
 
@@ -15,6 +14,7 @@ import {
   emptyPortalMemberSummary,
   type PortalMemberSummary,
 } from "@/lib/memberDashboard";
+import { buildPortalMemberSummary } from "@/lib/memberDashboardServer";
 import PortalSurface from "@/app/home/PortalSurface";
 import PortalArea from "@/app/home/PortalArea";
 
@@ -87,14 +87,7 @@ export default async function SessionRuntime(props: {
     entitlementKeys = await listCurrentEntitlementKeys(ensured.id);
     tier = deriveTier(entitlementKeys);
 
-    const identityState = await buildMemberIdentityState(ensured.id);
-
-    memberSummary = {
-      ...emptyPortalMemberSummary(),
-      identity: identityState.resolved,
-      contributionCount:
-        identityState.exegesisProgress?.contributionCount ?? null,
-    };
+    memberSummary = await buildPortalMemberSummary(ensured.id);
   }
 
   const isPatron = tier === "patron";

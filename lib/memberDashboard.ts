@@ -17,9 +17,33 @@ export type PortalMemberFavouriteTrack = {
 
 export type PortalMemberSummary = {
   identity: ResolvedDisplayIdentity | null;
+
+  /**
+   * All-time member signal.
+   *
+   * Transitional semantic:
+   * currently sourced from Exegesis contributions only.
+   *
+   * The field name remains broader so it can later widen into a
+   * cross-surface participation aggregate without changing the
+   * member-panel contract.
+   */
   contributionCount: number | null;
+
+  /**
+   * All-time listening minutes once playback telemetry exists.
+   */
   minutesStreamed: number | null;
+
+  /**
+   * All-time statistically inferred listening preference.
+   */
   favouriteTrack: PortalMemberFavouriteTrack | null;
+
+  /**
+   * Unlocked badges only.
+   * Locked / undisclosed badge silhouettes are presentation-owned.
+   */
   badges: MemberDashboardBadge[];
 };
 
