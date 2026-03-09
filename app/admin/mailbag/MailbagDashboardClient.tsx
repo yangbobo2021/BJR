@@ -1,3 +1,4 @@
+// web/app/admin/mailbag/MailbagDashboardClient.tsx
 "use client";
 
 import React from "react";

@@ -40,6 +40,10 @@ export default function AudioEngine() {
   const loadSeq = React.useRef(0);
 
   const telemetryPlaySentRef = React.useRef(new Set<string>());
+  const telemetryPlayAccumulatedMsRef = React.useRef(new Map<string, number>());
+  const telemetryPlayLastProgressMsRef = React.useRef(
+    new Map<string, number>(),
+  );
   const telemetryProgressSentRef = React.useRef(new Set<string>());
   const telemetryCompleteSentRef = React.useRef(new Set<string>());
 
@@ -188,6 +192,8 @@ export default function AudioEngine() {
     const blockedNonce = blockedNonceRef.current;
     const playthroughSent = playthroughSentRef.current;
     const telemetryPlaySent = telemetryPlaySentRef.current;
+    const telemetryPlayAccumulated = telemetryPlayAccumulatedMsRef.current;
+    const telemetryPlayLastProgress = telemetryPlayLastProgressMsRef.current;
     const telemetryProgressSent = telemetryProgressSentRef.current;
     const telemetryCompleteSent = telemetryCompleteSentRef.current;
 
@@ -240,6 +246,8 @@ export default function AudioEngine() {
       blockedNonce.clear();
       playthroughSent.clear();
       telemetryPlaySent.clear();
+      telemetryPlayAccumulated.clear();
+      telemetryPlayLastProgress.clear();
       telemetryProgressSent.clear();
       telemetryCompleteSent.clear();
 
@@ -700,12 +708,34 @@ export default function AudioEngine() {
 
       const { recordingId, playbackId, progressMs, durationMs } = params;
       if (!recordingId || !playbackId) return;
-      if (progressMs < TELEMETRY_PLAY_THRESHOLD_MS) return;
 
-      const milestoneKey = `${recordingId}:${playbackId}:play`;
-      if (telemetryPlaySentRef.current.has(milestoneKey)) return;
+      const sessionKey = `${recordingId}:${playbackId}`;
+      const sentKey = `${sessionKey}:play`;
 
-      telemetryPlaySentRef.current.add(milestoneKey);
+      if (telemetryPlaySentRef.current.has(sentKey)) return;
+
+      const prevProgress =
+        telemetryPlayLastProgressMsRef.current.get(sessionKey);
+      telemetryPlayLastProgressMsRef.current.set(sessionKey, progressMs);
+
+      if (prevProgress == null) {
+        telemetryPlayAccumulatedMsRef.current.set(sessionKey, 0);
+        return;
+      }
+
+      const deltaMs = progressMs - prevProgress;
+
+      const safeForwardDeltaMs = deltaMs > 0 && deltaMs <= 5_000 ? deltaMs : 0;
+
+      const accumulatedMs =
+        (telemetryPlayAccumulatedMsRef.current.get(sessionKey) ?? 0) +
+        safeForwardDeltaMs;
+
+      telemetryPlayAccumulatedMsRef.current.set(sessionKey, accumulatedMs);
+
+      if (accumulatedMs < TELEMETRY_PLAY_THRESHOLD_MS) return;
+
+      telemetryPlaySentRef.current.add(sentKey);
 
       fetch("/api/playback/telemetry", {
         method: "POST",
@@ -715,42 +745,6 @@ export default function AudioEngine() {
           recordingId,
           playbackId,
           milestoneKey: "play",
-          progressMs,
-          durationMs,
-        }),
-        keepalive: true,
-      }).catch(() => {});
-    };
-
-    const reportTelemetryProgress = (params: {
-      recordingId: string;
-      playbackId: string;
-      progressMs: number;
-      durationMs: number | null;
-    }) => {
-      if (!isSignedIn) return;
-
-      const { recordingId, playbackId, progressMs, durationMs } = params;
-      const milestoneMs =
-        Math.floor(progressMs / TELEMETRY_PROGRESS_STEP_MS) *
-        TELEMETRY_PROGRESS_STEP_MS;
-
-      if (milestoneMs < TELEMETRY_PROGRESS_STEP_MS) return;
-
-      const milestoneKey = `${recordingId}:${playbackId}:progress:${milestoneMs}`;
-      if (telemetryProgressSentRef.current.has(milestoneKey)) return;
-
-      telemetryProgressSentRef.current.add(milestoneKey);
-
-      fetch("/api/playback/telemetry", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          event: "progress",
-          recordingId,
-          playbackId,
-          milestoneKey: String(milestoneMs),
-          listenedMs: TELEMETRY_PROGRESS_STEP_MS,
           progressMs,
           durationMs,
         }),
@@ -781,6 +775,43 @@ export default function AudioEngine() {
           recordingId,
           playbackId,
           milestoneKey: "complete",
+          progressMs,
+          durationMs,
+        }),
+        keepalive: true,
+      }).catch(() => {});
+    };
+
+    const reportTelemetryProgress = (params: {
+      recordingId: string;
+      playbackId: string;
+      progressMs: number;
+      durationMs: number | null;
+    }) => {
+      if (!isSignedIn) return;
+
+      const { recordingId, playbackId, progressMs, durationMs } = params;
+      const milestoneMs =
+        Math.floor(progressMs / TELEMETRY_PROGRESS_STEP_MS) *
+        TELEMETRY_PROGRESS_STEP_MS;
+
+      if (!recordingId || !playbackId) return;
+      if (milestoneMs < TELEMETRY_PROGRESS_STEP_MS) return;
+
+      const milestoneKey = `${recordingId}:${playbackId}:progress:${milestoneMs}`;
+      if (telemetryProgressSentRef.current.has(milestoneKey)) return;
+
+      telemetryProgressSentRef.current.add(milestoneKey);
+
+      fetch("/api/playback/telemetry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event: "progress",
+          recordingId,
+          playbackId,
+          milestoneKey: String(milestoneMs),
+          listenedMs: TELEMETRY_PROGRESS_STEP_MS,
           progressMs,
           durationMs,
         }),
