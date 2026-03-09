@@ -1,3 +1,4 @@
+// web/app/admin/exegesis/ExegesisModerator.tsx
 "use client";
 
 import React from "react";
@@ -27,6 +28,21 @@ type ReportRow = {
   commentCreatedAt: string;
 };
 
+type LyricsCatalogueResponse =
+  | {
+      ok: true;
+      albums: Array<{
+        tracks?: Array<{
+          recordingId: string;
+          displayId: string;
+        }>;
+      }>;
+    }
+  | {
+      ok: false;
+      error: string;
+    };
+
 function fmtTime(s: string): string {
   const t = Date.parse(s);
   if (!Number.isFinite(t)) return s;
@@ -44,17 +60,29 @@ export default function ExegesisModerator() {
   const [err, setErr] = React.useState("");
   const [threads, setThreads] = React.useState<ThreadRow[]>([]);
   const [reports, setReports] = React.useState<ReportRow[]>([]);
+  const [displayIdByRecordingId, setDisplayIdByRecordingId] = React.useState<
+    Record<string, string>
+  >({});
   const [limit, setLimit] = React.useState(60);
 
   async function refresh() {
     setErr("");
     setBusy(true);
     try {
-      const [tRes, rRes] = await Promise.all([
-        fetch(`/api/admin/exegesis/threads?limit=${encodeURIComponent(limit)}`, {
-          cache: "no-store",
-        }),
-        fetch(`/api/admin/exegesis/reports?limit=${encodeURIComponent(limit)}`, {
+      const [tRes, rRes, cRes] = await Promise.all([
+        fetch(
+          `/api/admin/exegesis/threads?limit=${encodeURIComponent(limit)}`,
+          {
+            cache: "no-store",
+          },
+        ),
+        fetch(
+          `/api/admin/exegesis/reports?limit=${encodeURIComponent(limit)}`,
+          {
+            cache: "no-store",
+          },
+        ),
+        fetch("/api/lyrics/catalogue", {
           cache: "no-store",
         }),
       ]);
@@ -69,8 +97,22 @@ export default function ExegesisModerator() {
         | { ok: false; error: string };
       if (!rj.ok) throw new Error(rj.error || "Failed to load reports.");
 
+      const cj = (await cRes.json()) as LyricsCatalogueResponse;
+      if (!cj.ok) throw new Error(cj.error || "Failed to load catalogue.");
+
+      const nextDisplayIdByRecordingId: Record<string, string> = {};
+      for (const album of cj.albums ?? []) {
+        for (const track of album.tracks ?? []) {
+          const recordingId = (track.recordingId ?? "").trim();
+          const displayId = (track.displayId ?? "").trim();
+          if (!recordingId || !displayId) continue;
+          nextDisplayIdByRecordingId[recordingId] = displayId;
+        }
+      }
+
       setThreads(tj.threads ?? []);
       setReports(rj.reports ?? []);
+      setDisplayIdByRecordingId(nextDisplayIdByRecordingId);
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Failed to load.");
     } finally {
@@ -83,7 +125,11 @@ export default function ExegesisModerator() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [limit]);
 
-  async function setLocked(recordingId: string, groupKey: string, locked: boolean) {
+  async function setLocked(
+    recordingId: string,
+    groupKey: string,
+    locked: boolean,
+  ) {
     setErr("");
     setBusy(true);
     try {
@@ -147,7 +193,10 @@ export default function ExegesisModerator() {
     }
   }
 
-  async function setCommentHidden(commentId: string, nextStatus: "live" | "hidden") {
+  async function setCommentHidden(
+    commentId: string,
+    nextStatus: "live" | "hidden",
+  ) {
     setErr("");
     setBusy(true);
     try {
@@ -157,13 +206,18 @@ export default function ExegesisModerator() {
         body: JSON.stringify({ commentId, nextStatus }),
       });
       const j = (await r.json()) as
-        | { ok: true; comment: { id: string; status: "live" | "hidden" | "deleted" } }
+        | {
+            ok: true;
+            comment: { id: string; status: "live" | "hidden" | "deleted" };
+          }
         | { ok: false; error: string };
       if (!j.ok) throw new Error(j.error || "Comment update failed.");
 
       setReports((prev) =>
         prev.map((x) =>
-          x.commentId === commentId ? { ...x, commentStatus: j.comment.status } : x,
+          x.commentId === commentId
+            ? { ...x, commentStatus: j.comment.status }
+            : x,
         ),
       );
     } catch (e: unknown) {
@@ -216,8 +270,10 @@ export default function ExegesisModerator() {
             ) : (
               threads.map((t) => {
                 const lineKey = deriveLineKeyFromGroupKey(t.groupKey);
+                const displayId =
+                  displayIdByRecordingId[t.recordingId] ?? t.recordingId;
                 const href =
-                  `/exegesis/${encodeURIComponent(t.recordingId)}` +
+                  `/exegesis/${encodeURIComponent(displayId)}` +
                   (lineKey ? `#l=${encodeURIComponent(lineKey)}` : "");
 
                 return (
@@ -234,7 +290,7 @@ export default function ExegesisModerator() {
                             target="_blank"
                             rel="noreferrer"
                           >
-                            {t.recordingId}
+                            {displayId}
                           </a>
                         </div>
                         <div className="mt-1 text-xs opacity-60">
@@ -262,7 +318,9 @@ export default function ExegesisModerator() {
                         <button
                           className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40"
                           disabled={busy}
-                          onClick={() => void setLocked(t.recordingId, t.groupKey, !t.locked)}
+                          onClick={() =>
+                            void setLocked(t.recordingId, t.groupKey, !t.locked)
+                          }
                           title="Lock/unlock thread"
                         >
                           {t.locked ? "Locked" : "Unlocked"}
@@ -271,7 +329,9 @@ export default function ExegesisModerator() {
                         <button
                           className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40"
                           disabled={busy || !t.pinnedCommentId}
-                          onClick={() => void setPinned(t.recordingId, t.groupKey, null)}
+                          onClick={() =>
+                            void setPinned(t.recordingId, t.groupKey, null)
+                          }
                           title="Unpin"
                         >
                           Unpin
@@ -280,7 +340,8 @@ export default function ExegesisModerator() {
                     </div>
 
                     <div className="mt-2 text-xs opacity-60">
-                      Tip: pin/unpin is easiest from the Reports panel (pick the root you want pinned).
+                      Tip: pin/unpin is easiest from the Reports panel (pick the
+                      root you want pinned).
                     </div>
                   </div>
                 );
@@ -300,8 +361,10 @@ export default function ExegesisModerator() {
               <div className="text-sm opacity-60">No reports yet.</div>
             ) : (
               reports.map((r) => {
+                const displayId =
+                  displayIdByRecordingId[r.recordingId] ?? r.recordingId;
                 const threadHref =
-                  `/exegesis/${encodeURIComponent(r.recordingId)}` +
+                  `/exegesis/${encodeURIComponent(displayId)}` +
                   `#l=${encodeURIComponent(r.lineKey)}&c=${encodeURIComponent(r.commentId)}`;
 
                 const threadKey = `${r.recordingId}::${r.groupKey}`;
@@ -311,20 +374,32 @@ export default function ExegesisModerator() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="text-xs opacity-70">
-                          <span className="opacity-90">{r.category}</span> · {fmtTime(r.createdAt)}
+                          <span className="opacity-90">{r.category}</span> ·{" "}
+                          {fmtTime(r.createdAt)}
                         </div>
-                        <div className="mt-1 text-sm opacity-90 line-clamp-3">{r.reason}</div>
+                        <div className="mt-1 text-sm opacity-90 line-clamp-3">
+                          {r.reason}
+                        </div>
                         <div className="mt-2 text-xs opacity-60">
                           comment:{" "}
-                          <a className="underline underline-offset-2" href={threadHref} target="_blank" rel="noreferrer">
+                          <a
+                            className="underline underline-offset-2"
+                            href={threadHref}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
                             {r.commentId}
                           </a>{" "}
-                          · status: <span className="opacity-85">{r.commentStatus}</span>
+                          · status:{" "}
+                          <span className="opacity-85">{r.commentStatus}</span>
                         </div>
                         <div className="mt-1 text-xs opacity-60">
-                          thread: <span className="opacity-85">{threadKey}</span>
+                          thread:{" "}
+                          <span className="opacity-85">{threadKey}</span>
                         </div>
-                        <div className="mt-2 text-sm opacity-90 line-clamp-4">“{r.bodyPlain}”</div>
+                        <div className="mt-2 text-sm opacity-90 line-clamp-4">
+                          “{r.bodyPlain}”
+                        </div>
                       </div>
 
                       <div className="flex flex-col items-end gap-2">
@@ -336,7 +411,9 @@ export default function ExegesisModerator() {
                               onClick={() =>
                                 void setCommentHidden(
                                   r.commentId,
-                                  r.commentStatus === "hidden" ? "live" : "hidden",
+                                  r.commentStatus === "hidden"
+                                    ? "live"
+                                    : "hidden",
                                 )
                               }
                               title="Hide/unhide comment"
@@ -347,7 +424,13 @@ export default function ExegesisModerator() {
                             <button
                               className="rounded-md bg-white/5 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-40"
                               disabled={busy}
-                              onClick={() => void setPinned(r.recordingId, r.groupKey, r.commentId)}
+                              onClick={() =>
+                                void setPinned(
+                                  r.recordingId,
+                                  r.groupKey,
+                                  r.commentId,
+                                )
+                              }
                               title="Pin (roots only)"
                             >
                               Pin
@@ -363,7 +446,8 @@ export default function ExegesisModerator() {
           </div>
 
           <div className="mt-3 text-xs opacity-60">
-            Pin will fail (by design) unless the comment is a root. Hide/unhide works for any non-deleted comment.
+            Pin will fail (by design) unless the comment is a root. Hide/unhide
+            works for any non-deleted comment.
           </div>
         </div>
       </div>

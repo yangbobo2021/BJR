@@ -6,19 +6,19 @@ export const dynamic = "auto";
 export const revalidate = 0;
 
 export default async function PortalExegesisTrackRuntimePage(props: {
-  params: Promise<{ recordingId: string }>;
+  params: Promise<{ displayId: string }>;
 }) {
-  const { recordingId } = await props.params;
+  const { displayId } = await props.params;
 
   // Decode once, here, on the server — so the client doesn’t “discover” it later.
-  const raw = decodeURIComponent(recordingId ?? "").trim();
-  const resolvedRecordingId = raw || recordingId;
+  const raw = decodeURIComponent(displayId ?? "").trim();
+  const resolvedDisplayId = raw || displayId;
 
   return (
     <SessionRuntime
       albumSlugOverride={null}
       initialPortalTabId="exegesis"
-      initialExegesisRecordingId={resolvedRecordingId}
+      initialExegesisDisplayId={resolvedDisplayId}
     />
   );
 }

@@ -4,7 +4,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import ExegesisTrackClient from "@/app/(site)/exegesis/[recordingId]/ExegesisTrackClient";
+import ExegesisTrackClient from "@/app/(site)/exegesis/[displayId]/ExegesisTrackClient";
 import { usePortalViewer } from "@/app/home/PortalViewerProvider";
 
 type CatalogueOk = {
@@ -17,6 +17,7 @@ type CatalogueOk = {
     recordingIds: string[]; // legacy
     tracks?: Array<{
       recordingId: string;
+      displayId: string;
       title: string | null;
       artist: string | null;
       trackNo?: number | null; // optional; we can compute from index if absent
@@ -49,9 +50,9 @@ type LyricsOk = {
 
 type LyricsErr = { ok: false; error: string };
 
-function extractrecordingIdFromPath(pathname: string): string | null {
+function extractDisplayIdFromPath(pathname: string): string | null {
   // We only care about the canonical path segment, query is separate.
-  // Expected: /exegesis or /exegesis/<recordingId>
+  // Expected: /exegesis or /exegesis/<displayId>
   const parts = (pathname ?? "")
     .split("?")[0]
     .split("#")[0]
@@ -77,6 +78,25 @@ function getTrackMeta(
     }
   }
   return { title: null, artist: null };
+}
+
+function resolveRecordingIdFromDisplayId(
+  cat: CatalogueOk | null,
+  displayIdRaw: string,
+): string | null {
+  const displayId = (displayIdRaw ?? "").trim();
+  if (!cat || !displayId) return null;
+
+  for (const album of cat.albums ?? []) {
+    for (const track of album.tracks ?? []) {
+      if ((track.displayId ?? "").trim() === displayId) {
+        const recordingId = (track.recordingId ?? "").trim();
+        return recordingId || null;
+      }
+    }
+  }
+
+  return null;
 }
 
 // ---- module-level caches (persist across route transitions) ----
@@ -351,20 +371,21 @@ function AlbumCard(props: {
       <div className="mt-4 space-y-2">
         {(a.tracks ?? []).map((t, i) => {
           const tid = (t.recordingId ?? "").trim();
-          if (!tid) return null;
+          const displayId = (t.displayId ?? "").trim();
+          if (!tid || !displayId) return null;
 
-          const trackLabel = (t.title ?? "").trim() || tid;
+          const trackLabel = (t.title ?? "").trim() || displayId;
           const n =
             typeof t.trackNo === "number" && t.trackNo > 0 ? t.trackNo : i + 1;
 
           return (
             <Link
               key={tid}
-              href={`/exegesis/${encodeURIComponent(tid)}${search}`}
+              href={`/exegesis/${encodeURIComponent(displayId)}${search}`}
               onMouseEnter={() => prefetchTrack(tid)}
               onFocus={() => prefetchTrack(tid)}
               className="flex items-baseline justify-between rounded-md bg-black/20 px-3 py-2 text-sm hover:bg-white/10"
-              title={tid}
+              title={displayId}
             >
               <span className="min-w-0 flex items-baseline gap-2">
                 <span className="w-6 shrink-0 text-[11px] opacity-40 tabular-nums">
@@ -388,23 +409,30 @@ export default function PortalExegesis(props: { title?: string }) {
   const sp = useSearchParams();
   const search = sp?.toString() ? `?${sp.toString()}` : "";
 
-  const { exegesisrecordingId, setExegesisrecordingId } = usePortalViewer();
-
-  const recordingIdFromPath = extractrecordingIdFromPath(pathname);
-  const recordingId = (exegesisrecordingId ?? recordingIdFromPath ?? "").trim() || null;
-
-  // If we had to fall back to pathname parsing, persist it into context so other
-  // components (and subsequent renders) have a stable single source of truth.
-  React.useEffect(() => {
-    if (!exegesisrecordingId && recordingIdFromPath) {
-      setExegesisrecordingId(recordingIdFromPath);
-    }
-  }, [exegesisrecordingId, recordingIdFromPath, setExegesisrecordingId]);
+  const { exegesisDisplayId, setExegesisDisplayId } = usePortalViewer();
 
   // -------- index state --------
   const [catalogue, setCatalogue] = React.useState<CatalogueOk | null>(null);
   const [catalogueErr, setCatalogueErr] = React.useState("");
   const [catalogueLoading, setCatalogueLoading] = React.useState(false);
+
+  const displayIdFromPath = extractDisplayIdFromPath(pathname);
+  const displayId =
+    (exegesisDisplayId ?? displayIdFromPath ?? "").trim() || null;
+
+  // If we had to fall back to pathname parsing, persist it into context so other
+  // components (and subsequent renders) have a stable single source of truth.
+  React.useEffect(() => {
+    if (!exegesisDisplayId && displayIdFromPath) {
+      setExegesisDisplayId(displayIdFromPath);
+    }
+  }, [exegesisDisplayId, displayIdFromPath, setExegesisDisplayId]);
+
+  const recordingId = React.useMemo(
+    () =>
+      displayId ? resolveRecordingIdFromDisplayId(catalogue, displayId) : null,
+    [catalogue, displayId],
+  );
 
   // -------- track state --------
   const [lyrics, setLyrics] = React.useState<LyricsOk | null>(null);
@@ -438,9 +466,23 @@ export default function PortalExegesis(props: { title?: string }) {
   }, []);
 
   React.useEffect(() => {
-    if (!recordingId) {
+    if (!displayId) {
       setLyrics(null);
       setLyricsErr("");
+      setLyricsLoading(false);
+      return;
+    }
+
+    if (!catalogue) {
+      setLyrics(null);
+      setLyricsErr("");
+      setLyricsLoading(catalogueLoading);
+      return;
+    }
+
+    if (!recordingId) {
+      setLyrics(null);
+      setLyricsErr("Track not found.");
       setLyricsLoading(false);
       return;
     }
@@ -470,11 +512,13 @@ export default function PortalExegesis(props: { title?: string }) {
       .finally(() => setLyricsLoading(false));
 
     return () => ac.abort();
-  }, [recordingId]);
+  }, [catalogue, catalogueLoading, displayId, recordingId]);
 
   // -------- render --------
-  if (recordingId) {
-    const meta = getTrackMeta(catalogue, recordingId);
+  if (displayId) {
+    const meta = recordingId
+      ? getTrackMeta(catalogue, recordingId)
+      : { title: null, artist: null };
 
     const resolvedTitle =
       (lyrics?.trackTitle ?? meta.title ?? "").trim() || null;
@@ -492,7 +536,7 @@ export default function PortalExegesis(props: { title?: string }) {
             aria-label="Back to all tracks"
             className="inline-flex items-center gap-2 rounded-md p-1 opacity-70 hover:opacity-100 hover:bg-white/5"
             onClick={() => {
-              setExegesisrecordingId(null);
+              setExegesisDisplayId(null);
               router.push(`/exegesis${search}`);
             }}
           >
@@ -532,7 +576,7 @@ export default function PortalExegesis(props: { title?: string }) {
               trackTitle={resolvedTitle}
               trackArtist={resolvedArtist}
               lyrics={lyrics}
-              canonicalPath={`/exegesis/${encodeURIComponent(lyrics.recordingId)}`}
+              canonicalPath={`/exegesis/${encodeURIComponent(displayId)}`}
             />
           )
         ) : null}

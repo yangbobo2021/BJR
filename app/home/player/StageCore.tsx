@@ -67,6 +67,7 @@ function StageCore(props: {
   }, []);
 
   const playerRecordingId = player.current?.recordingId ?? null;
+  const playerDisplayId = player.current?.displayId ?? null;
   const playerMuxId = player.current?.muxPlaybackId ?? null;
 
   const recordingId = pickKeyWithCues(cuesByRecordingId, [
@@ -74,6 +75,8 @@ function StageCore(props: {
     surfaceRecordingId,
     playerMuxId,
   ]);
+
+  const displayId = playerDisplayId;
 
   const cues: LyricCue[] | null = recordingId
     ? Array.isArray(cuesByRecordingId?.[recordingId]) &&
@@ -143,6 +146,7 @@ function StageCore(props: {
         {lyricsMode === "embedded" ? (
           <LyricsOverlay
             recordingId={recordingId}
+            displayId={displayId}
             cues={cues}
             offsetMs={effectiveOffsetMs}
             onSeek={onSeek}

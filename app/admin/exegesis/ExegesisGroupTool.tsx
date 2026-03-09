@@ -1,3 +1,4 @@
+// web/app/admin/exegesis/ExegesisGroupTool.tsx
 "use client";
 
 import React from "react";

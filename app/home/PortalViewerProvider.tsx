@@ -16,8 +16,8 @@ type ViewerCtx = {
   setPortalTabId: (next: string | null) => void;
 
   // ✅ exegesis pin state (client-owned, seeded from server/runtime)
-  exegesisrecordingId: string | null;
-  setExegesisrecordingId: (next: string | null) => void;
+  exegesisDisplayId: string | null;
+  setExegesisDisplayId: (next: string | null) => void;
 };
 
 const PortalViewerContext = React.createContext<ViewerCtx | null>(null);
@@ -33,11 +33,14 @@ export function usePortalViewer(): ViewerCtx {
 export function PortalViewerProvider(props: {
   value: Omit<
     ViewerCtx,
-    "portalTabId" | "setPortalTabId" | "exegesisrecordingId" | "setExegesisrecordingId"
+    | "portalTabId"
+    | "setPortalTabId"
+    | "exegesisDisplayId"
+    | "setExegesisDisplayId"
   >;
   children: React.ReactNode;
   initialPortalTabId?: string | null;
-  initialExegesisRecordingId?: string | null;
+  initialExegesisDisplayId?: string | null;
 }) {
   const [portalTabId, setPortalTabId] = React.useState<string | null>(
     (props.initialPortalTabId ?? null)
@@ -45,9 +48,11 @@ export function PortalViewerProvider(props: {
       : null,
   );
 
-  const [exegesisrecordingId, setExegesisrecordingId] = React.useState<string | null>(
-    (props.initialExegesisRecordingId ?? null)
-      ? String(props.initialExegesisRecordingId)
+  const [exegesisDisplayId, setExegesisDisplayId] = React.useState<
+    string | null
+  >(
+    (props.initialExegesisDisplayId ?? null)
+      ? String(props.initialExegesisDisplayId)
       : null,
   );
 
@@ -56,10 +61,10 @@ export function PortalViewerProvider(props: {
       ...props.value,
       portalTabId,
       setPortalTabId,
-      exegesisrecordingId,
-      setExegesisrecordingId,
+      exegesisDisplayId,
+      setExegesisDisplayId,
     }),
-    [props.value, portalTabId, exegesisrecordingId],
+    [props.value, portalTabId, exegesisDisplayId],
   );
 
   return (

@@ -30,6 +30,7 @@ function findActiveIndex(cues: LyricCue[], tMs: number) {
 
 export default function LyricsOverlay(props: {
   recordingId?: string | null;
+  displayId?: string | null;
   cues: LyricCue[] | null;
   offsetMs?: number;
   onSeek?: (tMs: number) => void;
@@ -39,6 +40,7 @@ export default function LyricsOverlay(props: {
 }) {
   const {
     recordingId: recordingIdRaw = null,
+    displayId: displayIdRaw = null,
     cues,
     offsetMs = 0,
     onSeek,
@@ -49,6 +51,8 @@ export default function LyricsOverlay(props: {
   const router = useRouter();
 
   const recordingId = (recordingIdRaw ?? "").trim() || null;
+  const displayId = (displayIdRaw ?? "").trim() || null;
+  const exegesisPathToken = displayId || recordingId;
   const isInline = variant === "inline";
 
   const viewportRef = React.useRef<HTMLDivElement | null>(null);
@@ -108,10 +112,10 @@ export default function LyricsOverlay(props: {
   }, []);
 
   function openExegesis(cue: LyricCue) {
-    if (!recordingId) return;
+    if (!exegesisPathToken) return;
 
     const path =
-      `/exegesis/${encodeURIComponent(recordingId)}` +
+      `/exegesis/${encodeURIComponent(exegesisPathToken)}` +
       `#l=${encodeURIComponent(cue.lineKey)}`;
 
     router.push(path, { scroll: false });
@@ -479,7 +483,7 @@ export default function LyricsOverlay(props: {
                 data-lyric-idx={idx}
                 className="af-lyric-row"
                 data-af-inline={isInline ? "1" : "0"}
-                data-af-has-track={recordingId ? "1" : "0"}
+                data-af-has-track={exegesisPathToken ? "1" : "0"}
                 data-af-reveal={idx === revealIdx ? "1" : "0"}
                 onMouseEnter={() => {
                   if (!isInline) return;
@@ -533,10 +537,10 @@ export default function LyricsOverlay(props: {
                     display: isInline ? "grid" : "none",
                     placeItems: "center",
                     lineHeight: 0,
-                    cursor: recordingId ? "pointer" : "default",
-                    pointerEvents: recordingId ? "auto" : "none",
+                    cursor: exegesisPathToken ? "pointer" : "default",
+                    pointerEvents: exegesisPathToken ? "auto" : "none",
                     zIndex: 3,
-                    opacity: showDiscourse && recordingId ? 1 : 0,
+                    opacity: showDiscourse && exegesisPathToken ? 1 : 0,
                     overflow: "visible",
                     transition:
                       "opacity 140ms ease, transform 160ms ease, filter 160ms ease",
@@ -581,7 +585,7 @@ export default function LyricsOverlay(props: {
                     clearPressTimer();
 
                     if (!isInline) return; // fullscreen/stage: no discourse affordance at all
-                    if (!recordingId) return;
+                    if (!exegesisPathToken) return;
 
                     pressTimerRef.current = window.setTimeout(() => {
                       pressFiredRef.current = true;

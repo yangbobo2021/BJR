@@ -326,7 +326,7 @@ export default function PortalArea(props: {
   topLogoUrl?: string | null;
   topLogoHeight?: number | null;
   initialPortalTabId?: string | null;
-  initialExegesisRecordingId?: string | null;
+  initialExegesisDisplayId?: string | null;
   bundle: AlbumPlayerBundle;
   albums: AlbumNavItem[];
   attentionMessage?: string | null;
@@ -886,7 +886,7 @@ export default function PortalArea(props: {
       >
         <PortalViewerProvider
           initialPortalTabId={props.initialPortalTabId ?? null}
-          initialExegesisRecordingId={props.initialExegesisRecordingId ?? null}
+          initialExegesisDisplayId={props.initialExegesisDisplayId ?? null}
           value={{
             viewerTier,
             rawTier: tier,

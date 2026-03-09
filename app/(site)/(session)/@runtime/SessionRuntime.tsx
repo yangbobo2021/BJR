@@ -51,7 +51,7 @@ export default async function SessionRuntime(props: {
   // When present, this is the “player album” canonical slug for /album/:slug routes.
   albumSlugOverride?: string | null;
   initialPortalTabId?: string | null;
-  initialExegesisRecordingId?: string | null;
+  initialExegesisDisplayId?: string | null;
 }) {
   const { userId } = await auth();
   const user = userId ? await currentUser() : null;
@@ -160,7 +160,7 @@ export default async function SessionRuntime(props: {
       topLogoUrl={page?.topLogoUrl ?? null}
       topLogoHeight={page?.topLogoHeight ?? null}
       initialPortalTabId={props.initialPortalTabId ?? null}
-      initialExegesisRecordingId={props.initialExegesisRecordingId ?? null}
+      initialExegesisDisplayId={props.initialExegesisDisplayId ?? null}
     />
   );
 }
