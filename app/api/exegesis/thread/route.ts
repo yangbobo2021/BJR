@@ -4,6 +4,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { sql } from "@vercel/postgres";
 import { ensureAnonId } from "@/lib/anon";
+import {
+  buildExegesisIdentityDtoMap,
+  ensureMemberIdentity,
+} from "@/lib/memberIdentityServer";
 import { hasAnyEntitlement } from "@/lib/entitlements";
 import { ENTITLEMENTS } from "@/lib/vocab";
 import {
@@ -12,13 +16,13 @@ import {
   isKnownCanonicalGroupKey,
 } from "@/lib/exegesis/resolveGroupKey";
 import type { GatePayload } from "@/app/home/gating/gateTypes";
+import type { IdentityDTO } from "@/lib/exegesisIdentityDto";
 import {
   correlationIdFromRequest,
   gateError,
   jsonOk,
   withCorrelationId,
 } from "@/app/api/_gate";
-import { stableAnonLabel } from "@/lib/exegesis/stableAnonLabel";
 
 export const runtime = "nodejs";
 
@@ -27,15 +31,6 @@ type ThreadSort = "top" | "recent";
 type Viewer =
   | { kind: "anon"; anonId: string }
   | { kind: "member"; memberId: string };
-
-type IdentityDTO = {
-  memberId: string;
-  anonLabel: string;
-  publicName: string | null;
-  publicNameUnlockedAt: string | null;
-  contributionCount: number;
-  isAdmin: boolean;
-};
 
 type CommentDTO = {
   id: string;
@@ -123,13 +118,6 @@ function isUuid(v: string): boolean {
   );
 }
 
-const ADMIN_MEMBER_ID = (process.env.EXEGESIS_ADMIN_MEMBER_ID ?? "").trim();
-
-function isAdminMemberId(memberId: string | null | undefined): boolean {
-  const id = (memberId ?? "").trim();
-  return Boolean(id && ADMIN_MEMBER_ID && id === ADMIN_MEMBER_ID);
-}
-
 async function getViewer(
   req: NextRequest,
   mintedAnonId: string,
@@ -178,16 +166,6 @@ type DbThreadMetaRow = {
   locked: boolean;
   comment_count: number;
   last_activity_at: string;
-  created_at: string;
-  updated_at: string;
-};
-
-type DbIdentityRow = {
-  member_id: string;
-  anon_label: string;
-  public_name: string | null;
-  public_name_unlocked_at: string | null;
-  contribution_count: number;
   created_at: string;
   updated_at: string;
 };
@@ -289,12 +267,7 @@ export async function GET(req: NextRequest) {
       : null;
 
   if (viewerMemberId) {
-    const label = stableAnonLabel(viewerMemberId);
-    await sql`
-      insert into exegesis_identity (member_id, anon_label)
-      values (${viewerMemberId}::uuid, ${label})
-      on conflict (member_id) do nothing
-    `;
+    await ensureMemberIdentity(viewerMemberId);
   }
 
   if (viewer.kind === "anon") {
@@ -477,23 +450,9 @@ export async function GET(req: NextRequest) {
   const uuids = Array.from(wantIds);
 
   if (uuids.length > 0) {
-    const uuidArrayLiteral = `{${uuids.join(",")}}`;
-
-    const idsRes = await sql<DbIdentityRow>`
-      select member_id, anon_label, public_name, public_name_unlocked_at, contribution_count, created_at, updated_at
-      from exegesis_identity
-      where member_id = any(${uuidArrayLiteral}::uuid[])
-    `;
-
-    for (const i of idsRes.rows ?? []) {
-      identities[i.member_id] = {
-        memberId: i.member_id,
-        anonLabel: i.anon_label,
-        publicName: i.public_name,
-        publicNameUnlockedAt: i.public_name_unlocked_at,
-        contributionCount: i.contribution_count,
-        isAdmin: isAdminMemberId(i.member_id),
-      };
+    const built = await buildExegesisIdentityDtoMap(uuids);
+    for (const [memberId, identity] of Object.entries(built)) {
+      identities[memberId] = identity;
     }
   }
 

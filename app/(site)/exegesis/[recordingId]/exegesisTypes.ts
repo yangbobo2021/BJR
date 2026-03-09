@@ -1,6 +1,7 @@
 // web/app/(site)/exegesis/[recordingId]/exegesisTypes.ts
 import type { LyricCue, LyricGroupMap } from "@/lib/types";
 import type { GatePayload } from "@/app/home/gating/gateTypes";
+import type { IdentityDTO } from "@/lib/exegesisIdentityDto";
 
 export type LyricsApiOk = {
   ok: true;
@@ -14,14 +15,7 @@ export type LyricsApiOk = {
 
 export type ThreadSort = "top" | "recent";
 
-export type IdentityDTO = {
-  memberId: string;
-  anonLabel: string;
-  publicName: string | null;
-  publicNameUnlockedAt: string | null;
-  contributionCount: number;
-  isAdmin: boolean;
-};
+export type { IdentityDTO } from "@/lib/exegesisIdentityDto";
 
 export type CommentDTO = {
   id: string;

@@ -3,6 +3,7 @@ export type GateUiMode = "none" | "inline" | "global" | "spotlight";
 export type GateAction = "login" | "subscribe" | "buy" | "wait";
 
 export type GateDomain =
+  | "site"
   | "playback"
   | "downloads"
   | "journal"

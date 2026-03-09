@@ -1,3 +1,4 @@
+// web/lib/memberDashboard.ts
 import type { ResolvedDisplayIdentity } from "@/lib/memberIdentity";
 
 export type MemberDashboardBadge = {

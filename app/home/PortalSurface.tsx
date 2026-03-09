@@ -1,3 +1,4 @@
+// web/app/home/PortalSurface.tsx
 import React from "react";
 import PortalModules from "@/app/home/PortalModules";
 import type { PortalModule } from "@/lib/portal";

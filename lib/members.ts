@@ -2,6 +2,7 @@
 import "server-only";
 import { sql } from "@vercel/postgres";
 import { grantEntitlement } from "@/lib/entitlementOps";
+import { ensureMemberIdentity } from "@/lib/memberIdentityServer";
 import { ENTITLEMENTS, EVENT_SOURCES } from "@/lib/vocab";
 import { newCorrelationId } from "@/lib/events";
 
@@ -113,6 +114,7 @@ export async function ensureMemberByClerk(params: {
       where id = ${id}
     `;
     await ensureBaselineEntitlements(id, "clerk login (existing member)");
+    await ensureMemberIdentity(id);
     return { id, created: false };
   }
 
@@ -130,6 +132,7 @@ export async function ensureMemberByClerk(params: {
   if (claimed.rows[0]?.id) {
     const id = claimed.rows[0].id as string;
     await ensureBaselineEntitlements(id, "clerk login (email claim)");
+    await ensureMemberIdentity(id);
     return { id, created: false };
   }
 
@@ -173,6 +176,7 @@ export async function ensureMemberByClerk(params: {
   const created = inserted.rows[0].created as boolean;
 
   await ensureBaselineEntitlements(id, "clerk signup (new member)");
+  await ensureMemberIdentity(id);
 
   return { id, created };
 }
@@ -220,7 +224,9 @@ export async function ensureMemberByEmail(params: {
       )
       returning id
     `;
-    return { id: ins.rows[0].id as string, created: true };
+    const id = ins.rows[0].id as string;
+    await ensureMemberIdentity(id);
+    return { id, created: true };
   } catch (err: unknown) {
     const e = err as { code?: string; message?: string };
 
@@ -236,7 +242,9 @@ export async function ensureMemberByEmail(params: {
       `;
 
       if (upd.rows[0]?.id) {
-        return { id: upd.rows[0].id as string, created: false };
+        const id = upd.rows[0].id as string;
+        await ensureMemberIdentity(id);
+        return { id, created: false };
       }
 
       // Extremely rare: duplicate was raised on a uniqueness rule not matching `where email = ...`
@@ -247,8 +255,11 @@ export async function ensureMemberByEmail(params: {
         where email = ${email}
         limit 1
       `;
-      if (sel.rows[0]?.id)
-        return { id: sel.rows[0].id as string, created: false };
+      if (sel.rows[0]?.id) {
+        const id = sel.rows[0].id as string;
+        await ensureMemberIdentity(id);
+        return { id, created: false };
+      }
 
       throw new Error(
         `ensureMemberByEmail: duplicate detected but member not found for ${email}`,

@@ -1,10 +1,10 @@
 // web/app/(site)/exegesis/[recordingId]/exegesisIdentity.ts
 import type { IdentityDTO } from "./exegesisTypes";
-import type { MemberIdentityFacts } from "@/lib/memberIdentity";
+import type { ExegesisIdentityFacts } from "@/lib/memberIdentity";
 
 export function identityFactsFromDTO(
   dto?: IdentityDTO,
-): MemberIdentityFacts | undefined {
+): ExegesisIdentityFacts | undefined {
   if (!dto) return undefined;
 
   return {

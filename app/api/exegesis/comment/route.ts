@@ -6,13 +6,17 @@ import { auth } from "@clerk/nextjs/server";
 import { sql } from "@vercel/postgres";
 
 import type { GatePayload } from "@/app/home/gating/gateTypes";
+import type { IdentityDTO } from "@/lib/exegesisIdentityDto";
 
 import { hasAnyEntitlement } from "@/lib/entitlements";
+import {
+  buildExegesisIdentityDto,
+  ensureMemberIdentity,
+} from "@/lib/memberIdentityServer";
 import { ENTITLEMENTS } from "@/lib/vocab";
 
 import { resolveGroupKeyForAnchor } from "@/lib/exegesis/resolveGroupKey";
 import { validateAndSanitizeTipTapDoc } from "@/lib/exegesis/richText";
-import { stableAnonLabel } from "@/lib/exegesis/stableAnonLabel";
 import {
   correlationIdFromRequest,
   gateError,
@@ -36,15 +40,6 @@ type ApiErr = { ok: false; error: string; gate?: GatePayload };
 function jsonErr(correlationId: string, status: number, body: ApiErr) {
   return withCorrelationId(NextResponse.json(body, { status }), correlationId);
 }
-
-type IdentityDTO = {
-  memberId: string;
-  anonLabel: string;
-  publicName: string | null;
-  publicNameUnlockedAt: string | null;
-  contributionCount: number;
-  isAdmin: boolean;
-};
 
 type CommentDTO = {
   id: string;
@@ -87,13 +82,6 @@ function isUuid(v: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     v,
   );
-}
-
-const ADMIN_MEMBER_ID = (process.env.EXEGESIS_ADMIN_MEMBER_ID ?? "").trim();
-
-function isAdminMemberId(memberId: string | null | undefined): boolean {
-  const id = (memberId ?? "").trim();
-  return Boolean(id && ADMIN_MEMBER_ID && id === ADMIN_MEMBER_ID);
 }
 
 function clampInt(v: unknown, min: number, max: number): number | null {
@@ -363,11 +351,12 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  const canonicalIdentity = await ensureMemberIdentity(memberId);
+
   const rootIdForRootComment = crypto.randomUUID();
   const commentIdForReply = crypto.randomUUID();
 
   try {
-    const label = stableAnonLabel(memberId);
     const parentUuid = parentId;
 
     const q = await sql<{
@@ -400,8 +389,6 @@ export async function POST(req: NextRequest) {
       meta_created_at: string;
       meta_updated_at: string;
       ident_member_id: string;
-      ident_anon_label: string;
-      ident_public_name: string | null;
       ident_public_name_unlocked_at: string | null;
       ident_contribution_count: number;
     }>`
@@ -412,8 +399,8 @@ params as (
     ${groupKey}::text             as group_key,
     ${lineKey}::text              as line_key,
     nullif(${parentUuid}::text, '')::uuid as parent_id,
-    ${memberId}::uuid             as member_id,
-    ${label}::text                as anon_label,
+      ${memberId}::uuid             as member_id,
+    ${canonicalIdentity.anonLabel}::text as anon_label,
     ${bodyRichJson}::jsonb        as body_rich,
     ${bodyPlain}::text            as body_plain,
     ${tMsOrNull}::int             as t_ms,
@@ -449,10 +436,10 @@ ident_base as (
   select p.member_id, p.anon_label
   from params p
   on conflict (member_id) do nothing
-  returning member_id, anon_label, public_name, public_name_unlocked_at, contribution_count
+  returning member_id, public_name_unlocked_at, contribution_count
 ),
 ident_existing as (
-  select i.member_id, i.anon_label, i.public_name, i.public_name_unlocked_at, i.contribution_count
+  select i.member_id, i.public_name_unlocked_at, i.contribution_count
   from exegesis_identity i
   join params p on p.member_id = i.member_id
   limit 1
@@ -567,7 +554,7 @@ ident_upd as (
   from params p
   where i.member_id = p.member_id
     and exists (select 1 from inserted)
-  returning i.member_id, i.anon_label, i.public_name, i.public_name_unlocked_at, i.contribution_count
+  returning i.member_id, i.public_name_unlocked_at, i.contribution_count
 ),
 meta_out as (
   select * from meta_upd
@@ -615,9 +602,7 @@ select
   m.last_activity_at as meta_last_activity_at,
   m.created_at as meta_created_at,
   m.updated_at as meta_updated_at,
-  u.member_id as ident_member_id,
-  u.anon_label as ident_anon_label,
-  u.public_name as ident_public_name,
+   u.member_id as ident_member_id,
   u.public_name_unlocked_at as ident_public_name_unlocked_at,
   u.contribution_count as ident_contribution_count
 from stats s
@@ -732,14 +717,13 @@ limit 1
       updatedAt: row.meta_updated_at,
     };
 
+    const identityDto = await buildExegesisIdentityDto(row.ident_member_id);
+
     const identities: Record<string, IdentityDTO> = {
       [row.ident_member_id]: {
-        memberId: row.ident_member_id,
-        anonLabel: row.ident_anon_label,
-        publicName: row.ident_public_name,
+        ...identityDto,
         publicNameUnlockedAt: row.ident_public_name_unlocked_at,
         contributionCount: row.ident_contribution_count,
-        isAdmin: isAdminMemberId(row.ident_member_id),
       },
     };
 

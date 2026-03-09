@@ -330,7 +330,7 @@ export default function useExegesisThread(props: {
     setClaimErr("");
 
     try {
-      const r = await fetch("/api/exegesis/identity/claim-name", {
+      const r = await fetch("/api/identity/claim-name", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ publicName: name }),
@@ -347,6 +347,7 @@ export default function useExegesisThread(props: {
 
       setThread((prev) => {
         if (!prev) return prev;
+
         return {
           ...prev,
           identities: {
@@ -356,8 +357,11 @@ export default function useExegesisThread(props: {
         };
       });
 
+      setClaimErr("");
       setClaimOpen(false);
       setClaimName("");
+    } catch {
+      setClaimErr("Failed to claim name.");
     } finally {
       setClaimBusy(false);
     }

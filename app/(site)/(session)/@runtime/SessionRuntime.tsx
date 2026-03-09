@@ -6,6 +6,7 @@ import { client } from "@/sanity/lib/client";
 import { urlFor } from "@/sanity/lib/image";
 
 import { ensureMemberByClerk } from "@/lib/members";
+import { buildMemberIdentityState } from "@/lib/memberIdentityServer";
 import { listCurrentEntitlementKeys } from "@/lib/entitlements";
 import { deriveTier } from "@/lib/vocab";
 
@@ -72,6 +73,7 @@ export default async function SessionRuntime(props: {
   let member: null | { id: string; created: boolean; email: string } = null;
   let entitlementKeys: string[] = [];
   let tier = "none";
+  let memberSummary: PortalMemberSummary = emptyPortalMemberSummary();
 
   if (userId && email) {
     const ensured = await ensureMemberByClerk({
@@ -84,25 +86,18 @@ export default async function SessionRuntime(props: {
     member = { id: ensured.id, created: ensured.created, email };
     entitlementKeys = await listCurrentEntitlementKeys(ensured.id);
     tier = deriveTier(entitlementKeys);
+
+    const identityState = await buildMemberIdentityState(ensured.id);
+
+    memberSummary = {
+      ...emptyPortalMemberSummary(),
+      identity: identityState.resolved,
+      contributionCount:
+        identityState.exegesisProgress?.contributionCount ?? null,
+    };
   }
 
   const isPatron = tier === "patron";
-
-  // Bootstrap summary only.
-  // This establishes the runtime dashboard surface without pretending
-  // telemetry, badges, or global public-name resolution already exist.
-  const memberSummary: PortalMemberSummary = member
-    ? {
-        ...emptyPortalMemberSummary(),
-        identity: {
-          memberId: member.id,
-          displayName: member.email,
-          isAdmin: false,
-          hasClaimedPublicName: false,
-          canClaimName: false,
-        },
-      }
-    : emptyPortalMemberSummary();
 
   const portalPanel = portal?.modules?.length ? (
     <PortalSurface
