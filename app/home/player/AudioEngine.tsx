@@ -39,6 +39,7 @@ export default function AudioEngine() {
   const tokenAbortRef = React.useRef<AbortController | null>(null);
   const loadSeq = React.useRef(0);
 
+  const telemetryPlaySentRef = React.useRef(new Set<string>());
   const telemetryProgressSentRef = React.useRef(new Set<string>());
   const telemetryCompleteSentRef = React.useRef(new Set<string>());
 
@@ -54,6 +55,7 @@ export default function AudioEngine() {
   // ---- Playback intent ----
   const playIntentRef = React.useRef(false);
   const playthroughSentRef = React.useRef(new Set<string>()); // key: `${recordingId}:${playbackId}`
+  const TELEMETRY_PLAY_THRESHOLD_MS = 5_000;
   const TELEMETRY_PROGRESS_STEP_MS = 15_000;
 
   // Track attachment bookkeeping
@@ -185,6 +187,7 @@ export default function AudioEngine() {
     const tokenCache = tokenCacheRef.current;
     const blockedNonce = blockedNonceRef.current;
     const playthroughSent = playthroughSentRef.current;
+    const telemetryPlaySent = telemetryPlaySentRef.current;
     const telemetryProgressSent = telemetryProgressSentRef.current;
     const telemetryCompleteSent = telemetryCompleteSentRef.current;
 
@@ -236,6 +239,7 @@ export default function AudioEngine() {
       tokenCache.clear();
       blockedNonce.clear();
       playthroughSent.clear();
+      telemetryPlaySent.clear();
       telemetryProgressSent.clear();
       telemetryCompleteSent.clear();
 
@@ -686,6 +690,38 @@ export default function AudioEngine() {
       }).catch(() => {});
     };
 
+    const reportTelemetryPlay = (params: {
+      recordingId: string;
+      playbackId: string;
+      progressMs: number;
+      durationMs: number | null;
+    }) => {
+      if (!isSignedIn) return;
+
+      const { recordingId, playbackId, progressMs, durationMs } = params;
+      if (!recordingId || !playbackId) return;
+      if (progressMs < TELEMETRY_PLAY_THRESHOLD_MS) return;
+
+      const milestoneKey = `${recordingId}:${playbackId}:play`;
+      if (telemetryPlaySentRef.current.has(milestoneKey)) return;
+
+      telemetryPlaySentRef.current.add(milestoneKey);
+
+      fetch("/api/playback/telemetry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event: "play",
+          recordingId,
+          playbackId,
+          milestoneKey: "play",
+          progressMs,
+          durationMs,
+        }),
+        keepalive: true,
+      }).catch(() => {});
+    };
+
     const reportTelemetryProgress = (params: {
       recordingId: string;
       playbackId: string;
@@ -771,6 +807,13 @@ export default function AudioEngine() {
       const durMs = durFromState || durFromEl;
 
       if (durMs > 0) {
+        reportTelemetryPlay({
+          recordingId: curId,
+          playbackId: pRef.current.current?.muxPlaybackId ?? "",
+          progressMs: ms,
+          durationMs: durMs,
+        });
+
         reportTelemetryProgress({
           recordingId: curId,
           playbackId: pRef.current.current?.muxPlaybackId ?? "",

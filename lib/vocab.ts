@@ -35,6 +35,7 @@ export const EVENT_TYPES = {
 
   // Playback audit / telemetry
   TRACK_PLAY_COMPLETED: "track_play_completed",
+  PLAYBACK_TELEMETRY_PLAY: "playback_telemetry_play",
   PLAYBACK_TELEMETRY_PROGRESS: "playback_telemetry_progress",
   PLAYBACK_TELEMETRY_COMPLETE: "playback_telemetry_complete",
 

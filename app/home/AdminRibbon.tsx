@@ -219,6 +219,13 @@ export default function AdminRibbon(props: { isAdmin: boolean }) {
               <button
                 type="button"
                 style={btn}
+                onClick={() => openAdmin("playback")}
+              >
+                Playback
+              </button>
+              <button
+                type="button"
+                style={btn}
                 onClick={() => openAdmin("share_tokens")}
               >
                 Share Tokens

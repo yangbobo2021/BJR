@@ -6,12 +6,13 @@ import { auth } from "@clerk/nextjs/server";
 import { sql } from "@vercel/postgres";
 import {
   logPlaybackTelemetryComplete,
+  logPlaybackTelemetryPlay,
   logPlaybackTelemetryProgress,
   newCorrelationId,
 } from "@/lib/events";
 import { EVENT_SOURCES, EVENT_TYPES } from "@/lib/vocab";
 
-type PlaybackTelemetryEvent = "progress" | "complete";
+type PlaybackTelemetryEvent = "play" | "progress" | "complete";
 
 type PlaybackTelemetryRequest = {
   event?: PlaybackTelemetryEvent;
@@ -37,7 +38,9 @@ function asFiniteNonNegativeInt(value: unknown): number {
   return Math.floor(value);
 }
 
-async function getMemberIdByClerkUserId(userId: string): Promise<string | null> {
+async function getMemberIdByClerkUserId(
+  userId: string,
+): Promise<string | null> {
   if (!userId) return null;
 
   const res = await sql<MemberRow>`
@@ -78,19 +81,19 @@ async function insertDedupeKey(params: {
   return res.rows[0]?.inserted === true;
 }
 
-async function upsertPlaybackProgress(params: {
+async function upsertPlaybackPlay(params: {
   memberId: string;
   recordingId: string;
-  listenedMs: number;
   occurredAtIso: string;
 }): Promise<void> {
-  const { memberId, recordingId, listenedMs, occurredAtIso } = params;
+  const { memberId, recordingId, occurredAtIso } = params;
 
   await sql`
     insert into member_track_listen_stats (
       member_id,
       recording_id,
       listened_ms,
+      credited_progress_count,
       play_count,
       completed_count,
       first_listened_at,
@@ -101,7 +104,8 @@ async function upsertPlaybackProgress(params: {
     values (
       ${memberId}::uuid,
       ${recordingId},
-      ${listenedMs},
+      0,
+      0,
       1,
       0,
       ${occurredAtIso}::timestamptz,
@@ -111,7 +115,6 @@ async function upsertPlaybackProgress(params: {
     )
     on conflict (member_id, recording_id)
     do update set
-      listened_ms = member_track_listen_stats.listened_ms + ${listenedMs},
       play_count = member_track_listen_stats.play_count + 1,
       first_listened_at = coalesce(
         member_track_listen_stats.first_listened_at,
@@ -128,6 +131,93 @@ async function upsertPlaybackProgress(params: {
     insert into member_listen_totals (
       member_id,
       listened_ms,
+      credited_progress_count,
+      play_count,
+      completed_count,
+      first_listened_at,
+      last_listened_at,
+      created_at,
+      updated_at
+    )
+    values (
+      ${memberId}::uuid,
+      0,
+      0,
+      1,
+      0,
+      ${occurredAtIso}::timestamptz,
+      ${occurredAtIso}::timestamptz,
+      now(),
+      now()
+    )
+    on conflict (member_id)
+    do update set
+      play_count = member_listen_totals.play_count + 1,
+      first_listened_at = coalesce(
+        member_listen_totals.first_listened_at,
+        ${occurredAtIso}::timestamptz
+      ),
+      last_listened_at = greatest(
+        coalesce(member_listen_totals.last_listened_at, ${occurredAtIso}::timestamptz),
+        ${occurredAtIso}::timestamptz
+      ),
+      updated_at = now()
+  `;
+}
+
+async function upsertPlaybackProgress(params: {
+  memberId: string;
+  recordingId: string;
+  listenedMs: number;
+  occurredAtIso: string;
+}): Promise<void> {
+  const { memberId, recordingId, listenedMs, occurredAtIso } = params;
+
+  await sql`
+    insert into member_track_listen_stats (
+      member_id,
+      recording_id,
+      listened_ms,
+      credited_progress_count,
+      play_count,
+      completed_count,
+      first_listened_at,
+      last_listened_at,
+      created_at,
+      updated_at
+    )
+    values (
+      ${memberId}::uuid,
+      ${recordingId},
+      ${listenedMs},
+      1,
+      0,
+      0,
+      ${occurredAtIso}::timestamptz,
+      ${occurredAtIso}::timestamptz,
+      now(),
+      now()
+    )
+    on conflict (member_id, recording_id)
+    do update set
+      listened_ms = member_track_listen_stats.listened_ms + ${listenedMs},
+      credited_progress_count = member_track_listen_stats.credited_progress_count + 1,
+      first_listened_at = coalesce(
+        member_track_listen_stats.first_listened_at,
+        ${occurredAtIso}::timestamptz
+      ),
+      last_listened_at = greatest(
+        coalesce(member_track_listen_stats.last_listened_at, ${occurredAtIso}::timestamptz),
+        ${occurredAtIso}::timestamptz
+      ),
+      updated_at = now()
+  `;
+
+  await sql`
+    insert into member_listen_totals (
+      member_id,
+      listened_ms,
+      credited_progress_count,
       play_count,
       completed_count,
       first_listened_at,
@@ -140,6 +230,7 @@ async function upsertPlaybackProgress(params: {
       ${listenedMs},
       1,
       0,
+      0,
       ${occurredAtIso}::timestamptz,
       ${occurredAtIso}::timestamptz,
       now(),
@@ -148,13 +239,147 @@ async function upsertPlaybackProgress(params: {
     on conflict (member_id)
     do update set
       listened_ms = member_listen_totals.listened_ms + ${listenedMs},
-      play_count = member_listen_totals.play_count + 1,
+      credited_progress_count = member_listen_totals.credited_progress_count + 1,
       first_listened_at = coalesce(
         member_listen_totals.first_listened_at,
         ${occurredAtIso}::timestamptz
       ),
       last_listened_at = greatest(
         coalesce(member_listen_totals.last_listened_at, ${occurredAtIso}::timestamptz),
+        ${occurredAtIso}::timestamptz
+      ),
+      updated_at = now()
+  `;
+}
+
+async function upsertRecordingPlaybackPlay(params: {
+  recordingId: string;
+  occurredAtIso: string;
+}): Promise<void> {
+  const { recordingId, occurredAtIso } = params;
+
+  await sql`
+    insert into recording_listen_totals (
+      recording_id,
+      listened_ms,
+      credited_progress_count,
+      play_count,
+      completed_count,
+      first_listened_at,
+      last_listened_at,
+      created_at,
+      updated_at
+    )
+    values (
+      ${recordingId},
+      0,
+      0,
+      1,
+      0,
+      ${occurredAtIso}::timestamptz,
+      ${occurredAtIso}::timestamptz,
+      now(),
+      now()
+    )
+    on conflict (recording_id)
+    do update set
+      play_count = recording_listen_totals.play_count + 1,
+      first_listened_at = coalesce(
+        recording_listen_totals.first_listened_at,
+        ${occurredAtIso}::timestamptz
+      ),
+      last_listened_at = greatest(
+        coalesce(recording_listen_totals.last_listened_at, ${occurredAtIso}::timestamptz),
+        ${occurredAtIso}::timestamptz
+      ),
+      updated_at = now()
+  `;
+}
+
+async function upsertRecordingPlaybackProgress(params: {
+  recordingId: string;
+  listenedMs: number;
+  occurredAtIso: string;
+}): Promise<void> {
+  const { recordingId, listenedMs, occurredAtIso } = params;
+
+  await sql`
+    insert into recording_listen_totals (
+      recording_id,
+      listened_ms,
+      credited_progress_count,
+      play_count,
+      completed_count,
+      first_listened_at,
+      last_listened_at,
+      created_at,
+      updated_at
+    )
+    values (
+      ${recordingId},
+      ${listenedMs},
+      1,
+      0,
+      0,
+      ${occurredAtIso}::timestamptz,
+      ${occurredAtIso}::timestamptz,
+      now(),
+      now()
+    )
+    on conflict (recording_id)
+    do update set
+      listened_ms = recording_listen_totals.listened_ms + ${listenedMs},
+      credited_progress_count = recording_listen_totals.credited_progress_count + 1,
+      first_listened_at = coalesce(
+        recording_listen_totals.first_listened_at,
+        ${occurredAtIso}::timestamptz
+      ),
+      last_listened_at = greatest(
+        coalesce(recording_listen_totals.last_listened_at, ${occurredAtIso}::timestamptz),
+        ${occurredAtIso}::timestamptz
+      ),
+      updated_at = now()
+  `;
+}
+
+async function upsertRecordingPlaybackComplete(params: {
+  recordingId: string;
+  occurredAtIso: string;
+}): Promise<void> {
+  const { recordingId, occurredAtIso } = params;
+
+  await sql`
+    insert into recording_listen_totals (
+      recording_id,
+      listened_ms,
+      credited_progress_count,
+      play_count,
+      completed_count,
+      first_listened_at,
+      last_listened_at,
+      created_at,
+      updated_at
+    )
+    values (
+      ${recordingId},
+      0,
+      0,
+      0,
+      1,
+      ${occurredAtIso}::timestamptz,
+      ${occurredAtIso}::timestamptz,
+      now(),
+      now()
+    )
+    on conflict (recording_id)
+    do update set
+      completed_count = recording_listen_totals.completed_count + 1,
+      first_listened_at = coalesce(
+        recording_listen_totals.first_listened_at,
+        ${occurredAtIso}::timestamptz
+      ),
+      last_listened_at = greatest(
+        coalesce(recording_listen_totals.last_listened_at, ${occurredAtIso}::timestamptz),
         ${occurredAtIso}::timestamptz
       ),
       updated_at = now()
@@ -173,6 +398,7 @@ async function upsertPlaybackComplete(params: {
       member_id,
       recording_id,
       listened_ms,
+      credited_progress_count,
       play_count,
       completed_count,
       first_listened_at,
@@ -183,6 +409,7 @@ async function upsertPlaybackComplete(params: {
     values (
       ${memberId}::uuid,
       ${recordingId},
+      0,
       0,
       0,
       1,
@@ -209,6 +436,7 @@ async function upsertPlaybackComplete(params: {
     insert into member_listen_totals (
       member_id,
       listened_ms,
+      credited_progress_count,
       play_count,
       completed_count,
       first_listened_at,
@@ -218,6 +446,7 @@ async function upsertPlaybackComplete(params: {
     )
     values (
       ${memberId}::uuid,
+      0,
       0,
       0,
       1,
@@ -248,7 +477,10 @@ export async function POST(req: NextRequest) {
   try {
     body = (await req.json()) as PlaybackTelemetryRequest;
   } catch {
-    const res = NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
+    const res = NextResponse.json(
+      { ok: false, error: "invalid_json" },
+      { status: 400 },
+    );
     res.headers.set("x-correlation-id", correlationId);
     return res;
   }
@@ -263,18 +495,24 @@ export async function POST(req: NextRequest) {
     body.durationMs == null ? null : asFiniteNonNegativeInt(body.durationMs);
 
   if (
-    (event !== "progress" && event !== "complete") ||
+    (event !== "play" && event !== "progress" && event !== "complete") ||
     !recordingId ||
     !playbackId ||
     !milestoneKey
   ) {
-    const res = NextResponse.json({ ok: false, error: "invalid_request" }, { status: 400 });
+    const res = NextResponse.json(
+      { ok: false, error: "invalid_request" },
+      { status: 400 },
+    );
     res.headers.set("x-correlation-id", correlationId);
     return res;
   }
 
   if (event === "progress" && listenedMs <= 0) {
-    const res = NextResponse.json({ ok: false, error: "invalid_progress" }, { status: 400 });
+    const res = NextResponse.json(
+      { ok: false, error: "invalid_progress" },
+      { status: 400 },
+    );
     res.headers.set("x-correlation-id", correlationId);
     return res;
   }
@@ -283,15 +521,21 @@ export async function POST(req: NextRequest) {
   const memberId = userId ? await getMemberIdByClerkUserId(userId) : null;
 
   if (!memberId) {
-    const res = NextResponse.json({ ok: true, ignored: true, reason: "anonymous" });
+    const res = NextResponse.json({
+      ok: true,
+      ignored: true,
+      reason: "anonymous",
+    });
     res.headers.set("x-correlation-id", correlationId);
     return res;
   }
 
   const eventType =
-    event === "progress"
-      ? EVENT_TYPES.PLAYBACK_TELEMETRY_PROGRESS
-      : EVENT_TYPES.PLAYBACK_TELEMETRY_COMPLETE;
+    event === "play"
+      ? EVENT_TYPES.PLAYBACK_TELEMETRY_PLAY
+      : event === "progress"
+        ? EVENT_TYPES.PLAYBACK_TELEMETRY_PROGRESS
+        : EVENT_TYPES.PLAYBACK_TELEMETRY_COMPLETE;
 
   const inserted = await insertDedupeKey({
     memberId,
@@ -308,9 +552,40 @@ export async function POST(req: NextRequest) {
 
   const occurredAtIso = new Date().toISOString();
 
-  if (event === "progress") {
+  if (event === "play") {
+    await upsertPlaybackPlay({
+      memberId,
+      recordingId,
+      occurredAtIso,
+    });
+
+    await upsertRecordingPlaybackPlay({
+      recordingId,
+      occurredAtIso,
+    });
+
+    await logPlaybackTelemetryPlay({
+      memberId,
+      source: EVENT_SOURCES.SERVER,
+      correlationId,
+      payload: {
+        recording_id: recordingId,
+        playback_id: playbackId,
+        milestone_key: milestoneKey,
+        progress_ms: progressMs,
+        duration_ms: durationMs,
+        clerk_user_id: userId,
+      },
+    });
+  } else if (event === "progress") {
     await upsertPlaybackProgress({
       memberId,
+      recordingId,
+      listenedMs,
+      occurredAtIso,
+    });
+
+    await upsertRecordingPlaybackProgress({
       recordingId,
       listenedMs,
       occurredAtIso,
@@ -333,6 +608,11 @@ export async function POST(req: NextRequest) {
   } else {
     await upsertPlaybackComplete({
       memberId,
+      recordingId,
+      occurredAtIso,
+    });
+
+    await upsertRecordingPlaybackComplete({
       recordingId,
       occurredAtIso,
     });

@@ -1,4 +1,4 @@
-export type AdminPanelId = "access" | "share_tokens" | "mailbag" | "exegesis";
+export type AdminPanelId = "access" | "playback" | "share_tokens" | "mailbag" | "exegesis";
 
 export type AdminPanelDef = {
   id: AdminPanelId;
@@ -13,6 +13,12 @@ export const ADMIN_PANELS: readonly AdminPanelDef[] = [
     pillLabel: "Access",
     modalTitle: "Admin — Access",
     src: "/admin/access?embed=1",
+  },
+  {
+    id: "playback",
+    pillLabel: "Playback",
+    modalTitle: "Admin — Playback",
+    src: "/admin/playback?embed=1",
   },
   {
     id: "share_tokens",
