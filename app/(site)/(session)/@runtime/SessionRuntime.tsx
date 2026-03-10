@@ -149,16 +149,16 @@ export default async function SessionRuntime(props: {
 
   const payload: SessionRuntimePayload = {
     portalPanel,
+    topLogoUrl: page?.topLogoUrl ?? null,
+    topLogoHeight: page?.topLogoHeight ?? null,
+    initialPortalTabId: props.initialPortalTabId ?? null,
+    initialExegesisDisplayId: props.initialExegesisDisplayId ?? null,
     bundle,
     albums: browseAlbums,
     attentionMessage: null,
     tier,
     isPatron,
     canManageBilling: !!member,
-    topLogoUrl: page?.topLogoUrl ?? null,
-    topLogoHeight: page?.topLogoHeight ?? null,
-    initialPortalTabId: props.initialPortalTabId ?? null,
-    initialExegesisDisplayId: props.initialExegesisDisplayId ?? null,
   };
 
   const routeKey = JSON.stringify({
