@@ -65,6 +65,7 @@ export default function ExegesisTrackClient(props: {
   canonicalPath?: string;
   trackTitle?: string | null;
   trackArtist?: string | null;
+  headerLeading?: React.ReactNode;
 }) {
   const { openMembershipModal } = useMembershipModal();
   const broker = useGateBroker();
@@ -895,27 +896,37 @@ export default function ExegesisTrackClient(props: {
         }
       `}</style>
 
-      <div>
-        <h1 className="mt-1 text-xl font-semibold">
-          <span className="opacity-90">
-            {(props.trackTitle ?? "").trim() || lyrics.recordingId}
-          </span>
-        </h1>
-        {(props.trackArtist ?? "").trim() ? (
-          <div className="mt-1 text-sm opacity-70">{props.trackArtist}</div>
-        ) : null}
-        {lyrics.geniusUrl ? (
-          <a
-            href={lyrics.geniusUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center rounded-md p-1 text-[#fefe63] opacity-70 hover:opacity-100"
-            title="Open on Genius"
-            aria-label="Open on Genius"
-          >
-            <GeniusIcon className="h-7 w-auto" />
-          </a>
-        ) : null}
+      <div className="min-w-0">
+        <div className="flex items-start gap-3">
+          {props.headerLeading ? (
+            <div className="shrink-0 pt-[2px]">{props.headerLeading}</div>
+          ) : null}
+
+          <div className="min-w-0 flex-1">
+            <h1 className="mt-1 text-xl font-semibold leading-tight">
+              <span className="opacity-90">
+                {(props.trackTitle ?? "").trim() || lyrics.recordingId}
+              </span>
+            </h1>
+
+            {(props.trackArtist ?? "").trim() ? (
+              <div className="mt-1 text-sm opacity-70">{props.trackArtist}</div>
+            ) : null}
+
+            {lyrics.geniusUrl ? (
+              <a
+                href={lyrics.geniusUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center rounded-md p-1 text-[#fefe63] opacity-70 hover:opacity-100"
+                title="Open on Genius"
+                aria-label="Open on Genius"
+              >
+                <GeniusIcon className="h-7 w-auto" />
+              </a>
+            ) : null}
+          </div>
+        </div>
       </div>
 
       <div className="mt-6 grid gap-6 md:grid-cols-[1fr_570px]">
