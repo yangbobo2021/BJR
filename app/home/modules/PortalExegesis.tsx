@@ -160,6 +160,20 @@ function prefetchTrack(tid: string) {
   void loadTrackCached(tid).catch(() => {});
 }
 
+function getCachedTrack(tid: string): LyricsOk | null {
+  const key = (tid ?? "").trim();
+  if (!key) return null;
+  return TRACK_CACHE.get(key) ?? null;
+}
+
+function buildTrackHref(displayId: string, search: string): string {
+  return `/exegesis/${encodeURIComponent(displayId)}${search}`;
+}
+
+function buildIndexHref(search: string): string {
+  return `/exegesis${search}`;
+}
+
 // ---- cover tint cache (module scope) ----
 const COVER_TINT_CACHE = new Map<string, string>(); // url -> "rgba(r,g,b,a)"
 const COVER_TINT_INFLIGHT = new Map<string, Promise<string | null>>();
@@ -274,8 +288,14 @@ function AlbumCard(props: {
   a: CatalogueOk["albums"][number];
   label: string;
   search: string;
+  onOpenTrack: (
+    event: React.MouseEvent<HTMLAnchorElement>,
+    displayId: string,
+    recordingId: string,
+  ) => void;
+  onPrefetchRoute: (href: string) => void;
 }) {
-  const { a, label, search } = props;
+  const { a, label, search, onOpenTrack, onPrefetchRoute } = props;
 
   const [tint, setTint] = React.useState<string | null>(null);
 
@@ -387,9 +407,24 @@ function AlbumCard(props: {
           return (
             <Link
               key={tid}
-              href={`/exegesis/${encodeURIComponent(displayId)}${search}`}
-              onMouseEnter={() => prefetchTrack(tid)}
-              onFocus={() => prefetchTrack(tid)}
+              href={buildTrackHref(displayId, search)}
+              onMouseEnter={() => {
+                prefetchTrack(tid);
+                onPrefetchRoute(buildTrackHref(displayId, search));
+              }}
+              onFocus={() => {
+                prefetchTrack(tid);
+                onPrefetchRoute(buildTrackHref(displayId, search));
+              }}
+              onMouseDown={() => {
+                prefetchTrack(tid);
+                onPrefetchRoute(buildTrackHref(displayId, search));
+              }}
+              onTouchStart={() => {
+                prefetchTrack(tid);
+                onPrefetchRoute(buildTrackHref(displayId, search));
+              }}
+              onClick={(event) => onOpenTrack(event, displayId, tid)}
               className="flex items-baseline justify-between rounded-md bg-black/20 px-3 py-2 text-sm hover:bg-white/10"
               title={displayId}
             >
@@ -416,6 +451,9 @@ export default function PortalExegesis(props: { title?: string }) {
   const search = sp?.toString() ? `?${sp.toString()}` : "";
 
   const { exegesisDisplayId, setExegesisDisplayId } = usePortalViewer();
+  const [optimisticDisplayId, setOptimisticDisplayId] = React.useState<
+    string | null | undefined
+  >(undefined);
 
   // -------- index state --------
   const [catalogue, setCatalogue] = React.useState<CatalogueOk | null>(null);
@@ -423,8 +461,11 @@ export default function PortalExegesis(props: { title?: string }) {
   const [catalogueLoading, setCatalogueLoading] = React.useState(false);
 
   const displayIdFromPath = extractDisplayIdFromPath(pathname);
+
   const displayId =
-    (exegesisDisplayId ?? displayIdFromPath ?? "").trim() || null;
+    optimisticDisplayId !== undefined
+      ? optimisticDisplayId
+      : (exegesisDisplayId ?? displayIdFromPath ?? "").trim() || null;
 
   // If we had to fall back to pathname parsing, persist it into context so other
   // components (and subsequent renders) have a stable single source of truth.
@@ -433,6 +474,28 @@ export default function PortalExegesis(props: { title?: string }) {
       setExegesisDisplayId(displayIdFromPath);
     }
   }, [exegesisDisplayId, displayIdFromPath, setExegesisDisplayId]);
+
+  React.useEffect(() => {
+    if (optimisticDisplayId === undefined) return;
+
+    const pathResolved = displayIdFromPath ?? null;
+    const viewerResolved = exegesisDisplayId ?? null;
+
+    if (
+      optimisticDisplayId === pathResolved ||
+      optimisticDisplayId === viewerResolved
+    ) {
+      setOptimisticDisplayId(undefined);
+    }
+
+    if (
+      optimisticDisplayId === null &&
+      pathResolved === null &&
+      viewerResolved === null
+    ) {
+      setOptimisticDisplayId(undefined);
+    }
+  }, [optimisticDisplayId, displayIdFromPath, exegesisDisplayId]);
 
   const { recordingIdByDisplayId, trackMetaByRecordingId } = React.useMemo(
     () => buildCatalogueIndexes(catalogue),
@@ -447,6 +510,59 @@ export default function PortalExegesis(props: { title?: string }) {
   const [lyrics, setLyrics] = React.useState<LyricsOk | null>(null);
   const [lyricsErr, setLyricsErr] = React.useState("");
   const [lyricsLoading, setLyricsLoading] = React.useState(false);
+
+  function prefetchRoute(href: string) {
+    const target = (href ?? "").trim();
+    if (!target) return;
+    void router.prefetch(target);
+  }
+
+  function openTrack(
+    event: React.MouseEvent<HTMLAnchorElement>,
+    displayIdNext: string,
+    recordingIdNext: string,
+  ) {
+    event.preventDefault();
+
+    const did = (displayIdNext ?? "").trim();
+    const rid = (recordingIdNext ?? "").trim();
+    if (!did || !rid) return;
+
+    const nextHref = buildTrackHref(did, search);
+    const currentHref = `${pathname}${search}`;
+
+    setOptimisticDisplayId(did);
+    setExegesisDisplayId(did);
+
+    const cached = getCachedTrack(rid);
+    if (cached) {
+      setLyrics(cached);
+      setLyricsErr("");
+      setLyricsLoading(false);
+    } else {
+      setLyricsErr("");
+      setLyricsLoading(true);
+      prefetchTrack(rid);
+    }
+
+    if (currentHref !== nextHref) {
+      router.replace(nextHref, { scroll: false });
+    }
+  }
+
+  function returnToIndex() {
+    const nextHref = buildIndexHref(search);
+    const currentHref = `${pathname}${search}`;
+
+    setOptimisticDisplayId(null);
+    setExegesisDisplayId(null);
+    setLyricsErr("");
+    setLyricsLoading(false);
+
+    if (currentHref !== nextHref) {
+      router.replace(nextHref, { scroll: false });
+    }
+  }
 
   React.useEffect(() => {
     const ac = new AbortController();
@@ -572,9 +688,12 @@ export default function PortalExegesis(props: { title?: string }) {
                   type="button"
                   aria-label="Back to all tracks"
                   className="inline-flex h-9 w-9 items-center justify-center rounded-md opacity-70 transition hover:bg-white/5 hover:opacity-100"
+                  onMouseEnter={() => prefetchRoute(buildIndexHref(search))}
+                  onFocus={() => prefetchRoute(buildIndexHref(search))}
+                  onMouseDown={() => prefetchRoute(buildIndexHref(search))}
+                  onTouchStart={() => prefetchRoute(buildIndexHref(search))}
                   onClick={() => {
-                    setExegesisDisplayId(null);
-                    router.push(`/exegesis${search}`);
+                    returnToIndex();
                   }}
                 >
                   <svg
@@ -631,7 +750,14 @@ export default function PortalExegesis(props: { title?: string }) {
           {catalogue.albums.map((a) => {
             const label = a.albumTitle || a.albumSlug || a.albumId || "Album";
             return (
-              <AlbumCard key={a.albumId} a={a} label={label} search={search} />
+              <AlbumCard
+                key={a.albumId}
+                a={a}
+                label={label}
+                search={search}
+                onOpenTrack={openTrack}
+                onPrefetchRoute={prefetchRoute}
+              />
             );
           })}
         </div>
