@@ -1,3 +1,4 @@
+// web/lib/vocab.ts
 import "server-only";
 import { ENT, entKey, type StructuredEntitlementKey } from "./entitlementVocab";
 

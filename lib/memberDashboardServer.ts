@@ -22,10 +22,9 @@ type MemberFavouriteTrackRow = {
   last_listened_at: string | null;
 };
 
-async function getDashboardContributionCount(
-  memberId: string,
-): Promise<number | null> {
-  const identityState = await buildMemberIdentityState(memberId);
+function getDashboardContributionCount(identityState: {
+  exegesisProgress?: { contributionCount?: number | null } | null;
+}): number | null {
   return identityState.exegesisProgress?.contributionCount ?? null;
 }
 
@@ -103,13 +102,13 @@ export async function buildPortalMemberSummary(
 ): Promise<PortalMemberSummary> {
   const identityState = await buildMemberIdentityState(memberId);
 
-  const [contributionCount, minutesStreamed, favouriteTrack, badges] =
-    await Promise.all([
-      getDashboardContributionCount(memberId),
-      getDashboardMinutesStreamed(memberId),
-      getDashboardFavouriteTrack(memberId),
-      getUnlockedDashboardBadges(memberId),
-    ]);
+  const [minutesStreamed, favouriteTrack, badges] = await Promise.all([
+    getDashboardMinutesStreamed(memberId),
+    getDashboardFavouriteTrack(memberId),
+    getUnlockedDashboardBadges(memberId),
+  ]);
+
+  const contributionCount = getDashboardContributionCount(identityState);
 
   return {
     ...emptyPortalMemberSummary(),

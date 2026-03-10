@@ -25,22 +25,21 @@ function toPortalAreaProps(
     portalModules: shell.portalModules,
     memberId: payload.memberId,
     entitlementKeys: payload.entitlementKeys,
-    memberSummary: payload.memberSummary ?? null,
+    memberSummary: payload.memberSummary,
 
     topLogoUrl: shell.topLogoUrl,
     topLogoHeight: shell.topLogoHeight,
 
-    initialPortalTabId: payload.initialPortalTabId ?? null,
-    initialExegesisDisplayId: payload.initialExegesisDisplayId ?? null,
+    initialPortalTabId: payload.initialPortalTabId,
+    initialExegesisDisplayId: payload.initialExegesisDisplayId,
 
     bundle: payload.bundle,
     albums: shell.albums,
     featuredAlbumSlug: shell.featuredAlbumSlug,
 
-    attentionMessage: payload.attentionMessage ?? null,
-    tier: payload.tier ?? null,
-    isPatron: payload.isPatron ?? false,
-    canManageBilling: payload.canManageBilling ?? false,
+    tier: payload.tier,
+    isPatron: payload.isPatron,
+    canManageBilling: payload.canManageBilling,
   };
 }
 

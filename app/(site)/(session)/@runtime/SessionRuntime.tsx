@@ -11,7 +11,7 @@ import {
 import { buildPortalMemberSummary } from "@/lib/memberDashboardServer";
 import { SessionRuntimePayloadBridge } from "@/app/home/SessionRuntimePayloadContext";
 import type { SessionRuntimePayload } from "@/app/home/sessionRuntimePayload";
-import { getAlbumBySlug, getFeaturedAlbumSlugFromSanity } from "@/lib/albums";
+import { getAlbumBySlug } from "@/lib/albums";
 
 export default async function SessionRuntime(props: {
   // When present, this is the “player album” canonical slug for /album/:slug routes.
@@ -28,8 +28,6 @@ export default async function SessionRuntime(props: {
     user?.primaryEmailAddress?.emailAddress ??
     user?.emailAddresses?.[0]?.emailAddress ??
     null;
-
-  const featured = await getFeaturedAlbumSlugFromSanity();
 
   let member: null | { id: string; created: boolean; email: string } = null;
   let entitlementKeys: string[] = [];
@@ -53,36 +51,29 @@ export default async function SessionRuntime(props: {
 
   const isPatron = tier === "patron";
 
-  const resolvedFeaturedAlbumSlug =
-    (props.featuredAlbumSlug ?? "").trim() ||
-    featured?.slug ||
-    featured?.fallbackSlug ||
-    "god-defend";
-
   const selectedAlbumSlug =
-    (props.albumSlugOverride ?? "").trim() || resolvedFeaturedAlbumSlug;
+    (props.albumSlugOverride ?? "").trim() ||
+    (props.featuredAlbumSlug ?? "").trim() ||
+    "god-defend";
 
   const bundle = await getAlbumBySlug(selectedAlbumSlug);
 
   const payload: SessionRuntimePayload = {
-    portalModules: [],
     memberId: member?.id ?? null,
     entitlementKeys,
     memberSummary,
     initialPortalTabId: props.initialPortalTabId ?? null,
     initialExegesisDisplayId: props.initialExegesisDisplayId ?? null,
     bundle,
-    attentionMessage: null,
     tier,
     isPatron,
     canManageBilling: !!member,
   };
 
   const routeKey = JSON.stringify({
-    albumSlugOverride: props.albumSlugOverride ?? null,
+    selectedAlbumSlug: bundle.albumSlug,
     initialPortalTabId: props.initialPortalTabId ?? null,
     initialExegesisDisplayId: props.initialExegesisDisplayId ?? null,
-    selectedAlbumSlug: bundle.albumSlug,
   });
 
   return <SessionRuntimePayloadBridge routeKey={routeKey} payload={payload} />;

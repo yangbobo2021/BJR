@@ -9,7 +9,8 @@ export default async function PortalRuntimePage(props: {
   const resolvedTab = decodeURIComponent(tab ?? "").trim() || null;
 
   // Important: for portal routes we still want an album context to exist
-  // (queue priming, stage, etc). We use featured album fallback via SessionRuntime.
+  // (queue priming, stage, etc). SessionRuntime will resolve the selected album
+  // from the shell-provided featured album fallback when no route album is supplied.
   return (
     <SessionRuntime albumSlugOverride={null} initialPortalTabId={resolvedTab} />
   );

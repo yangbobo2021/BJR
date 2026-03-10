@@ -180,42 +180,7 @@ export default clerkMiddleware((auth, req) => {
       return redirect308(url, `/${encodeURIComponent(slug)}`, preserved);
     }
   }
-
-  // ---- C) Legacy query-world: /home?p=... -> new paths ----
-  if (pathname === "/home" || pathname.startsWith("/home/")) {
-    const p = (url.searchParams.get("p") ?? "").trim().toLowerCase();
-    const album = (url.searchParams.get("album") ?? "").trim();
-    const track = (url.searchParams.get("track") ?? "").trim();
-    const post = (url.searchParams.get("post") ?? "").trim();
-    const pt = (url.searchParams.get("pt") ?? "").trim();
-
-    const preserved = pickPreservedParams(url);
-
-    // /home?p=player&album=:slug&track=:id -> /:slug/:id
-    if (p === "player" && album) {
-      const target = track
-        ? `/${encodeURIComponent(album)}/${encodeURIComponent(track)}`
-        : `/${encodeURIComponent(album)}`;
-      return redirect308(url, target, preserved);
-    }
-
-    // /home?p=<tab> -> /<tab>
-    if (p && p !== "player") {
-      if (p === "journal") {
-        if (post) preserved.set("post", post);
-        if (pt) preserved.set("pt", pt);
-      }
-      return redirect308(url, `/${encodeURIComponent(p)}`, preserved);
-    }
-
-    // pt-only -> /<pt>
-    if (!p && pt) {
-      if (post && pt === "journal") preserved.set("post", post);
-      preserved.set("pt", pt);
-      return redirect308(url, `/${encodeURIComponent(pt)}`, preserved);
-    }
-  }
-
+  
   // ---- D) On canonical routes, strip legacy UI-surface params if present ----
   if (url.searchParams.size > 0) {
     let hasLegacy = false;

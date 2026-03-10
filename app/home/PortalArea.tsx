@@ -25,20 +25,19 @@ export type PortalAreaProps = {
   portalModules: PortalModule[];
   memberId: string | null;
   entitlementKeys: string[];
-  memberSummary?: PortalMemberSummary | null;
-  topLogoUrl?: string | null;
-  topLogoHeight?: number | null;
+  memberSummary: PortalMemberSummary | null;
+  topLogoUrl: string | null;
+  topLogoHeight: number | null;
   featuredAlbumSlug: string;
-  initialPortalTabId?: string | null;
-  initialExegesisDisplayId?: string | null;
+  initialPortalTabId: string | null;
+  initialExegesisDisplayId: string | null;
   bundle: AlbumPlayerBundle;
   albums: AlbumNavItem[];
-  attentionMessage?: string | null;
-  tier?: string | null;
-  isPatron?: boolean;
+  tier: Tier;
+  isPatron: boolean;
   // isAdmin is owned at /(site)/layout.tsx via AdminRibbon.
   // PortalArea should not take it as input.
-  canManageBilling?: boolean;
+  canManageBilling: boolean;
 };
 
 export default function PortalArea(props: PortalAreaProps) {
@@ -46,14 +45,13 @@ export default function PortalArea(props: PortalAreaProps) {
     portalModules,
     memberId,
     entitlementKeys,
-    memberSummary = null,
+    memberSummary,
     featuredAlbumSlug,
     bundle,
     albums,
-    attentionMessage = null,
-    tier = null,
-    isPatron = false,
-    canManageBilling = false,
+    tier,
+    isPatron,
+    canManageBilling,
   } = props;
 
   const p = usePlayer();
@@ -89,13 +87,8 @@ export default function PortalArea(props: PortalAreaProps) {
     ? brokerGate.active.message
     : null;
 
-  // PortalArea is now broker-driven for gating presentation.
-  // PlayerState may still hold transport safety state, but it must not drive UI gating.
-  const derivedAttentionMessage =
-    attentionMessage ?? brokerAttentionMessage ?? null;
-
   const spotlightAttention =
-    !!derivedAttentionMessage &&
+    !!brokerAttentionMessage &&
     brokerGate.uiMode === "spotlight" &&
     !isSignedIn;
 
@@ -115,11 +108,7 @@ export default function PortalArea(props: PortalAreaProps) {
     },
   });
 
-  const viewerTier: Tier =
-    tier === "friend" || tier === "patron" || tier === "partner"
-      ? tier
-      : "none";
-
+  const viewerTier: Tier = tier;
   const tierLower = (tier ?? "").toLowerCase();
   const isPartner = tierLower.includes("partner");
 
@@ -184,7 +173,7 @@ export default function PortalArea(props: PortalAreaProps) {
   const gateNodeModal = (
     <ActivationGate
       placement="modal"
-      attentionMessage={derivedAttentionMessage}
+      attentionMessage={brokerAttentionMessage}
       canManageBilling={canManageBilling}
       isPatron={isPatron}
       tier={tier}
@@ -205,8 +194,8 @@ export default function PortalArea(props: PortalAreaProps) {
         style={{ height: "100%", minHeight: 0, minWidth: 0, display: "grid" }}
       >
         <PortalViewerProvider
-          initialPortalTabId={props.initialPortalTabId ?? null}
-          initialExegesisDisplayId={props.initialExegesisDisplayId ?? null}
+          initialPortalTabId={props.initialPortalTabId}
+          initialExegesisDisplayId={props.initialExegesisDisplayId}
           value={{
             viewerTier,
             rawTier: tier,
@@ -233,7 +222,7 @@ export default function PortalArea(props: PortalAreaProps) {
                 effectiveIsPlayer={effectiveIsPlayer}
                 portalTabId={portalTabId}
                 spotlightAttention={spotlightAttention}
-                attentionMessage={derivedAttentionMessage}
+                attentionMessage={brokerAttentionMessage}
                 canManageBilling={canManageBilling}
                 isPatron={isPatron}
                 tier={tier}

@@ -49,5 +49,7 @@ export async function generateMetadata(props: {
 }
 
 export default function AlbumCanonicalPage() {
+  // Canonical URL surface only.
+  // Actual render happens in /(session)/@runtime/album/[slug]/page.tsx.
   return null;
 }

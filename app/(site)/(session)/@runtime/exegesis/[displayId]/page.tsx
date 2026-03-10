@@ -2,8 +2,6 @@
 import React from "react";
 import SessionRuntime from "../../SessionRuntime";
 
-export const revalidate = 0;
-
 export default async function PortalExegesisTrackRuntimePage(props: {
   params: Promise<{ displayId: string }>;
 }) {
