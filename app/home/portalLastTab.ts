@@ -1,3 +1,4 @@
+// web/app/home/portalLastTab.ts
 "use client";
 
 const KEY = "af:lastPortalTab";

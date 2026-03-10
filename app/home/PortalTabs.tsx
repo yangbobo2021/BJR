@@ -74,7 +74,7 @@ export default function PortalTabs(props: {
   const stablePathname = getStablePathname(pathname);
 
   const didHydrateRef = React.useRef(false);
-  const pendingRouteTabRef = React.useRef<string | null>(null);
+  const lastExternalPathTabRef = React.useRef<string | null>(null);
 
   const hasTabs = tabs.length > 0;
   const firstId = (hasTabs ? tabs[0]?.id : null) ?? null;
@@ -102,6 +102,10 @@ export default function PortalTabs(props: {
 
     return validPath ?? rememberedValid ?? defaultValid ?? firstId;
   }, [hasTabs, defaultTabId, tabs, stablePathname, resolveValid, firstId]);
+
+  const currentPathTab = React.useMemo(() => {
+    return resolveValid(tabFromPathname(stablePathname));
+  }, [stablePathname, resolveValid]);
 
   const [activeId, setActiveId] = React.useState<string | null>(initial);
 
@@ -273,7 +277,7 @@ export default function PortalTabs(props: {
     return tabs.find((t) => t.id === activeId) ?? tabs[0] ?? null;
   }, [hasTabs, tabs, activeId]);
 
-  // Initial hydrate alignment + pathname sync
+  // Initial hydrate alignment only.
   React.useEffect(() => {
     if (!initial) return;
 
@@ -281,19 +285,25 @@ export default function PortalTabs(props: {
       didHydrateRef.current = true;
       setActiveId(initial);
       ensureMounted(initial);
-      return;
     }
+  }, [initial, ensureMounted]);
 
-    if (pendingRouteTabRef.current && pendingRouteTabRef.current === initial) {
-      pendingRouteTabRef.current = null;
-      return;
-    }
+  // Passive external pathname sync only.
+  // This should react to real external route changes, not fight local tab clicks.
+  React.useEffect(() => {
+    if (!didHydrateRef.current) return;
+    if (!currentPathTab) return;
 
-    if (activeId !== initial) {
-      setActiveId(initial);
-      ensureMounted(initial);
+    const lastSeen = lastExternalPathTabRef.current;
+    if (lastSeen === currentPathTab) return;
+
+    lastExternalPathTabRef.current = currentPathTab;
+
+    if (currentPathTab !== activeId) {
+      setActiveId(currentPathTab);
+      ensureMounted(currentPathTab);
     }
-  }, [initial, activeId, ensureMounted]);
+  }, [currentPathTab, activeId, ensureMounted]);
 
   if (!hasTabs) return null;
 
@@ -394,9 +404,9 @@ export default function PortalTabs(props: {
                 const href = `${targetPath}${currentSearch}`;
 
                 armIndicatorMotion();
-                pendingRouteTabRef.current = t.id;
                 setActiveId(t.id);
                 ensureMounted(t.id);
+                lastExternalPathTabRef.current = t.id;
 
                 // measure after DOM updates / font layout
                 requestAnimationFrame(() => measure());
