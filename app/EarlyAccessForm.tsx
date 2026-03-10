@@ -56,7 +56,7 @@ export default function EarlyAccessForm() {
     <>
       <style>{`
         .afEarlyAccessRoot {
-          width: min(100%, 720px);
+          width: min(100%, 520px);
           margin-top: 18px;
           display: grid;
           gap: 10px;
@@ -99,7 +99,7 @@ export default function EarlyAccessForm() {
           outline: 0;
           background: transparent;
           color: rgba(255,255,255,0.92);
-          font-size: 15px;
+          font-size: 12px;
           line-height: 1.2;
           letter-spacing: 0.01em;
         }
@@ -110,8 +110,8 @@ export default function EarlyAccessForm() {
 
         .afEarlyAccessButton {
           position: relative;
-          min-width: 170px;
-          height: 52px;
+          min-width: 140px;
+          height: 32px;
           padding: 0 18px;
           border: 1px solid rgba(255,255,255,0.14);
           border-radius: 999px;

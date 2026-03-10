@@ -1,5 +1,7 @@
 //web/app/home/sessionRuntimePayload.ts
 import type { AlbumNavItem, AlbumPlayerBundle } from "@/lib/types";
+import type { PortalModule } from "@/lib/portal";
+import type { PortalMemberSummary } from "@/lib/memberDashboard";
 
 /**
  * Server → persistent session shell payload contract.
@@ -9,9 +11,9 @@ import type { AlbumNavItem, AlbumPlayerBundle } from "@/lib/types";
  * reconcile that payload into concrete component props.
  */
 export type SessionRuntimePayload = {
-  portalPanel: React.ReactNode;
-  topLogoUrl?: string | null;
-  topLogoHeight?: number | null;
+  portalModules: PortalModule[];
+  memberId: string | null;
+  memberSummary?: PortalMemberSummary | null;
   initialPortalTabId?: string | null;
   initialExegesisDisplayId?: string | null;
   bundle: AlbumPlayerBundle;

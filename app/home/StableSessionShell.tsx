@@ -9,11 +9,19 @@ import {
 } from "@/app/home/SessionRuntimePayloadContext";
 import type { SessionRuntimePayload } from "@/app/home/sessionRuntimePayload";
 
-function toPortalAreaProps(payload: SessionRuntimePayload): PortalAreaProps {
+function toPortalAreaProps(
+  payload: SessionRuntimePayload,
+  shellConfig: {
+    topLogoUrl: string | null;
+    topLogoHeight: number | null;
+  },
+): PortalAreaProps {
   return {
-    portalPanel: payload.portalPanel,
-    topLogoUrl: payload.topLogoUrl ?? null,
-    topLogoHeight: payload.topLogoHeight ?? null,
+    portalModules: payload.portalModules,
+    memberId: payload.memberId,
+    memberSummary: payload.memberSummary ?? null,
+    topLogoUrl: shellConfig.topLogoUrl,
+    topLogoHeight: shellConfig.topLogoHeight,
     initialPortalTabId: payload.initialPortalTabId ?? null,
     initialExegesisDisplayId: payload.initialExegesisDisplayId ?? null,
     bundle: payload.bundle,
@@ -25,13 +33,23 @@ function toPortalAreaProps(payload: SessionRuntimePayload): PortalAreaProps {
   };
 }
 
-function StableSessionViewport(props: { runtime: React.ReactNode }) {
+function StableSessionViewport(props: {
+  runtime: React.ReactNode;
+  topLogoUrl: string | null;
+  topLogoHeight: number | null;
+}) {
   const record = useSessionRuntimePayloadRecord();
   const payload = record?.payload ?? null;
 
   const portalAreaProps = React.useMemo(
-    () => (payload ? toPortalAreaProps(payload) : null),
-    [payload],
+    () =>
+      payload
+        ? toPortalAreaProps(payload, {
+            topLogoUrl: props.topLogoUrl,
+            topLogoHeight: props.topLogoHeight,
+          })
+        : null,
+    [payload, props.topLogoUrl, props.topLogoHeight],
   );
 
   return (
@@ -47,10 +65,16 @@ function StableSessionViewport(props: { runtime: React.ReactNode }) {
 
 export default function StableSessionShell(props: {
   runtime: React.ReactNode;
+  topLogoUrl: string | null;
+  topLogoHeight: number | null;
 }) {
   return (
     <SessionRuntimePayloadProvider>
-      <StableSessionViewport runtime={props.runtime} />
+      <StableSessionViewport
+        runtime={props.runtime}
+        topLogoUrl={props.topLogoUrl}
+        topLogoHeight={props.topLogoHeight}
+      />
     </SessionRuntimePayloadProvider>
   );
 }

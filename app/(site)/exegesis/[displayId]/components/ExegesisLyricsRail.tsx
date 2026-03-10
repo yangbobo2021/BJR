@@ -48,7 +48,7 @@ export default function ExegesisLyricsRail({
   return (
     <div ref={lyricsWrapRef} className="rounded-xl bg-white/5 p-4">
       <div
-        className="mt-3 flex flex-col"
+        className="mt-1 flex flex-col"
         onPointerMove={onPointerMove}
         onPointerLeave={onPointerLeave}
       >

@@ -8,6 +8,8 @@ import PortalShell, { PortalPanelSpec } from "./PortalShell";
 import { usePlayer } from "@/app/home/player/PlayerState";
 import { useGlobalTransportKeys } from "./player/useGlobalTransportKeys";
 import type { AlbumNavItem, Tier, AlbumPlayerBundle } from "@/lib/types";
+import type { PortalModule } from "@/lib/portal";
+import type { PortalMemberSummary } from "@/lib/memberDashboard";
 import PlayerController from "./player/PlayerController";
 import ActivationGate from "@/app/home/ActivationGate";
 import { PortalViewerProvider } from "@/app/home/PortalViewerProvider";
@@ -15,11 +17,14 @@ import { useGateBroker } from "@/app/home/gating/GateBroker";
 import GateSpotlightOverlay from "@/app/home/gating/GateSpotlightOverlay";
 import MiniPlayerHost from "./MiniPlayerHost";
 import SessionChrome from "./SessionChrome";
+import PortalSurface from "./PortalSurface";
 import { useSessionSurfaceController } from "./useSessionSurfaceController";
 import { usePlaybackReconciliation } from "./usePlaybackReconciliation";
 
 export type PortalAreaProps = {
-  portalPanel: React.ReactNode;
+  portalModules: PortalModule[];
+  memberId: string | null;
+  memberSummary?: PortalMemberSummary | null;
   topLogoUrl?: string | null;
   topLogoHeight?: number | null;
   initialPortalTabId?: string | null;
@@ -36,7 +41,9 @@ export type PortalAreaProps = {
 
 export default function PortalArea(props: PortalAreaProps) {
   const {
-    portalPanel,
+    portalModules,
+    memberId,
+    memberSummary = null,
     bundle,
     albums,
     attentionMessage = null,
@@ -128,7 +135,32 @@ export default function PortalArea(props: PortalAreaProps) {
           />
         ),
       },
-      { id: "portal", label: "Portal", content: portalPanel },
+      {
+        id: "portal",
+        label: "Portal",
+        content: portalModules.length ? (
+          <PortalSurface
+            modules={portalModules}
+            memberId={memberId}
+            memberSummary={memberSummary}
+          />
+        ) : (
+          <div
+            style={{
+              borderRadius: 18,
+              border: "1px solid rgba(255,255,255,0.10)",
+              background: "rgba(255,255,255,0.04)",
+              padding: 16,
+              fontSize: 13,
+              opacity: 0.78,
+              lineHeight: 1.55,
+            }}
+          >
+            No portal modules yet. Create a <code>portalPage</code> with slug{" "}
+            <code>home</code> in Sanity Studio.
+          </div>
+        ),
+      },
     ],
     [
       bundle,
@@ -137,7 +169,9 @@ export default function PortalArea(props: PortalAreaProps) {
       isBrowsingAlbum,
       forceSurface,
       viewerTier,
-      portalPanel,
+      portalModules,
+      memberId,
+      memberSummary,
     ],
   );
 
