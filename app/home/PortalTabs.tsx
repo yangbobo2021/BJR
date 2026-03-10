@@ -2,7 +2,7 @@
 
 import React from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { setLastPortalTab } from "./portalLastTab";
+import { getLastPortalTab, setLastPortalTab } from "./portalLastTab";
 
 // Optional: unify with urlState’s QS event pattern
 const PATH_EVENT = "af:path-change";
@@ -30,6 +30,7 @@ function tabFromPathname(pathname: string | null): string | null {
 
   if (head === "player") return null;
   if (head === "album") return null;
+  if (head === "portal") return null;
 
   return decodeURIComponent(head);
 }
@@ -40,6 +41,15 @@ function pathForTab(tabId: string) {
   if (!t || t === "player") return "/portal";
   if (t === "exegesis") return "/exegesis";
   return `/${encodeURIComponent(t)}`;
+}
+
+function getRememberedValidTab(
+  tabs: PortalTabSpec[],
+  resolveValid: (candidate: string | null) => string | null,
+): string | null {
+  if (typeof window === "undefined") return null;
+  const remembered = getLastPortalTab();
+  return resolveValid(remembered);
 }
 
 function pushPathOnly(href: string) {
@@ -85,13 +95,14 @@ export default function PortalTabs(props: {
 
     const pathTab = tabFromPathname(stablePathname);
     const validPath = resolveValid(pathTab);
+    const rememberedValid = getRememberedValidTab(tabs, resolveValid);
 
     const defaultValid =
       defaultTabId && tabs.some((t) => t.id === defaultTabId)
         ? defaultTabId
         : null;
 
-    return validPath ?? defaultValid ?? firstId;
+    return validPath ?? rememberedValid ?? defaultValid ?? firstId;
   }, [hasTabs, defaultTabId, tabs, stablePathname, resolveValid, firstId]);
 
   const [activeId, setActiveId] = React.useState<string | null>(initial);
@@ -127,6 +138,24 @@ export default function PortalTabs(props: {
     w: number;
   } | null>(null);
   const [rail, setRail] = React.useState<{ x: number; w: number } | null>(null);
+  const [indicatorMotionEnabled, setIndicatorMotionEnabled] =
+    React.useState(false);
+  const indicatorMotionTimeoutRef = React.useRef<number | null>(null);
+
+  const armIndicatorMotion = React.useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    if (indicatorMotionTimeoutRef.current != null) {
+      window.clearTimeout(indicatorMotionTimeoutRef.current);
+    }
+
+    setIndicatorMotionEnabled(true);
+
+    indicatorMotionTimeoutRef.current = window.setTimeout(() => {
+      setIndicatorMotionEnabled(false);
+      indicatorMotionTimeoutRef.current = null;
+    }, 260);
+  }, []);
 
   const measure = React.useCallback(() => {
     const row = rowRef.current;
@@ -178,6 +207,14 @@ export default function PortalTabs(props: {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, [measure]);
+
+  React.useEffect(() => {
+    return () => {
+      if (indicatorMotionTimeoutRef.current != null) {
+        window.clearTimeout(indicatorMotionTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // ✅ Keep your prewarm-all behavior unchanged
   React.useEffect(() => {
@@ -246,11 +283,13 @@ export default function PortalTabs(props: {
 
     const syncFromLocation = () => {
       const t = tabFromPathname(window.location.pathname);
-      const v = resolveValid(t) ?? initial;
+      const rememberedValid = getRememberedValidTab(tabs, resolveValid);
+      const v = resolveValid(t) ?? rememberedValid ?? initial;
 
       if (v) setLastPortalTab(v);
 
       if (v && v !== activeId) {
+        armIndicatorMotion();
         setActiveId(v);
 
         setMountedIds((prev) => {
@@ -272,7 +311,7 @@ export default function PortalTabs(props: {
       window.removeEventListener("popstate", onPop);
       window.removeEventListener(PATH_EVENT, onCustom as EventListener);
     };
-  }, [activeId, initial, resolveValid, measure]);
+  }, [activeId, initial, resolveValid, measure, tabs, armIndicatorMotion]);
 
   if (!hasTabs) return null;
 
@@ -324,7 +363,9 @@ export default function PortalTabs(props: {
             background: "rgba(255,255,255,0.18)",
             pointerEvents: "none",
             opacity: rail ? 1 : 0,
-            transition: "left 220ms ease, width 220ms ease, opacity 120ms ease",
+            transition: indicatorMotionEnabled
+              ? "left 220ms ease, width 220ms ease, opacity 120ms ease"
+              : "none",
           }}
         />
 
@@ -340,8 +381,9 @@ export default function PortalTabs(props: {
             pointerEvents: "none",
             transform: `translateX(${indicator?.x ?? 0}px)`,
             width: indicator?.w ?? 0,
-            transition:
-              "transform 220ms ease, width 220ms ease, opacity 120ms ease",
+            transition: indicatorMotionEnabled
+              ? "transform 220ms ease, width 220ms ease, opacity 120ms ease"
+              : "none",
             opacity: indicator ? 1 : 0,
           }}
         />
@@ -368,6 +410,7 @@ export default function PortalTabs(props: {
                 const currentSearch =
                   typeof window !== "undefined" ? window.location.search : "";
 
+                armIndicatorMotion();
                 setActiveId(t.id);
                 setMountedIds((prev) => {
                   const next = new Set(prev);
