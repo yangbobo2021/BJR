@@ -3,31 +3,16 @@
 
 import React from "react";
 import PlayerHost from "./PlayerHost";
-import AdminRibbon from "@/app/home/AdminRibbon";
 import { MembershipModalProvider } from "@/app/home/MembershipModalProvider";
 import { GateBrokerProvider } from "@/app/home/gating/GateBroker";
+import AdminRibbonBootstrap from "@/app/home/AdminRibbonBootstrap";
 
-export default function SiteProviders(props: {
-  children: React.ReactNode;
-  isAdmin: boolean;
-}) {
-  React.useEffect(() => {
-    if (typeof document === "undefined") return;
-
-    const body = document.body;
-    if (props.isAdmin) body.dataset.afIsAdmin = "1";
-    else delete body.dataset.afIsAdmin;
-
-    return () => {
-      delete body.dataset.afIsAdmin;
-    };
-  }, [props.isAdmin]);
-
+export default function SiteProviders(props: { children: React.ReactNode }) {
   return (
     <GateBrokerProvider>
       <MembershipModalProvider>
         <PlayerHost>
-          {props.isAdmin ? <AdminRibbon isAdmin={props.isAdmin} /> : null}
+          <AdminRibbonBootstrap />
           {props.children}
         </PlayerHost>
       </MembershipModalProvider>
