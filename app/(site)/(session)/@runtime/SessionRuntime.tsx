@@ -12,12 +12,12 @@ import {
 import { buildPortalMemberSummary } from "@/lib/memberDashboardServer";
 import { SessionRuntimePayloadBridge } from "@/app/home/SessionRuntimePayloadContext";
 import type { SessionRuntimePayload } from "@/app/home/sessionRuntimePayload";
-import { getAlbumBySlug } from "@/lib/albums";
+import { getAlbumBySlug, getFeaturedAlbumSlugFromSanity } from "@/lib/albums";
 
 export default async function SessionRuntime(props: {
   // When present, this is the “player album” canonical slug for /album/:slug routes.
   albumSlugOverride?: string | null;
-  featuredAlbumSlug: string;
+  featuredAlbumSlug?: string | null;
   initialPortalTabId?: string | null;
   initialExegesisDisplayId?: string | null;
 }) {
@@ -30,7 +30,12 @@ export default async function SessionRuntime(props: {
     user?.emailAddresses?.[0]?.emailAddress ??
     null;
 
-  const portal = await fetchPortalPage("home");
+  const [portal, featured] = await Promise.all([
+    fetchPortalPage("home"),
+    props.featuredAlbumSlug
+      ? Promise.resolve(null)
+      : getFeaturedAlbumSlugFromSanity(),
+  ]);
 
   let member: null | { id: string; created: boolean; email: string } = null;
   let entitlementKeys: string[] = [];
@@ -54,8 +59,14 @@ export default async function SessionRuntime(props: {
 
   const isPatron = tier === "patron";
 
+  const resolvedFeaturedAlbumSlug =
+    (props.featuredAlbumSlug ?? "").trim() ||
+    featured?.slug ||
+    featured?.fallbackSlug ||
+    "god-defend";
+
   const selectedAlbumSlug =
-    (props.albumSlugOverride ?? "").trim() || props.featuredAlbumSlug;
+    (props.albumSlugOverride ?? "").trim() || resolvedFeaturedAlbumSlug;
 
   const bundle = await getAlbumBySlug(selectedAlbumSlug);
 
