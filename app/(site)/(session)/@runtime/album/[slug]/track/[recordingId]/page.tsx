@@ -1,10 +1,12 @@
 // web/app/(site)/(session)/@runtime/album/[slug]/track/[recordingId]/page.tsx
 import React from "react";
-import AlbumRuntimePage from "../../page";
+import SessionRuntime from "../../../../SessionRuntime";
 
 export default async function AlbumTrackRuntimePage(props: {
   params: Promise<{ slug: string; recordingId: string }>;
 }) {
   const { slug } = await props.params;
-  return <AlbumRuntimePage params={Promise.resolve({ slug })} />;
+  const resolvedSlug = decodeURIComponent(slug ?? "").trim() || null;
+
+  return <SessionRuntime albumSlugOverride={resolvedSlug} />;
 }

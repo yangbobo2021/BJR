@@ -5,16 +5,14 @@ export async function generateMetadata(props: {
   params: Promise<{ displayId: string }>;
 }): Promise<Metadata> {
   const { displayId } = await props.params;
-
-  const raw = decodeURIComponent(displayId ?? "").trim();
+  const resolvedDisplayId = decodeURIComponent(displayId ?? "").trim() || "";
 
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
-  const canonical = appUrl
-    ? `${appUrl}/exegesis/${encodeURIComponent(raw || displayId)}`
-    : `/exegesis/${encodeURIComponent(raw || displayId)}`;
+  const canonicalPath = `/exegesis/${encodeURIComponent(resolvedDisplayId)}`;
+  const canonical = appUrl ? `${appUrl}${canonicalPath}` : canonicalPath;
 
   return {
-    title: raw || displayId,
+    title: resolvedDisplayId || "Exegesis",
     alternates: { canonical },
   };
 }

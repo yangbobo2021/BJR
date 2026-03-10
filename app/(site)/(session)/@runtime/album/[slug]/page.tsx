@@ -6,6 +6,7 @@ export default async function AlbumRuntimePage(props: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await props.params;
-  const s = decodeURIComponent(slug ?? "").trim();
-  return <SessionRuntime albumSlugOverride={s || null} />;
+  const resolvedSlug = decodeURIComponent(slug ?? "").trim() || null;
+
+  return <SessionRuntime albumSlugOverride={resolvedSlug} />;
 }

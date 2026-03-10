@@ -8,10 +8,7 @@ export default async function PortalExegesisTrackRuntimePage(props: {
   params: Promise<{ displayId: string }>;
 }) {
   const { displayId } = await props.params;
-
-  // Decode once, here, on the server — so the client doesn’t “discover” it later.
-  const raw = decodeURIComponent(displayId ?? "").trim();
-  const resolvedDisplayId = raw || displayId;
+  const resolvedDisplayId = decodeURIComponent(displayId ?? "").trim() || null;
 
   return (
     <SessionRuntime

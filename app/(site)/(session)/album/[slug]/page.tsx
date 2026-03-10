@@ -1,8 +1,5 @@
 // web/app/(site)/(session)/album/[slug]/page.tsx
-
 import type { Metadata } from "next";
-// Adjust this import to wherever your Sanity client lives.
-// Common patterns in your repo: "@/sanity/lib/client" or "@/sanity/client".
 import { client } from "@/sanity/lib/client";
 
 type AlbumTitleDoc = {
@@ -11,8 +8,8 @@ type AlbumTitleDoc = {
   slug?: { current?: string | null } | null;
 };
 
-function normTitle(s: string | null | undefined): string {
-  return (s ?? "").trim();
+function normTitle(value: string | null | undefined): string {
+  return (value ?? "").trim();
 }
 
 export async function generateMetadata(props: {
@@ -23,14 +20,13 @@ export async function generateMetadata(props: {
   const decodedSlug = decodeURIComponent((slug ?? "").trim());
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
 
-  // Fetch the album’s real title(s) from Sanity, never derive from slug.
   const doc = await client.fetch<AlbumTitleDoc | null>(
     `*[_type == "album" && slug.current == $slug][0]{
       title,
       displayTitle,
       slug
     }`,
-    { slug: decodedSlug }
+    { slug: decodedSlug },
   );
 
   const display =
