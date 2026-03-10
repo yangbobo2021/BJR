@@ -183,6 +183,18 @@ export default async function Home() {
             linear-gradient(90deg, rgba(0,0,0,0.24) 0%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.24) 100%);
         }
 
+        .landingBackdropGrain {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          opacity: 0.04;
+          mix-blend-mode: soft-light;
+          background-image:
+            radial-gradient(circle at 20% 20%, rgba(255,255,255,0.65) 0 0.6px, transparent 0.8px),
+            radial-gradient(circle at 70% 60%, rgba(255,255,255,0.45) 0 0.6px, transparent 0.9px);
+          background-size: 12px 12px, 17px 17px;
+        }
+
         .landingShell {
           position: relative;
           z-index: 1;
@@ -201,10 +213,11 @@ export default async function Home() {
           gap: 18px;
         }
 
-        .landingEyebrow {
+        .landingEyebrow,
+        .landingSubtitlePill {
           display: inline-flex;
           align-items: center;
-          gap: 10px;
+          justify-content: center;
           min-height: 34px;
           padding: 0 14px;
           border: 1px solid rgba(255,255,255,0.12);
@@ -213,12 +226,16 @@ export default async function Home() {
           box-shadow: 0 18px 40px rgba(0,0,0,0.18);
           backdrop-filter: blur(14px);
           -webkit-backdrop-filter: blur(14px);
+          white-space: nowrap;
+        }
+
+        .landingEyebrow {
+          gap: 10px;
           color: rgba(255,255,255,0.74);
           font-size: 12px;
           line-height: 1;
           letter-spacing: 0.16em;
           text-transform: uppercase;
-          white-space: nowrap;
         }
 
         .landingEyebrowDot {
@@ -375,22 +392,21 @@ export default async function Home() {
           text-shadow: 0 18px 38px rgba(0,0,0,0.34);
         }
 
-        .landingSubtitle {
-          margin: 0;
-          max-width: 740px;
-          font-size: clamp(17px, 2vw, 23px);
-          line-height: 1.5;
+        .landingSubtitlePill {
+          max-width: min(100%, 520px);
+          padding: 0 18px;
+          color: rgba(255,255,255,0.82);
+          font-size: clamp(15px, 1.8vw, 19px);
+          line-height: 1;
           letter-spacing: -0.01em;
-          color: rgba(255,255,255,0.78);
-          text-wrap: pretty;
         }
 
         .landingActions {
           display: grid;
           justify-items: center;
-          gap: 14px;
+          gap: 16px;
           width: 100%;
-          margin-top: 6px;
+          margin-top: 8px;
         }
 
         .landingCtaLink {
@@ -410,29 +426,36 @@ export default async function Home() {
           font-size: 14px;
           font-weight: 500;
           letter-spacing: 0.01em;
-          transition: transform 160ms ease, opacity 160ms ease, background 160ms ease, border-color 160ms ease;
+          transition: background 160ms ease, border-color 160ms ease, opacity 160ms ease, filter 160ms ease;
         }
 
         .landingCtaLink:hover {
-          transform: translateY(-1px);
           background: rgba(255,255,255,0.07);
           border-color: rgba(255,255,255,0.18);
+          filter: brightness(1.02);
         }
 
         .landingCtaImageLink {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          padding: 0;
+          padding: 8px 10px;
           background: transparent;
           text-decoration: none;
-          transition: transform 160ms ease, opacity 160ms ease, filter 160ms ease;
+          opacity: 0.72;
+          filter: brightness(0.88) saturate(0.94);
+          transition: opacity 180ms ease, filter 180ms ease;
         }
 
         .landingCtaImageLink:hover {
-          transform: translateY(-1px);
-          opacity: 0.96;
-          filter: brightness(1.03);
+          opacity: 1;
+          filter: brightness(1) saturate(1);
+        }
+
+        .landingCtaImageLink:focus-visible {
+          outline: none;
+          opacity: 1;
+          filter: brightness(1) saturate(1);
         }
 
         .landingCtaImage {
@@ -452,6 +475,14 @@ export default async function Home() {
 
           .landingContent {
             gap: 16px;
+          }
+
+          .landingSubtitlePill {
+            max-width: 100%;
+            white-space: normal;
+            line-height: 1.25;
+            padding-top: 9px;
+            padding-bottom: 9px;
           }
         }
 
@@ -493,6 +524,7 @@ export default async function Home() {
       />
 
       <div className="landingBackdrop" />
+      <div className="landingBackdropGrain" />
 
       <div className="landingShell">
         <section className="landingContent">
@@ -531,7 +563,7 @@ export default async function Home() {
             <h1 className="landingHeadingFallback">{title}</h1>
           )}
 
-          <p className="landingSubtitle">{subtitle}</p>
+          <div className="landingSubtitlePill">{subtitle}</div>
 
           <div className="landingActions">
             <EarlyAccessForm />

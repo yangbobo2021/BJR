@@ -4,6 +4,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { ensureMemberByClerk } from "@/lib/members";
 import { listCurrentEntitlementKeys } from "@/lib/entitlements";
 import { deriveTier } from "@/lib/vocab";
+import type { Tier } from "@/lib/types";
 import {
   emptyPortalMemberSummary,
   type PortalMemberSummary,
@@ -31,7 +32,7 @@ export default async function SessionRuntime(props: {
 
   let member: null | { id: string; created: boolean; email: string } = null;
   let entitlementKeys: string[] = [];
-  let tier = "none";
+  let tier: Tier = "none";
   let memberSummary: PortalMemberSummary = emptyPortalMemberSummary();
 
   if (userId && email) {
