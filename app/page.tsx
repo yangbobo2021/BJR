@@ -11,8 +11,12 @@ type LandingPageData = {
   ctaText?: string | null;
   ctaHref?: string | null;
   logoAlt?: string | null;
+  logoHeightPx?: number | null;
+  ctaImageAlt?: string | null;
+  ctaImageHeightPx?: number | null;
   backgroundImage?: unknown;
   logoImage?: unknown;
+  ctaImage?: unknown;
 };
 
 const landingQuery = `
@@ -23,8 +27,12 @@ const landingQuery = `
     ctaText,
     ctaHref,
     logoAlt,
+    logoHeightPx,
+    ctaImageAlt,
+    ctaImageHeightPx,
     backgroundImage,
-    logoImage
+    logoImage,
+    ctaImage
   }
 `;
 
@@ -49,17 +57,27 @@ export default async function Home() {
     : null;
 
   const logoUrl = data?.logoImage
-    ? urlFor(data.logoImage).width(1800).quality(90).url()
+    ? urlFor(data.logoImage).width(2200).quality(92).url()
     : null;
 
-  const title = data?.title?.trim() || "A new home for independent work.";
+  const ctaImageUrl = data?.ctaImage
+    ? urlFor(data.ctaImage).width(1200).quality(90).url()
+    : null;
+
+  const title = data?.title?.trim() || "Coming soon";
   const subtitle =
     data?.subtitle?.trim() ||
-    "An artist-built platform for music, film, writing, membership, and direct connection without the usual platform compromises.";
-  const eyebrow = data?.eyebrow?.trim() || "Independent platform in development";
-  const ctaText = data?.ctaText?.trim() || "Visit the label site";
+    "A new home for audio and video—built for members, not platforms.";
+  const eyebrow = data?.eyebrow?.trim() || "";
+  const ctaText = data?.ctaText?.trim() || "Visit label site";
   const ctaHref = data?.ctaHref?.trim() || "https://angelfishrecords.com";
   const logoAlt = data?.logoAlt?.trim() || "Site logo";
+  const logoHeightPx = Math.max(48, Math.min(420, data?.logoHeightPx ?? 132));
+  const ctaImageAlt = data?.ctaImageAlt?.trim() || ctaText;
+  const ctaImageHeightPx = Math.max(
+    28,
+    Math.min(160, data?.ctaImageHeightPx ?? 44),
+  );
 
   return (
     <main
@@ -139,14 +157,6 @@ export default async function Home() {
           }
         }
 
-        .landingShell {
-          position: relative;
-          min-height: 100svh;
-          display: grid;
-          place-items: center;
-          padding: clamp(28px, 4vw, 48px);
-        }
-
         .landingBackdrop {
           position: absolute;
           inset: 0;
@@ -158,10 +168,10 @@ export default async function Home() {
           position: absolute;
           inset: 0;
           background-image:
-            radial-gradient(1200px 720px at 14% 18%, rgba(255,255,255,0.10), transparent 60%),
-            radial-gradient(980px 720px at 84% 24%, rgba(255,255,255,0.06), transparent 58%),
-            radial-gradient(900px 620px at 50% 100%, rgba(120,120,160,0.10), transparent 60%);
-          opacity: 0.8;
+            radial-gradient(1200px 780px at 18% 18%, rgba(255,255,255,0.10), transparent 60%),
+            radial-gradient(980px 740px at 82% 30%, rgba(255,255,255,0.06), transparent 58%),
+            radial-gradient(920px 680px at 50% 100%, rgba(120,120,160,0.10), transparent 60%);
+          opacity: 0.76;
         }
 
         .landingBackdrop::after {
@@ -169,28 +179,26 @@ export default async function Home() {
           position: absolute;
           inset: 0;
           background:
-            linear-gradient(180deg, rgba(0,0,0,0.54) 0%, rgba(0,0,0,0.40) 30%, rgba(0,0,0,0.72) 100%),
-            linear-gradient(90deg, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.08) 35%, rgba(0,0,0,0.26) 100%);
+            linear-gradient(180deg, rgba(0,0,0,0.68) 0%, rgba(0,0,0,0.48) 38%, rgba(0,0,0,0.78) 100%),
+            linear-gradient(90deg, rgba(0,0,0,0.24) 0%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.24) 100%);
         }
 
-        .landingGrid {
+        .landingShell {
           position: relative;
           z-index: 1;
-          width: 100%;
-          max-width: 1320px;
+          min-height: 100svh;
           display: grid;
-          grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
-          gap: clamp(28px, 4vw, 64px);
-          align-items: center;
+          place-items: center;
+          padding: clamp(28px, 4vw, 48px) 20px;
         }
 
-        .landingHero {
-          min-width: 0;
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          justify-content: center;
-          gap: 20px;
+        .landingContent {
+          width: 100%;
+          max-width: 880px;
+          display: grid;
+          justify-items: center;
+          text-align: center;
+          gap: 18px;
         }
 
         .landingEyebrow {
@@ -228,14 +236,15 @@ export default async function Home() {
           line-height: 0;
           isolation: isolate;
           overflow: hidden;
-          max-width: min(100%, 760px);
+          max-width: min(100%, 860px);
         }
 
         .landingLogoImage {
           position: relative;
           z-index: 1;
           display: inline-block;
-          width: 100%;
+          width: auto;
+          max-width: 100%;
           height: auto;
           opacity: 0.97;
           filter:
@@ -359,8 +368,8 @@ export default async function Home() {
 
         .landingHeadingFallback {
           margin: 0;
-          font-size: clamp(52px, 9vw, 124px);
-          line-height: 0.94;
+          font-size: clamp(42px, 8vw, 84px);
+          line-height: 0.96;
           letter-spacing: -0.04em;
           text-wrap: balance;
           text-shadow: 0 18px 38px rgba(0,0,0,0.34);
@@ -368,32 +377,23 @@ export default async function Home() {
 
         .landingSubtitle {
           margin: 0;
-          max-width: 780px;
-          font-size: clamp(18px, 2.2vw, 26px);
-          line-height: 1.55;
+          max-width: 740px;
+          font-size: clamp(17px, 2vw, 23px);
+          line-height: 1.5;
           letter-spacing: -0.01em;
           color: rgba(255,255,255,0.78);
           text-wrap: pretty;
         }
 
-        .landingBody {
-          margin: 0;
-          max-width: 700px;
-          font-size: 15px;
-          line-height: 1.7;
-          color: rgba(255,255,255,0.60);
-          text-wrap: pretty;
-        }
-
         .landingActions {
-          display: flex;
-          align-items: center;
+          display: grid;
+          justify-items: center;
           gap: 14px;
-          flex-wrap: wrap;
-          padding-top: 8px;
+          width: 100%;
+          margin-top: 6px;
         }
 
-        .landingCta {
+        .landingCtaLink {
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -413,118 +413,36 @@ export default async function Home() {
           transition: transform 160ms ease, opacity 160ms ease, background 160ms ease, border-color 160ms ease;
         }
 
-        .landingCta:hover {
+        .landingCtaLink:hover {
           transform: translateY(-1px);
           background: rgba(255,255,255,0.07);
           border-color: rgba(255,255,255,0.18);
         }
 
-        .landingPanel {
-          min-width: 0;
-          position: relative;
-          border: 1px solid rgba(255,255,255,0.10);
-          border-radius: 30px;
-          background:
-            linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%);
-          box-shadow:
-            0 40px 90px rgba(0,0,0,0.38),
-            inset 0 1px 0 rgba(255,255,255,0.06);
-          backdrop-filter: blur(18px);
-          -webkit-backdrop-filter: blur(18px);
-          overflow: hidden;
+        .landingCtaImageLink {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          background: transparent;
+          text-decoration: none;
+          transition: transform 160ms ease, opacity 160ms ease, filter 160ms ease;
         }
 
-        .landingPanel::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          background:
-            radial-gradient(700px 260px at 50% -8%, rgba(255,255,255,0.10), transparent 60%),
-            linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.00));
+        .landingCtaImageLink:hover {
+          transform: translateY(-1px);
+          opacity: 0.96;
+          filter: brightness(1.03);
         }
 
-        .landingPanelInner {
-          position: relative;
-          z-index: 1;
-          padding: clamp(22px, 3vw, 34px);
-          display: grid;
-          gap: 18px;
-        }
-
-        .landingPanelKicker {
-          margin: 0;
-          font-size: 12px;
-          letter-spacing: 0.16em;
-          text-transform: uppercase;
-          color: rgba(255,255,255,0.54);
-        }
-
-        .landingPanelTitle {
-          margin: 0;
-          font-size: clamp(22px, 3vw, 32px);
-          line-height: 1.08;
-          letter-spacing: -0.03em;
-          color: rgba(255,255,255,0.96);
-        }
-
-        .landingPanelCopy {
-          margin: 0;
-          font-size: 15px;
-          line-height: 1.7;
-          color: rgba(255,255,255,0.66);
-          text-wrap: pretty;
-        }
-
-        .landingPanelMeta {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 10px;
-        }
-
-        .landingMetaCard {
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 18px;
-          background: rgba(255,255,255,0.04);
-          padding: 14px 14px 12px;
-        }
-
-        .landingMetaLabel {
-          margin: 0 0 6px;
-          font-size: 11px;
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-          color: rgba(255,255,255,0.46);
-        }
-
-        .landingMetaValue {
-          margin: 0;
-          font-size: 14px;
-          line-height: 1.45;
-          color: rgba(255,255,255,0.82);
-        }
-
-        .landingFootnote {
-          margin: 2px 0 0;
-          font-size: 12px;
-          line-height: 1.6;
-          color: rgba(255,255,255,0.46);
-        }
-
-        @media (max-width: 980px) {
-          .landingGrid {
-            grid-template-columns: 1fr;
-            gap: 24px;
-            align-items: start;
-          }
-
-          .landingHero {
-            gap: 18px;
-          }
-
-          .landingPanelMeta {
-            grid-template-columns: 1fr;
-          }
+        .landingCtaImage {
+          display: block;
+          width: auto;
+          height: auto;
+          max-width: min(100%, 420px);
+          filter:
+            drop-shadow(0 14px 30px rgba(0,0,0,0.24))
+            drop-shadow(0 4px 12px rgba(255,255,255,0.04));
         }
 
         @media (max-width: 640px) {
@@ -532,20 +450,8 @@ export default async function Home() {
             padding: 18px;
           }
 
-          .landingPanel {
-            border-radius: 24px;
-          }
-
-          .landingActions {
-            align-items: stretch;
-          }
-
-          .landingActions > * {
-            width: 100%;
-          }
-
-          .landingCta {
-            width: 100%;
+          .landingContent {
+            gap: 16px;
           }
         }
 
@@ -554,8 +460,11 @@ export default async function Home() {
           .landingLogoVeil::before,
           .landingLogoVeil::after,
           .landingLogoGlisten,
-          .landingLogoGlisten::before {
+          .landingLogoGlisten::before,
+          .landingCtaLink,
+          .landingCtaImageLink {
             animation: none !important;
+            transition: none !important;
           }
 
           .landingLogoGlisten {
@@ -564,10 +473,6 @@ export default async function Home() {
 
           .landingLogoVeil {
             opacity: 0.22 !important;
-          }
-
-          .landingCta {
-            transition: none;
           }
         }
       `}</style>
@@ -590,97 +495,79 @@ export default async function Home() {
       <div className="landingBackdrop" />
 
       <div className="landingShell">
-        <section className="landingGrid">
-          <div className="landingHero">
+        <section className="landingContent">
+          {eyebrow ? (
             <div className="landingEyebrow">
               <span className="landingEyebrowDot" aria-hidden="true" />
               <span>{eyebrow}</span>
             </div>
+          ) : null}
 
-            {logoUrl ? (
-              <div
-                className="landingLogoWrap"
-                style={
-                  {
-                    ["--afLogoMaskUrl" as const]: `url(${logoUrl})`,
-                  } as React.CSSProperties
-                }
-              >
-                <Image
-                  src={logoUrl}
-                  alt={logoAlt}
-                  width={1600}
-                  height={520}
-                  priority
-                  sizes="(max-width: 980px) 92vw, 760px"
-                  className="landingLogoImage"
-                />
-                <div aria-hidden="true" className="landingLogoVeil" />
-                <div aria-hidden="true" className="landingLogoGlisten" />
-              </div>
-            ) : (
-              <h1 className="landingHeadingFallback">{title}</h1>
-            )}
-
-            <p className="landingSubtitle">{subtitle}</p>
-
-            <p className="landingBody">
-              Built as a direct, artist-owned home for releases, film, writing, membership,
-              commentary, and deeper audience connection.
-            </p>
-
-            <div className="landingActions">
-              <EarlyAccessForm />
-              <a
-                href={ctaHref}
-                className="landingCta"
-                target="_blank"
-                rel="noreferrer"
-              >
-                {ctaText}
-              </a>
+          {logoUrl ? (
+            <div
+              className="landingLogoWrap"
+              style={
+                {
+                  ["--afLogoMaskUrl" as const]: `url(${logoUrl})`,
+                } as React.CSSProperties
+              }
+            >
+              <Image
+                src={logoUrl}
+                alt={logoAlt}
+                width={2200}
+                height={Math.max(120, logoHeightPx * 6)}
+                priority
+                sizes="(max-width: 768px) 92vw, 860px"
+                className="landingLogoImage"
+                style={{
+                  height: logoHeightPx,
+                }}
+              />
+              <div aria-hidden="true" className="landingLogoVeil" />
+              <div aria-hidden="true" className="landingLogoGlisten" />
             </div>
+          ) : (
+            <h1 className="landingHeadingFallback">{title}</h1>
+          )}
+
+          <p className="landingSubtitle">{subtitle}</p>
+
+          <div className="landingActions">
+            <EarlyAccessForm />
+
+            {ctaHref ? (
+              ctaImageUrl ? (
+                <a
+                  href={ctaHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="landingCtaImageLink"
+                  aria-label={ctaImageAlt}
+                >
+                  <Image
+                    src={ctaImageUrl}
+                    alt={ctaImageAlt}
+                    width={1200}
+                    height={Math.max(80, ctaImageHeightPx * 6)}
+                    className="landingCtaImage"
+                    style={{
+                      height: ctaImageHeightPx,
+                    }}
+                  />
+                </a>
+              ) : (
+                <a
+                  href={ctaHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="landingCtaLink"
+                >
+                  {ctaText}
+                </a>
+              )
+            ) : null}
           </div>
-
-          <aside className="landingPanel">
-            <div className="landingPanelInner">
-              <p className="landingPanelKicker">Early access</p>
-              <h2 className="landingPanelTitle">
-                Enter the list before the public platform opens.
-              </h2>
-              <p className="landingPanelCopy">
-                Join the list for launch updates, early listening windows, membership news,
-                and first access to the independent platform taking shape behind this page.
-              </p>
-
-              <div className="landingPanelMeta">
-                <div className="landingMetaCard">
-                  <p className="landingMetaLabel">Built for</p>
-                  <p className="landingMetaValue">
-                    music, film, writing, gated releases, and direct supporter relationships
-                  </p>
-                </div>
-
-                <div className="landingMetaCard">
-                  <p className="landingMetaLabel">Designed around</p>
-                  <p className="landingMetaValue">
-                    ownership, atmosphere, premium presentation, and platform independence
-                  </p>
-                </div>
-
-                <div className="landingMetaCard">
-                  <p className="landingMetaLabel">Current state</p>
-                  <p className="landingMetaValue">
-                    outer landing page live, full member platform under active construction
-                  </p>
-                </div>
-              </div>
-
-              <p className="landingFootnote">
-                This page is intentionally spare. The architecture behind it is not.
-              </p>
-            </div>
-          </aside>
         </section>
       </div>
     </main>

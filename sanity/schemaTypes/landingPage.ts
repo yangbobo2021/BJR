@@ -11,14 +11,14 @@ export const landingPage = defineType({
       title: "Eyebrow",
       type: "string",
       description:
-        "Small uppercase line above the logo or title, e.g. 'Independent platform in development'.",
+        "Optional small uppercase line above the logo or fallback heading.",
     }),
     defineField({
       name: "title",
       title: "Fallback Title",
       type: "string",
       description:
-        "Used only if no logo image is supplied. Keep short.",
+        "Used only if no logo image is supplied.",
       validation: (rule) => rule.required(),
     }),
     defineField({
@@ -26,15 +26,23 @@ export const landingPage = defineType({
       title: "Logo Image",
       type: "image",
       description:
-        "Transparent PNG, WebP, or SVG-like raster export preferred. This replaces the large text heading on the landing page.",
+        "Transparent PNG or WebP preferred. This replaces the large text heading.",
       options: { hotspot: true },
     }),
     defineField({
       name: "logoAlt",
       title: "Logo Alt Text",
       type: "string",
-      description: "Accessible description for the landing-page logo image.",
       initialValue: "Site logo",
+    }),
+    defineField({
+      name: "logoHeightPx",
+      title: "Logo Height (px)",
+      type: "number",
+      description:
+        "Controls rendered logo height on the landing page.",
+      initialValue: 132,
+      validation: (rule) => rule.min(48).max(420).integer(),
     }),
     defineField({
       name: "backgroundImage",
@@ -52,13 +60,39 @@ export const landingPage = defineType({
       name: "ctaText",
       title: "CTA Text",
       type: "string",
-      description: "Text for the outbound secondary button.",
+      description:
+        "Used when no CTA image is supplied.",
     }),
     defineField({
       name: "ctaHref",
       title: "CTA Link",
       type: "url",
-      description: "Outbound link for the secondary button.",
+      description:
+        "Outbound link for the secondary CTA.",
+    }),
+    defineField({
+      name: "ctaImage",
+      title: "CTA Image",
+      type: "image",
+      description:
+        "Optional uploaded image to use instead of the text CTA button.",
+      options: { hotspot: true },
+    }),
+    defineField({
+      name: "ctaImageAlt",
+      title: "CTA Image Alt Text",
+      type: "string",
+      description:
+        "Accessible text for the CTA image link.",
+    }),
+    defineField({
+      name: "ctaImageHeightPx",
+      title: "CTA Image Height (px)",
+      type: "number",
+      description:
+        "Controls rendered height of the CTA image link.",
+      initialValue: 44,
+      validation: (rule) => rule.min(28).max(160).integer(),
     }),
   ],
   preview: {
@@ -68,15 +102,12 @@ export const landingPage = defineType({
       subtitle: "subtitle",
     },
     prepare(selection) {
-      const title = selection.title || "Landing Page";
-      const subtitle =
-        typeof selection.subtitle === "string" && selection.subtitle.trim().length > 0
-          ? selection.subtitle
-          : "No subtitle set";
-
       return {
-        title,
-        subtitle,
+        title: selection.title || "Landing Page",
+        subtitle:
+          typeof selection.subtitle === "string" && selection.subtitle.trim().length > 0
+            ? selection.subtitle
+            : "No subtitle set",
         media: selection.media,
       };
     },
