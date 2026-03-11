@@ -40,7 +40,7 @@ export function TrackTable(props: { rows: TrackRow[]; emptyLabel?: string }) {
           width: "100%",
           borderCollapse: "collapse",
           minWidth: 560,
-          tableLayout: "fixed",
+          tableLayout: "auto",
         }}
       >
         <thead>
@@ -57,6 +57,12 @@ export function TrackTable(props: { rows: TrackRow[]; emptyLabel?: string }) {
                     color: TEXT_MUTED,
                     borderBottom: ROW_BORDER,
                     whiteSpace: "nowrap",
+                    width:
+                      label === "Track"
+                        ? "44%"
+                        : label === "Popularity"
+                          ? "28%"
+                          : "1%",
                   }}
                 >
                   {label}
@@ -96,15 +102,26 @@ export function TrackTable(props: { rows: TrackRow[]; emptyLabel?: string }) {
                     fontSize: FONT_SIZE_UI,
                     fontWeight: 700,
                     verticalAlign: "top",
+                    width: "1%",
                   }}
                 >
                   <div
                     style={{
                       display: "grid",
                       gap: 4,
+                      minWidth: 0,
                     }}
                   >
-                    <div>{row.title}</div>
+                    <div
+                      title={row.title}
+                      style={{
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {row.title}
+                    </div>
                   </div>
                 </td>
 

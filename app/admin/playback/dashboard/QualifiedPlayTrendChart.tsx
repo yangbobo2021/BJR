@@ -9,6 +9,7 @@ import {
   PANEL_BORDER,
   TEXT_FAINT,
   TEXT_MUTED,
+  TEXT_PRIMARY,
 } from "./playbackTelemetryDashboardStyles";
 import {
   fmtTrendTick,
@@ -68,6 +69,30 @@ function buildSmoothAreaPath(upper: ChartPoint[], lower: ChartPoint[]): string {
   ].join("");
 }
 
+type HoverZone = {
+  index: number;
+  x: number;
+  left: number;
+  width: number;
+};
+
+type LayerDescriptor = {
+  key: string;
+  label: string;
+  fill: string;
+  values: number[];
+};
+
+type StackedLayer = {
+  key: string;
+  label: string;
+  fill: string;
+  lowerPoints: ChartPoint[];
+  upperPoints: ChartPoint[];
+  areaPath: string;
+  linePath: string;
+};
+
 export function QualifiedPlayTrendChart(props: {
   rows: TrendBucket[];
   range: TrendRangeKey;
@@ -82,7 +107,9 @@ export function QualifiedPlayTrendChart(props: {
   const innerWidth = width - paddingLeft - paddingRight;
   const innerHeight = height - paddingTop - paddingBottom;
 
-  const series = [
+  const [activeIndex, setActiveIndex] = React.useState<number | null>(null);
+
+  const series: LayerDescriptor[] = [
     {
       key: "anonymous",
       label: "Anonymous plays",
@@ -95,7 +122,7 @@ export function QualifiedPlayTrendChart(props: {
       fill: "rgba(255,255,255,0.56)",
       values: rows.map((row) => row.memberPlayCount),
     },
-  ] as const;
+  ];
 
   const maxTotal = Math.max(1, ...rows.map((row) => row.sitePlayCount));
   const yTickCount = 4;
@@ -114,7 +141,7 @@ export function QualifiedPlayTrendChart(props: {
   const yForValue = (value: number): number =>
     paddingTop + innerHeight - (value / maxTotal) * innerHeight;
 
-  const stackedLayers = series.map((layer, layerIndex) => {
+  const stackedLayers: StackedLayer[] = series.map((layer, layerIndex) => {
     const lowerValues = rows.map((_, rowIndex) =>
       series
         .slice(0, layerIndex)
@@ -155,6 +182,57 @@ export function QualifiedPlayTrendChart(props: {
     ]),
   ).filter((index) => index >= 0 && index < rows.length);
 
+  const hoverZones: HoverZone[] = rows.map((_, index) => {
+    const x = xForIndex(index);
+    const prevX = index > 0 ? xForIndex(index - 1) : x;
+    const nextX = index < rows.length - 1 ? xForIndex(index + 1) : x;
+
+    const left =
+      index === 0
+        ? paddingLeft
+        : x - (x - prevX) / 2;
+
+    const right =
+      index === rows.length - 1
+        ? width - paddingRight
+        : x + (nextX - x) / 2;
+
+    return {
+      index,
+      x,
+      left,
+      width: Math.max(1, right - left),
+    };
+  });
+
+  const activeRow =
+    activeIndex !== null && activeIndex >= 0 && activeIndex < rows.length
+      ? rows[activeIndex]
+      : null;
+
+  const activeZone =
+    activeIndex !== null && activeIndex >= 0 && activeIndex < hoverZones.length
+      ? hoverZones[activeIndex]
+      : null;
+
+  const tooltipItems =
+    activeRow === null
+      ? []
+      : [
+          {
+            key: "total",
+            label: "Total plays",
+            value: activeRow.sitePlayCount,
+            swatch: "rgba(255,255,255,0.9)",
+          },
+          ...series.map((layer) => ({
+            key: layer.key,
+            label: layer.label,
+            value: layer.values[activeIndex ?? 0] ?? 0,
+            swatch: layer.fill,
+          })),
+        ];
+
   return (
     <div
       style={{
@@ -164,6 +242,7 @@ export function QualifiedPlayTrendChart(props: {
     >
       <div
         style={{
+          position: "relative",
           border: PANEL_BORDER,
           borderRadius: 12,
           background: BG_INSET,
@@ -198,12 +277,22 @@ export function QualifiedPlayTrendChart(props: {
             </g>
           ))}
 
+          {activeZone ? (
+            <rect
+              x={activeZone.left}
+              y={paddingTop}
+              width={activeZone.width}
+              height={innerHeight}
+              fill="rgba(255,255,255,0.035)"
+            />
+          ) : null}
+
           {stackedLayers.map((layer) => (
             <path
               key={`${layer.key}:fill`}
               d={layer.areaPath}
               fill={layer.fill}
-              fillOpacity={0.72}
+              fillOpacity={activeIndex === null ? 0.72 : 0.56}
               stroke="none"
             />
           ))}
@@ -214,11 +303,48 @@ export function QualifiedPlayTrendChart(props: {
               d={layer.linePath}
               fill="none"
               stroke="rgba(255,255,255,0.78)"
-              strokeWidth="1"
+              strokeWidth={activeIndex === null ? "1" : "1.15"}
               strokeLinejoin="round"
               strokeLinecap="round"
+              opacity={activeIndex === null ? 1 : 0.88}
             />
           ))}
+
+          {activeZone ? (
+            <line
+              x1={activeZone.x}
+              y1={paddingTop}
+              x2={activeZone.x}
+              y2={paddingTop + innerHeight}
+              stroke="rgba(255,255,255,0.22)"
+              strokeWidth="1"
+              strokeDasharray="3 4"
+            />
+          ) : null}
+
+          {activeIndex !== null
+            ? stackedLayers.map((layer) => {
+                const point = layer.upperPoints[activeIndex];
+                if (!point) return null;
+
+                return (
+                  <g key={`${layer.key}:marker`}>
+                    <circle
+                      cx={point.x}
+                      cy={point.y}
+                      r="4"
+                      fill="rgba(10,10,14,0.96)"
+                    />
+                    <circle
+                      cx={point.x}
+                      cy={point.y}
+                      r="2.5"
+                      fill="rgba(255,255,255,0.92)"
+                    />
+                  </g>
+                );
+              })
+            : null}
 
           {tickIndexes.map((index) => (
             <text
@@ -234,7 +360,109 @@ export function QualifiedPlayTrendChart(props: {
                 : ""}
             </text>
           ))}
+
+          {hoverZones.map((zone) => {
+            const row = rows[zone.index];
+            const label = row
+              ? fmtTrendTick(row.bucketStart, props.range)
+              : "Trend bucket";
+
+            return (
+              <rect
+                key={`hover:${zone.index}`}
+                x={zone.left}
+                y={paddingTop}
+                width={zone.width}
+                height={innerHeight}
+                fill="transparent"
+                tabIndex={0}
+                aria-label={`${label}. ${row ? formatNumber(row.sitePlayCount) : 0} total plays.`}
+                onMouseEnter={() => setActiveIndex(zone.index)}
+                onMouseLeave={() => setActiveIndex(null)}
+                onFocus={() => setActiveIndex(zone.index)}
+                onBlur={() => setActiveIndex(null)}
+              />
+            );
+          })}
         </svg>
+
+        {activeRow && activeZone ? (
+          <div
+            style={{
+              position: "absolute",
+              left: `${(activeZone.x / width) * 100}%`,
+              top: 14,
+              transform:
+                activeZone.x > width * 0.72
+                  ? "translateX(calc(-100% - 10px))"
+                  : "translateX(10px)",
+              pointerEvents: "none",
+              zIndex: 2,
+              minWidth: 170,
+              maxWidth: 220,
+              border: PANEL_BORDER,
+              borderRadius: 12,
+              background: "rgba(12,12,16,0.94)",
+              boxShadow: "0 10px 26px rgba(0,0,0,0.28)",
+              padding: "10px 12px",
+              display: "grid",
+              gap: 8,
+              backdropFilter: "blur(10px)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: TEXT_PRIMARY,
+                lineHeight: 1.3,
+              }}
+            >
+              {fmtTrendTick(activeRow.bucketStart, props.range)}
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gap: 6,
+              }}
+            >
+              {tooltipItems.map((item) => (
+                <div
+                  key={item.key}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "auto 1fr auto",
+                    alignItems: "center",
+                    gap: 8,
+                    fontSize: FONT_SIZE_UI,
+                    color: TEXT_MUTED,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 999,
+                      background: item.swatch,
+                      display: "inline-block",
+                    }}
+                  />
+                  <span>{item.label}</span>
+                  <span
+                    style={{
+                      color: TEXT_PRIMARY,
+                      fontWeight: 700,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {formatNumber(item.value)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div
@@ -245,7 +473,18 @@ export function QualifiedPlayTrendChart(props: {
           alignItems: "center",
         }}
       >
-        {stackedLayers.map((layer) => (
+        {[
+          {
+            key: "total",
+            label: "Total plays",
+            fill: "rgba(255,255,255,0.9)",
+          },
+          ...stackedLayers.map((layer) => ({
+            key: layer.key,
+            label: layer.label,
+            fill: layer.fill,
+          })),
+        ].map((layer) => (
           <div
             key={layer.key}
             style={{
