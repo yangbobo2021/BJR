@@ -99,7 +99,8 @@ export type PlaybackAdminTrendRangeKey =
   | "day"
   | "week"
   | "month"
-  | "year";
+  | "year"
+  | "allTime";
 
 export type PlaybackAdminTrendBucket = {
   bucketStart: string;
@@ -369,6 +370,55 @@ async function getQualifiedPlayTrendHour(): Promise<PlaybackAdminTrendRange> {
   const res = await sql<TrendRow>`
     with buckets as (
       select generate_series(
+        date_trunc('minute', now()) - (59 * interval '1 minute'),
+        date_trunc('minute', now()),
+        interval '1 minute'
+      ) as bucket_start
+    ),
+    member_counts as (
+      select
+        date_trunc('minute', created_at) as bucket_start,
+        count(*)::int as n
+      from member_playback_telemetry_dedupe
+      where
+        event_type = ${EVENT_TYPES.PLAYBACK_TELEMETRY_PLAY}
+        and created_at >= date_trunc('minute', now()) - (59 * interval '1 minute')
+      group by 1
+    ),
+    anonymous_counts as (
+      select
+        date_trunc('minute', created_at) as bucket_start,
+        count(*)::int as n
+      from anonymous_playback_telemetry_dedupe
+      where
+        event_type = ${EVENT_TYPES.PLAYBACK_TELEMETRY_PLAY}
+        and created_at >= date_trunc('minute', now()) - (59 * interval '1 minute')
+      group by 1
+    )
+    select
+      buckets.bucket_start::text as bucket_start_iso,
+      coalesce(member_counts.n, 0) as member_play_count,
+      coalesce(anonymous_counts.n, 0) as anonymous_play_count,
+      coalesce(member_counts.n, 0) + coalesce(anonymous_counts.n, 0) as site_play_count
+    from buckets
+    left join member_counts
+      on member_counts.bucket_start = buckets.bucket_start
+    left join anonymous_counts
+      on anonymous_counts.bucket_start = buckets.bucket_start
+    order by buckets.bucket_start asc
+  `;
+
+  return {
+    key: "hour",
+    label: "60m",
+    buckets: mapTrendRows(res.rows),
+  };
+}
+
+async function getQualifiedPlayTrendDay(): Promise<PlaybackAdminTrendRange> {
+  const res = await sql<TrendRow>`
+    with buckets as (
+      select generate_series(
         date_trunc('hour', now()) - (23 * interval '1 hour'),
         date_trunc('hour', now()),
         interval '1 hour'
@@ -408,13 +458,62 @@ async function getQualifiedPlayTrendHour(): Promise<PlaybackAdminTrendRange> {
   `;
 
   return {
-    key: "hour",
+    key: "day",
     label: "24h",
     buckets: mapTrendRows(res.rows),
   };
 }
 
-async function getQualifiedPlayTrendDay(): Promise<PlaybackAdminTrendRange> {
+async function getQualifiedPlayTrendWeek(): Promise<PlaybackAdminTrendRange> {
+  const res = await sql<TrendRow>`
+    with buckets as (
+      select generate_series(
+        date_trunc('day', now()) - (6 * interval '1 day'),
+        date_trunc('day', now()),
+        interval '1 day'
+      ) as bucket_start
+    ),
+    member_counts as (
+      select
+        date_trunc('day', created_at) as bucket_start,
+        count(*)::int as n
+      from member_playback_telemetry_dedupe
+      where
+        event_type = ${EVENT_TYPES.PLAYBACK_TELEMETRY_PLAY}
+        and created_at >= date_trunc('day', now()) - (6 * interval '1 day')
+      group by 1
+    ),
+    anonymous_counts as (
+      select
+        date_trunc('day', created_at) as bucket_start,
+        count(*)::int as n
+      from anonymous_playback_telemetry_dedupe
+      where
+        event_type = ${EVENT_TYPES.PLAYBACK_TELEMETRY_PLAY}
+        and created_at >= date_trunc('day', now()) - (6 * interval '1 day')
+      group by 1
+    )
+    select
+      buckets.bucket_start::text as bucket_start_iso,
+      coalesce(member_counts.n, 0) as member_play_count,
+      coalesce(anonymous_counts.n, 0) as anonymous_play_count,
+      coalesce(member_counts.n, 0) + coalesce(anonymous_counts.n, 0) as site_play_count
+    from buckets
+    left join member_counts
+      on member_counts.bucket_start = buckets.bucket_start
+    left join anonymous_counts
+      on anonymous_counts.bucket_start = buckets.bucket_start
+    order by buckets.bucket_start asc
+  `;
+
+  return {
+    key: "week",
+    label: "7d",
+    buckets: mapTrendRows(res.rows),
+  };
+}
+
+async function getQualifiedPlayTrendMonth(): Promise<PlaybackAdminTrendRange> {
   const res = await sql<TrendRow>`
     with buckets as (
       select generate_series(
@@ -457,62 +556,13 @@ async function getQualifiedPlayTrendDay(): Promise<PlaybackAdminTrendRange> {
   `;
 
   return {
-    key: "day",
+    key: "month",
     label: "30d",
     buckets: mapTrendRows(res.rows),
   };
 }
 
-async function getQualifiedPlayTrendWeek(): Promise<PlaybackAdminTrendRange> {
-  const res = await sql<TrendRow>`
-    with buckets as (
-      select generate_series(
-        date_trunc('week', now()) - (11 * interval '1 week'),
-        date_trunc('week', now()),
-        interval '1 week'
-      ) as bucket_start
-    ),
-    member_counts as (
-      select
-        date_trunc('week', created_at) as bucket_start,
-        count(*)::int as n
-      from member_playback_telemetry_dedupe
-      where
-        event_type = ${EVENT_TYPES.PLAYBACK_TELEMETRY_PLAY}
-        and created_at >= date_trunc('week', now()) - (11 * interval '1 week')
-      group by 1
-    ),
-    anonymous_counts as (
-      select
-        date_trunc('week', created_at) as bucket_start,
-        count(*)::int as n
-      from anonymous_playback_telemetry_dedupe
-      where
-        event_type = ${EVENT_TYPES.PLAYBACK_TELEMETRY_PLAY}
-        and created_at >= date_trunc('week', now()) - (11 * interval '1 week')
-      group by 1
-    )
-    select
-      buckets.bucket_start::text as bucket_start_iso,
-      coalesce(member_counts.n, 0) as member_play_count,
-      coalesce(anonymous_counts.n, 0) as anonymous_play_count,
-      coalesce(member_counts.n, 0) + coalesce(anonymous_counts.n, 0) as site_play_count
-    from buckets
-    left join member_counts
-      on member_counts.bucket_start = buckets.bucket_start
-    left join anonymous_counts
-      on anonymous_counts.bucket_start = buckets.bucket_start
-    order by buckets.bucket_start asc
-  `;
-
-  return {
-    key: "week",
-    label: "12w",
-    buckets: mapTrendRows(res.rows),
-  };
-}
-
-async function getQualifiedPlayTrendMonth(): Promise<PlaybackAdminTrendRange> {
+async function getQualifiedPlayTrendYear(): Promise<PlaybackAdminTrendRange> {
   const res = await sql<TrendRow>`
     with buckets as (
       select generate_series(
@@ -555,18 +605,40 @@ async function getQualifiedPlayTrendMonth(): Promise<PlaybackAdminTrendRange> {
   `;
 
   return {
-    key: "month",
+    key: "year",
     label: "12m",
     buckets: mapTrendRows(res.rows),
   };
 }
 
-async function getQualifiedPlayTrendYear(): Promise<PlaybackAdminTrendRange> {
+async function getQualifiedPlayTrendAllTime(): Promise<PlaybackAdminTrendRange> {
   const res = await sql<TrendRow>`
-    with buckets as (
+    with bounds as (
+      select
+        least(
+          coalesce(
+            (
+              select date_trunc('year', min(created_at))
+              from member_playback_telemetry_dedupe
+              where event_type = ${EVENT_TYPES.PLAYBACK_TELEMETRY_PLAY}
+            ),
+            date_trunc('year', now())
+          ),
+          coalesce(
+            (
+              select date_trunc('year', min(created_at))
+              from anonymous_playback_telemetry_dedupe
+              where event_type = ${EVENT_TYPES.PLAYBACK_TELEMETRY_PLAY}
+            ),
+            date_trunc('year', now())
+          )
+        ) as first_year_start,
+        date_trunc('year', now()) as current_year_start
+    ),
+    buckets as (
       select generate_series(
-        date_trunc('year', now()) - (4 * interval '1 year'),
-        date_trunc('year', now()),
+        (select first_year_start from bounds),
+        (select current_year_start from bounds),
         interval '1 year'
       ) as bucket_start
     ),
@@ -575,9 +647,7 @@ async function getQualifiedPlayTrendYear(): Promise<PlaybackAdminTrendRange> {
         date_trunc('year', created_at) as bucket_start,
         count(*)::int as n
       from member_playback_telemetry_dedupe
-      where
-        event_type = ${EVENT_TYPES.PLAYBACK_TELEMETRY_PLAY}
-        and created_at >= date_trunc('year', now()) - (4 * interval '1 year')
+      where event_type = ${EVENT_TYPES.PLAYBACK_TELEMETRY_PLAY}
       group by 1
     ),
     anonymous_counts as (
@@ -585,9 +655,7 @@ async function getQualifiedPlayTrendYear(): Promise<PlaybackAdminTrendRange> {
         date_trunc('year', created_at) as bucket_start,
         count(*)::int as n
       from anonymous_playback_telemetry_dedupe
-      where
-        event_type = ${EVENT_TYPES.PLAYBACK_TELEMETRY_PLAY}
-        and created_at >= date_trunc('year', now()) - (4 * interval '1 year')
+      where event_type = ${EVENT_TYPES.PLAYBACK_TELEMETRY_PLAY}
       group by 1
     )
     select
@@ -604,8 +672,8 @@ async function getQualifiedPlayTrendYear(): Promise<PlaybackAdminTrendRange> {
   `;
 
   return {
-    key: "year",
-    label: "5y",
+    key: "allTime",
+    label: "All time",
     buckets: mapTrendRows(res.rows),
   };
 }
@@ -613,12 +681,13 @@ async function getQualifiedPlayTrendYear(): Promise<PlaybackAdminTrendRange> {
 async function getQualifiedPlayTrends(): Promise<
   Record<PlaybackAdminTrendRangeKey, PlaybackAdminTrendRange>
 > {
-  const [hour, day, week, month, year] = await Promise.all([
+  const [hour, day, week, month, year, allTime] = await Promise.all([
     getQualifiedPlayTrendHour(),
     getQualifiedPlayTrendDay(),
     getQualifiedPlayTrendWeek(),
     getQualifiedPlayTrendMonth(),
     getQualifiedPlayTrendYear(),
+    getQualifiedPlayTrendAllTime(),
   ]);
 
   return {
@@ -627,6 +696,7 @@ async function getQualifiedPlayTrends(): Promise<
     week,
     month,
     year,
+    allTime,
   };
 }
 

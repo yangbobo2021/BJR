@@ -65,24 +65,30 @@ function fmtTrendTick(iso: string, range: TrendRangeKey): string {
     if (range === "hour") {
       return date.toLocaleTimeString("en-NZ", {
         hour: "numeric",
+        minute: "2-digit",
       });
     }
 
     if (range === "day") {
-      return date.toLocaleDateString("en-NZ", {
-        day: "numeric",
-        month: "short",
+      return date.toLocaleTimeString("en-NZ", {
+        hour: "numeric",
       });
     }
 
     if (range === "week") {
       return date.toLocaleDateString("en-NZ", {
+        weekday: "short",
+      });
+    }
+
+    if (range === "month") {
+      return date.toLocaleDateString("en-NZ", {
         day: "numeric",
         month: "short",
       });
     }
 
-    if (range === "month") {
+    if (range === "year") {
       return date.toLocaleDateString("en-NZ", {
         month: "short",
       });
@@ -101,6 +107,10 @@ type ChartPoint = {
   y: number;
 };
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
 function buildSmoothCommands(points: ChartPoint[]): string {
   if (points.length < 2) return "";
 
@@ -112,10 +122,18 @@ function buildSmoothCommands(points: ChartPoint[]): string {
     const p2 = points[index + 1];
     const p3 = points[index + 2] ?? p2;
 
-    const cp1x = p1.x + (p2.x - p0.x) / 6;
-    const cp1y = p1.y + (p2.y - p0.y) / 6;
-    const cp2x = p2.x - (p3.x - p1.x) / 6;
-    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    const rawCp1x = p1.x + (p2.x - p0.x) / 6;
+    const rawCp1y = p1.y + (p2.y - p0.y) / 6;
+    const rawCp2x = p2.x - (p3.x - p1.x) / 6;
+    const rawCp2y = p2.y - (p3.y - p1.y) / 6;
+
+    const minY = Math.min(p1.y, p2.y);
+    const maxY = Math.max(p1.y, p2.y);
+
+    const cp1x = rawCp1x;
+    const cp1y = clamp(rawCp1y, minY, maxY);
+    const cp2x = rawCp2x;
+    const cp2y = clamp(rawCp2y, minY, maxY);
 
     d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
   }
@@ -714,7 +732,14 @@ function TrendRangeToggle(props: {
   value: TrendRangeKey;
   onChange: (value: TrendRangeKey) => void;
 }) {
-  const options: TrendRangeKey[] = ["hour", "day", "week", "month", "year"];
+  const options: Array<{ key: TrendRangeKey; label: string }> = [
+    { key: "hour", label: "Hour" },
+    { key: "day", label: "Day" },
+    { key: "week", label: "Week" },
+    { key: "month", label: "Month" },
+    { key: "year", label: "Year" },
+    { key: "allTime", label: "All time" },
+  ];
 
   return (
     <div
@@ -725,13 +750,13 @@ function TrendRangeToggle(props: {
       }}
     >
       {options.map((option) => {
-        const selected = props.value === option;
+        const selected = props.value === option.key;
 
         return (
           <button
-            key={option}
+            key={option.key}
             type="button"
-            onClick={() => props.onChange(option)}
+            onClick={() => props.onChange(option.key)}
             style={{
               height: 30,
               padding: "0 12px",
@@ -744,10 +769,9 @@ function TrendRangeToggle(props: {
               cursor: "pointer",
               fontSize: FONT_SIZE_UI,
               fontWeight: 700,
-              textTransform: "capitalize",
             }}
           >
-            {option}
+            {option.label}
           </button>
         );
       })}
@@ -1307,7 +1331,7 @@ export default function PlaybackTelemetryDashboardClient(props: {
 
         <SectionCard
           title="Qualified plays over time"
-          subtitle="Stacked area layers show total qualified plays across the selected time horizon, split between signed-in members and anonymous listeners."
+          subtitle="Stacked area layers show total qualified plays across the selected horizon, split between signed-in members and anonymous listeners. Each view now uses bucket sizes that match the named duration."
           headerRight={
             <TrendRangeToggle value={trendRange} onChange={setTrendRange} />
           }
