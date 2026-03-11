@@ -1779,27 +1779,44 @@ export default function FullPlayer(props: {
           gap: 10px;
         }
 
-        .afArtworkLiveBadge{
+                  .afArtworkLiveBadge{
           position: absolute;
           top: 12px;
           left: 12px;
           z-index: 2;
           display: inline-flex;
           align-items: center;
-          gap: 7px;
-          padding: 7px 10px;
+          gap: 6px;
+          padding: 5px 8px;
           border-radius: 999px;
           background: rgba(0,0,0,0.34);
           border: 1px solid rgba(255,255,255,0.10);
           backdrop-filter: blur(8px);
           -webkit-backdrop-filter: blur(8px);
           color: rgba(255,255,255,0.82);
-          font-size: 12px;
-          font-weight: 500;
+          font-size: 11px;
+          font-weight: 420;
           letter-spacing: 0.01em;
           line-height: 1;
           white-space: nowrap;
           box-shadow: 0 8px 24px rgba(0,0,0,0.20);
+          opacity: 0.82;
+          animation: afArtworkLiveBadgeIn 160ms ease-out both;
+        }
+
+        @keyframes afArtworkLiveBadgeIn{
+          0%{
+            opacity: 0;
+            transform: translateY(-2px);
+          }
+          100%{
+            opacity: 0.82;
+            transform: translateY(0);
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce){
+          .afArtworkLiveBadge{ animation: none; }
         }
 
         .afLiveBadgeDot{
