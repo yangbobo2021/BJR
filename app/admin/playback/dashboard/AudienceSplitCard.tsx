@@ -335,7 +335,7 @@ export function AudienceSplitCard(props: { snapshot: PlaybackAdminSnapshot }) {
   return (
     <SectionCard
       title="Qualified play audience split"
-      subtitle="Signed-in and anonymous qualified plays shown as a provenance split for all-time activity and the last 30 days."
+      subtitle=""
     >
       <div
         style={{
