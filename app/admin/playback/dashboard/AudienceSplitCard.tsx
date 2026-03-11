@@ -5,12 +5,9 @@ import React from "react";
 import type { PlaybackAdminSnapshot } from "@/lib/playbackAdmin";
 import { SectionCard } from "./PlaybackDashboardPrimitives";
 import {
-  BG_ACCENT,
   BG_ANON,
   BG_INSET,
   BG_MEMBER,
-  FONT_SIZE_UI,
-  PANEL_BORDER,
   TEXT_FAINT,
   TEXT_MUTED,
   TEXT_PRIMARY,
@@ -37,7 +34,6 @@ type SegmentArc = {
   path: string;
   labelX: number;
   labelY: number;
-  largeArcFlag: 0 | 1;
 };
 
 function polarToCartesian(
@@ -76,7 +72,7 @@ function describeDonutArc(
     "Z",
   ].join(" ");
 
-  return { path, largeArcFlag };
+  return { path };
 }
 
 function buildSegments(
@@ -122,7 +118,7 @@ function buildSegments(
       const endAngle = currentAngle + sweep;
       currentAngle = endAngle;
 
-      const { path, largeArcFlag } = describeDonutArc(
+      const { path } = describeDonutArc(
         cx,
         cy,
         outerRadius,
@@ -132,7 +128,7 @@ function buildSegments(
       );
 
       const midAngle = startAngle + sweep / 2;
-      const labelRadius = innerRadius + (outerRadius - innerRadius) * 0.56;
+      const labelRadius = innerRadius + (outerRadius - innerRadius) * 0.58;
       const labelPosition = polarToCartesian(cx, cy, labelRadius, midAngle);
 
       return {
@@ -140,7 +136,6 @@ function buildSegments(
         path,
         labelX: labelPosition.x,
         labelY: labelPosition.y,
-        largeArcFlag,
       };
     });
 }
@@ -150,11 +145,11 @@ function AudienceDonut(props: AudienceDonutProps) {
   const total = member + anonymous;
   const [hovered, setHovered] = React.useState<SliceKey | null>(null);
 
-  const size = 248;
+  const size = 272;
   const cx = size / 2;
   const cy = size / 2;
-  const outerRadius = 88;
-  const innerRadius = 50;
+  const outerRadius = 110;
+  const innerRadius = 58;
 
   const memberPct = percentage(member, total);
   const anonymousPct = percentage(anonymous, total);
@@ -179,40 +174,19 @@ function AudienceDonut(props: AudienceDonutProps) {
   return (
     <div
       style={{
-        border: PANEL_BORDER,
-        borderRadius: 16,
-        padding: 16,
-        background: BG_INSET,
+        padding: "6px 6px 2px",
         display: "grid",
-        gap: 12,
+        gap: 10,
       }}
     >
       <div
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "baseline",
-          gap: 12,
-          flexWrap: "wrap",
+          fontSize: 13,
+          color: TEXT_PRIMARY,
+          fontWeight: 700,
         }}
       >
-        <div
-          style={{
-            fontSize: 13,
-            color: TEXT_PRIMARY,
-            fontWeight: 700,
-          }}
-        >
-          {label}
-        </div>
-        <div
-          style={{
-            fontSize: FONT_SIZE_UI,
-            color: TEXT_MUTED,
-          }}
-        >
-          {formatNumber(total)} total plays
-        </div>
+        {label}
       </div>
 
       <div
@@ -240,15 +214,6 @@ function AudienceDonut(props: AudienceDonutProps) {
             aria-label={`${label} audience split`}
             role="img"
           >
-            <circle
-              cx={cx}
-              cy={cy}
-              r={outerRadius}
-              fill="none"
-              stroke={BG_ACCENT}
-              strokeWidth={outerRadius - innerRadius}
-            />
-
             {segments.map((segment) => {
               const isHovered = hovered === segment.key;
               const shouldShowPct =
@@ -261,11 +226,11 @@ function AudienceDonut(props: AudienceDonutProps) {
                   <path
                     d={segment.path}
                     fill={segment.color}
-                    opacity={hovered === null ? 1 : isHovered ? 1 : 0.44}
+                    opacity={hovered === null ? 1 : isHovered ? 1 : 0.42}
                     style={{
                       cursor: "default",
                       transition: "opacity 160ms ease, filter 160ms ease",
-                      filter: isHovered ? "brightness(1.06)" : "none",
+                      filter: isHovered ? "brightness(1.05)" : "none",
                     }}
                     onMouseEnter={() => setHovered(segment.key)}
                     onMouseLeave={() => setHovered(null)}
@@ -287,7 +252,7 @@ function AudienceDonut(props: AudienceDonutProps) {
                       dominantBaseline="middle"
                       style={{
                         fill: "#ffffff",
-                        fontSize: 12,
+                        fontSize: 14,
                         fontWeight: 800,
                         pointerEvents: "none",
                         userSelect: "none",
@@ -304,11 +269,11 @@ function AudienceDonut(props: AudienceDonutProps) {
 
             <text
               x={cx}
-              y={hoveredSegment ? cy - 18 : cy - 12}
+              y={cy - 22}
               textAnchor="middle"
               style={{
                 fill: TEXT_FAINT,
-                fontSize: hoveredSegment ? 11 : 10,
+                fontSize: 11,
                 fontWeight: 700,
                 letterSpacing: "0.04em",
                 textTransform: "uppercase",
@@ -321,7 +286,7 @@ function AudienceDonut(props: AudienceDonutProps) {
 
             <text
               x={cx}
-              y={hoveredSegment ? cy + 6 : cy + 8}
+              y={cy + 4}
               textAnchor="middle"
               style={{
                 fill: TEXT_PRIMARY,
@@ -338,7 +303,7 @@ function AudienceDonut(props: AudienceDonutProps) {
 
             <text
               x={cx}
-              y={hoveredSegment ? cy + 26 : cy + 28}
+              y={cy + 26}
               textAnchor="middle"
               style={{
                 fill: TEXT_MUTED,
@@ -353,128 +318,6 @@ function AudienceDonut(props: AudienceDonutProps) {
                 : "qualified plays"}
             </text>
           </svg>
-        </div>
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-          gap: 10,
-        }}
-      >
-        <div
-          style={{
-            border: PANEL_BORDER,
-            borderRadius: 12,
-            padding: "10px 12px",
-            background: BG_ACCENT,
-            display: "grid",
-            gap: 4,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            <div
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: 999,
-                background: BG_MEMBER,
-                flexShrink: 0,
-              }}
-            />
-            <div
-              style={{
-                fontSize: 10,
-                color: TEXT_FAINT,
-                fontWeight: 700,
-                letterSpacing: "0.03em",
-                textTransform: "uppercase",
-              }}
-            >
-              Members
-            </div>
-          </div>
-          <div
-            style={{
-              fontSize: 16,
-              color: TEXT_PRIMARY,
-              fontWeight: 800,
-            }}
-          >
-            {formatNumber(member)}
-          </div>
-          <div
-            style={{
-              fontSize: FONT_SIZE_UI,
-              color: TEXT_MUTED,
-            }}
-          >
-            {memberPct.toFixed(1)}%
-          </div>
-        </div>
-
-        <div
-          style={{
-            border: PANEL_BORDER,
-            borderRadius: 12,
-            padding: "10px 12px",
-            background: BG_ACCENT,
-            display: "grid",
-            gap: 4,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            <div
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: 999,
-                background: BG_ANON,
-                flexShrink: 0,
-              }}
-            />
-            <div
-              style={{
-                fontSize: 10,
-                color: TEXT_FAINT,
-                fontWeight: 700,
-                letterSpacing: "0.03em",
-                textTransform: "uppercase",
-              }}
-            >
-              Anonymous
-            </div>
-          </div>
-          <div
-            style={{
-              fontSize: 16,
-              color: TEXT_PRIMARY,
-              fontWeight: 800,
-            }}
-          >
-            {formatNumber(anonymous)}
-          </div>
-          <div
-            style={{
-              fontSize: FONT_SIZE_UI,
-              color: TEXT_MUTED,
-            }}
-          >
-            {anonymousPct.toFixed(1)}%
-          </div>
         </div>
       </div>
     </div>
@@ -497,8 +340,9 @@ export function AudienceSplitCard(props: { snapshot: PlaybackAdminSnapshot }) {
       <div
         style={{
           display: "grid",
-          gap: 14,
+          gap: 18,
           gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          alignItems: "start",
         }}
       >
         <AudienceDonut
