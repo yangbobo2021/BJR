@@ -1800,7 +1800,7 @@ export default function FullPlayer(props: {
           line-height: 1;
           white-space: nowrap;
           box-shadow: 0 8px 24px rgba(0,0,0,0.20);
-          opacity: 0.82;
+          opacity: 0.72;
           animation: afArtworkLiveBadgeIn 160ms ease-out both;
         }
 

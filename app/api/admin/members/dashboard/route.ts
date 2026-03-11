@@ -7,7 +7,7 @@ function parsePeriodDays(value: string | null): number {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return 30;
   if (parsed <= 0) return 30;
-  if (parsed > 365) return 365;
+  if (parsed > 99999) return 99999;
   return Math.floor(parsed);
 }
 

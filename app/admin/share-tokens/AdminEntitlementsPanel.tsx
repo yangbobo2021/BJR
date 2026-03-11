@@ -103,14 +103,75 @@ export default function AdminEntitlementsPanel(props: {
 
   const [error, setError] = React.useState<string | null>(null);
 
-  const tierLabelMap = React.useMemo<Record<string, string>>(
-    () => ({
-      tier_friend: "Friend",
-      tier_patron: "Patron",
-      tier_partner: "Partner",
-    }),
+  const dashboardRangeOptions = React.useMemo(
+    () => [
+      { label: "7d", value: 7 },
+      { label: "30d", value: 30 },
+      { label: "90d", value: 90 },
+      { label: "1yr", value: 365 },
+      { label: "All", value: 99999 },
+    ],
     [],
   );
+
+  const tierCountMap = React.useMemo(() => {
+    const map = new Map<string, number>();
+    for (const tier of dashboard?.tiers ?? []) {
+      map.set(tier.entitlement_key, tier.count);
+    }
+    return map;
+  }, [dashboard?.tiers]);
+
+  const joinsChart = React.useMemo(() => {
+    const points = [...(dashboard?.recentJoins ?? [])].reverse();
+    const maxCount = points.reduce(
+      (acc, point) => Math.max(acc, point.count),
+      0,
+    );
+
+    if (!points.length || maxCount <= 0) {
+      return {
+        points,
+        maxCount: 0,
+        path: "",
+        areaPath: "",
+      };
+    }
+
+    const width = 100;
+    const height = 100;
+
+    const coords = points.map((point, index) => {
+      const x =
+        points.length === 1 ? width / 2 : (index / (points.length - 1)) * width;
+      const y = height - (point.count / maxCount) * height;
+      return { x, y, ...point };
+    });
+
+    const path = coords
+      .map(
+        (point, index) =>
+          `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`,
+      )
+      .join(" ");
+
+    const areaPath = [
+      `M ${coords[0]?.x.toFixed(2) ?? "0"} ${height}`,
+      ...coords.map(
+        (point, index) =>
+          `${index === 0 ? "L" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`,
+      ),
+      `L ${coords[coords.length - 1]?.x.toFixed(2) ?? "100"} ${height}`,
+      "Z",
+    ].join(" ");
+
+    return {
+      points: coords,
+      maxCount,
+      path,
+      areaPath,
+    };
+  }, [dashboard?.recentJoins]);
 
   function formatDateTime(value: string | null | undefined): string {
     if (!value) return "—";
@@ -339,67 +400,51 @@ export default function AdminEntitlementsPanel(props: {
   return (
     <div style={{ display: "grid", gap: 14 }}>
       <div style={cardStyle}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 12,
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <div
-              style={{ fontSize: 12, letterSpacing: "0.04em", opacity: 0.56 }}
-            >
-              MEMBERSHIP DASHBOARD
-            </div>
-            <div style={{ marginTop: 6, fontSize: 14, fontWeight: 700 }}>
-              Membership overview
-            </div>
+        <div>
+          <div style={{ fontSize: 12, letterSpacing: "0.04em", opacity: 0.56 }}>
+            MEMBERSHIP DASHBOARD
           </div>
-
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {[7, 30, 90].map((days) => {
-              const active = periodDays === days;
-              return (
-                <button
-                  key={days}
-                  type="button"
-                  onClick={() => setPeriodDays(days)}
-                  disabled={dashboardBusy}
-                  style={{
-                    ...subtleButtonStyle,
-                    background: active
-                      ? "rgba(255,255,255,0.12)"
-                      : "rgba(255,255,255,0.04)",
-                    opacity: dashboardBusy && !active ? 0.7 : 1,
-                    cursor: dashboardBusy ? "default" : "pointer",
-                  }}
-                >
-                  {days}d
-                </button>
-              );
-            })}
+          <div style={{ marginTop: 6, fontSize: 14, fontWeight: 700 }}>
+            Membership overview
           </div>
         </div>
 
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+            gridTemplateColumns: "minmax(0, 1.35fr) repeat(5, minmax(0, 1fr))",
             gap: 10,
             marginTop: 14,
           }}
         >
+          <div
+            style={{
+              padding: "14px 14px",
+              borderRadius: 14,
+              border: "1px solid rgba(255,255,255,0.16)",
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.05))",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+            }}
+          >
+            <div style={{ fontSize: 11, opacity: 0.66 }}>Total members</div>
+            <div style={{ marginTop: 6, fontSize: 28, fontWeight: 900 }}>
+              {dashboard?.totals.members ?? "—"}
+            </div>
+          </div>
+
           {[
             {
-              label: "Total members",
-              value: dashboard?.totals.members ?? "—",
+              label: "Friend",
+              value: tierCountMap.get("tier_friend") ?? 0,
             },
             {
-              label: `New in ${periodDays}d`,
-              value: dashboard?.totals.joinedInPeriod ?? "—",
+              label: "Patron",
+              value: tierCountMap.get("tier_patron") ?? 0,
+            },
+            {
+              label: "Partner",
+              value: tierCountMap.get("tier_partner") ?? 0,
             },
             {
               label: "Linked Clerk",
@@ -429,90 +474,153 @@ export default function AdminEntitlementsPanel(props: {
 
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 1.2fr) minmax(0, 0.8fr)",
-            gap: 14,
             marginTop: 14,
+            padding: "12px 12px",
+            borderRadius: 14,
+            border: "1px solid rgba(255,255,255,0.10)",
+            background: "rgba(255,255,255,0.03)",
           }}
         >
           <div
             style={{
-              padding: "12px 12px",
-              borderRadius: 14,
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(255,255,255,0.03)",
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 12,
+              alignItems: "center",
+              flexWrap: "wrap",
             }}
           >
-            <div style={{ fontSize: 12, fontWeight: 800, opacity: 0.72 }}>
-              Paid tiers
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 800, opacity: 0.72 }}>
+                Membership joins
+              </div>
+              <div style={{ marginTop: 4, fontSize: 11, opacity: 0.56 }}>
+                {periodDays === 99999
+                  ? "All-time join activity"
+                  : `New members over the last ${periodDays} days`}
+              </div>
             </div>
 
-            <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
-              {dashboard?.tiers.length ? (
-                dashboard.tiers.map((tier) => (
-                  <div
-                    key={tier.entitlement_key}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {dashboardRangeOptions.map((option) => {
+                const active = periodDays === option.value;
+                return (
+                  <button
+                    key={option.label}
+                    type="button"
+                    onClick={() => setPeriodDays(option.value)}
+                    disabled={dashboardBusy}
                     style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      padding: "10px 12px",
-                      borderRadius: 12,
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      background: "rgba(255,255,255,0.025)",
+                      ...subtleButtonStyle,
+                      background: active
+                        ? "rgba(255,255,255,0.12)"
+                        : "rgba(255,255,255,0.04)",
+                      opacity: dashboardBusy && !active ? 0.7 : 1,
+                      cursor: dashboardBusy ? "default" : "pointer",
                     }}
                   >
-                    <div style={{ fontSize: 12, fontWeight: 700 }}>
-                      {tierLabelMap[tier.entitlement_key] ??
-                        tier.entitlement_key}
-                    </div>
-                    <div style={{ fontSize: 12, opacity: 0.82 }}>
-                      {tier.count}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div style={{ fontSize: 12, opacity: 0.58 }}>
-                  No active paid tiers found.
-                </div>
-              )}
+                    {option.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           <div
             style={{
-              padding: "12px 12px",
-              borderRadius: 14,
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(255,255,255,0.03)",
+              marginTop: 14,
+              padding: "12px 12px 8px",
+              borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.08)",
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))",
             }}
           >
-            <div style={{ fontSize: 12, fontWeight: 800, opacity: 0.72 }}>
-              Recent joins
-            </div>
-
-            <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
-              {dashboard?.recentJoins.length ? (
-                dashboard.recentJoins.map((entry) => (
-                  <div
-                    key={entry.date}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      fontSize: 12,
-                    }}
-                  >
-                    <span style={{ opacity: 0.72 }}>{entry.date}</span>
-                    <span style={{ fontWeight: 700 }}>{entry.count}</span>
+            {joinsChart.points.length ? (
+              <>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                    gap: 10,
+                    marginBottom: 12,
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: 11, opacity: 0.56 }}>
+                      New in range
+                    </div>
+                    <div
+                      style={{ marginTop: 4, fontSize: 20, fontWeight: 800 }}
+                    >
+                      {dashboard?.totals.joinedInPeriod ?? "—"}
+                    </div>
                   </div>
-                ))
-              ) : (
-                <div style={{ fontSize: 12, opacity: 0.58 }}>
-                  No recent join data.
+                  <div>
+                    <div style={{ fontSize: 11, opacity: 0.56 }}>Peak day</div>
+                    <div
+                      style={{ marginTop: 4, fontSize: 20, fontWeight: 800 }}
+                    >
+                      {joinsChart.maxCount}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, opacity: 0.56 }}>
+                      Data points
+                    </div>
+                    <div
+                      style={{ marginTop: 4, fontSize: 20, fontWeight: 800 }}
+                    >
+                      {joinsChart.points.length}
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
+
+                <div style={{ width: "100%", height: 220 }}>
+                  <svg
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="none"
+                    style={{ width: "100%", height: "100%", display: "block" }}
+                    aria-label="Membership joins chart"
+                  >
+                    <path
+                      d={joinsChart.areaPath}
+                      fill="rgba(255,255,255,0.10)"
+                    />
+                    <path
+                      d={joinsChart.path}
+                      fill="none"
+                      stroke="rgba(255,255,255,0.88)"
+                      strokeWidth="1.8"
+                      vectorEffect="non-scaling-stroke"
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    marginTop: 8,
+                    fontSize: 11,
+                    opacity: 0.56,
+                  }}
+                >
+                  <span>{joinsChart.points[0]?.date ?? "—"}</span>
+                  <span>
+                    {joinsChart.points[joinsChart.points.length - 1]?.date ??
+                      "—"}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div style={{ fontSize: 12, opacity: 0.58 }}>
+                No membership join data available for this range.
+              </div>
+            )}
           </div>
         </div>
       </div>

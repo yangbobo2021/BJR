@@ -1,0 +1,13 @@
+export const PANEL_BORDER = "1px solid rgba(255,255,255,0.12)";
+export const ROW_BORDER = "1px solid rgba(255,255,255,0.08)";
+export const TEXT_PRIMARY = "rgba(255,255,255,0.92)";
+export const TEXT_STRONG = "rgba(255,255,255,0.86)";
+export const TEXT_MUTED = "rgba(255,255,255,0.68)";
+export const TEXT_FAINT = "rgba(255,255,255,0.58)";
+export const BG_PANEL = "rgba(255,255,255,0.04)";
+export const BG_INSET = "rgba(255,255,255,0.02)";
+export const BG_ACCENT = "rgba(255,255,255,0.08)";
+export const BG_MEMBER = "rgba(255,255,255,0.78)";
+export const BG_ANON = "rgba(255,255,255,0.22)";
+export const FONT_SIZE_UI = 12;
+export const FONT_SIZE_DEDUPE = 11;
