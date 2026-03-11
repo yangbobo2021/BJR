@@ -1767,8 +1767,8 @@ export default function FullPlayer(props: {
           margin-top: 8px;
         }
 
-        .afTransportBadgeSlot{
-          justify-self: start;
+                .afTransportBadgeSlot{
+          justify-self: center;
           min-height: 20px;
           display: flex;
           align-items: center;
@@ -1850,11 +1850,11 @@ export default function FullPlayer(props: {
             justify-self: center;
           }
 
-          .afTransportBadgeSlot{
+                    .afTransportBadgeSlot{
             grid-row: 2;
             justify-self: start;
             min-height: 0;
-            padding-left: 2px;
+            padding-left: 0;
           }
         }
 

@@ -229,7 +229,7 @@ export default async function Home() {
         .landingLogoBlock {
           display: grid;
           justify-items: center;
-          gap: 24px;
+          gap: 40px;
         }
 
                .landingEyebrow {
