@@ -58,15 +58,88 @@ function fmtSnapshotStamp(iso: string): string {
   }
 }
 
-function fmtDayTick(iso: string): string {
+function fmtTrendTick(iso: string, range: TrendRangeKey): string {
   try {
-    return new Date(iso).toLocaleDateString("en-NZ", {
-      day: "numeric",
-      month: "short",
+    const date = new Date(iso);
+
+    if (range === "hour") {
+      return date.toLocaleTimeString("en-NZ", {
+        hour: "numeric",
+      });
+    }
+
+    if (range === "day") {
+      return date.toLocaleDateString("en-NZ", {
+        day: "numeric",
+        month: "short",
+      });
+    }
+
+    if (range === "week") {
+      return date.toLocaleDateString("en-NZ", {
+        day: "numeric",
+        month: "short",
+      });
+    }
+
+    if (range === "month") {
+      return date.toLocaleDateString("en-NZ", {
+        month: "short",
+      });
+    }
+
+    return date.toLocaleDateString("en-NZ", {
+      year: "numeric",
     });
   } catch {
     return iso;
   }
+}
+
+type ChartPoint = {
+  x: number;
+  y: number;
+};
+
+function buildSmoothCommands(points: ChartPoint[]): string {
+  if (points.length < 2) return "";
+
+  let d = "";
+
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const p0 = points[index - 1] ?? points[index];
+    const p1 = points[index];
+    const p2 = points[index + 1];
+    const p3 = points[index + 2] ?? p2;
+
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+  }
+
+  return d;
+}
+
+function buildSmoothLinePath(points: ChartPoint[]): string {
+  if (points.length === 0) return "";
+  return `M ${points[0].x} ${points[0].y}${buildSmoothCommands(points)}`;
+}
+
+function buildSmoothAreaPath(upper: ChartPoint[], lower: ChartPoint[]): string {
+  if (upper.length === 0 || lower.length === 0) return "";
+
+  const reversedLower = [...lower].reverse();
+
+  return [
+    `M ${upper[0].x} ${upper[0].y}`,
+    buildSmoothCommands(upper),
+    ` L ${reversedLower[0].x} ${reversedLower[0].y}`,
+    buildSmoothCommands(reversedLower),
+    " Z",
+  ].join("");
 }
 
 function formatAggregateValue(
@@ -86,7 +159,9 @@ function percentage(part: number, total: number): number {
 
 type TrackRow = PlaybackAdminSnapshot["topTracksByListenedMs"][number];
 type DedupeRowBase = PlaybackAdminSnapshot["recentDedupe"][number];
-type TrendDay = PlaybackAdminSnapshot["qualifiedPlayTrend30d"][number];
+type TrendRangeKey = keyof PlaybackAdminSnapshot["qualifiedPlayTrends"];
+type TrendBucket =
+  PlaybackAdminSnapshot["qualifiedPlayTrends"][TrendRangeKey]["buckets"][number];
 
 type DedupeRow = DedupeRowBase & {
   recordingTitle?: string | null;
@@ -635,19 +710,137 @@ function MetricPill(props: { label: string; value: string }) {
   );
 }
 
-function QualifiedPlayTrendChart(props: { rows: TrendDay[] }) {
-  const rows = props.rows;
-  const height = 180;
-  const width = 920;
-  const paddingTop = 12;
-  const paddingBottom = 28;
-  const chartHeight = height - paddingTop - paddingBottom;
-  const barGap = 6;
-  const barWidth = Math.max(
-    6,
-    Math.floor((width - (rows.length - 1) * barGap) / rows.length),
+function TrendRangeToggle(props: {
+  value: TrendRangeKey;
+  onChange: (value: TrendRangeKey) => void;
+}) {
+  const options: TrendRangeKey[] = ["hour", "day", "week", "month", "year"];
+
+  return (
+    <div
+      style={{
+        display: "inline-flex",
+        gap: 6,
+        flexWrap: "wrap",
+      }}
+    >
+      {options.map((option) => {
+        const selected = props.value === option;
+
+        return (
+          <button
+            key={option}
+            type="button"
+            onClick={() => props.onChange(option)}
+            style={{
+              height: 30,
+              padding: "0 12px",
+              borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: selected
+                ? "rgba(255,255,255,0.12)"
+                : "rgba(255,255,255,0.04)",
+              color: selected ? TEXT_PRIMARY : TEXT_MUTED,
+              cursor: "pointer",
+              fontSize: FONT_SIZE_UI,
+              fontWeight: 700,
+              textTransform: "capitalize",
+            }}
+          >
+            {option}
+          </button>
+        );
+      })}
+    </div>
   );
-  const maxCount = Math.max(1, ...rows.map((row) => row.sitePlayCount));
+}
+
+function QualifiedPlayTrendChart(props: {
+  rows: TrendBucket[];
+  range: TrendRangeKey;
+}) {
+  const rows = props.rows;
+  const width = 920;
+  const height = 240;
+  const paddingTop = 12;
+  const paddingRight = 14;
+  const paddingBottom = 32;
+  const paddingLeft = 46;
+  const innerWidth = width - paddingLeft - paddingRight;
+  const innerHeight = height - paddingTop - paddingBottom;
+
+  const series = [
+    {
+      key: "anonymous",
+      label: "Anonymous plays",
+      fill: "rgba(255,255,255,0.18)",
+      values: rows.map((row) => row.anonymousPlayCount),
+    },
+    {
+      key: "member",
+      label: "Member plays",
+      fill: "rgba(255,255,255,0.56)",
+      values: rows.map((row) => row.memberPlayCount),
+    },
+  ] as const;
+
+  const maxTotal = Math.max(1, ...rows.map((row) => row.sitePlayCount));
+  const yTickCount = 4;
+  const yTicks = Array.from({ length: yTickCount + 1 }, (_, index) => {
+    const ratio = index / yTickCount;
+    const value = Math.round(maxTotal * (1 - ratio));
+    const y = paddingTop + innerHeight * ratio;
+    return { value, y };
+  });
+
+  const xForIndex = (index: number): number => {
+    if (rows.length <= 1) return paddingLeft + innerWidth / 2;
+    return paddingLeft + (index / (rows.length - 1)) * innerWidth;
+  };
+
+  const yForValue = (value: number): number =>
+    paddingTop + innerHeight - (value / maxTotal) * innerHeight;
+
+  const stackedLayers = series.map((layer, layerIndex) => {
+    const lowerValues = rows.map((_, rowIndex) =>
+      series
+        .slice(0, layerIndex)
+        .reduce((sum, candidate) => sum + candidate.values[rowIndex], 0),
+    );
+
+    const upperValues = lowerValues.map(
+      (lower, rowIndex) => lower + layer.values[rowIndex],
+    );
+
+    const lowerPoints = lowerValues.map((value, rowIndex) => ({
+      x: xForIndex(rowIndex),
+      y: yForValue(value),
+    }));
+
+    const upperPoints = upperValues.map((value, rowIndex) => ({
+      x: xForIndex(rowIndex),
+      y: yForValue(value),
+    }));
+
+    return {
+      key: layer.key,
+      label: layer.label,
+      fill: layer.fill,
+      lowerPoints,
+      upperPoints,
+      areaPath: buildSmoothAreaPath(upperPoints, lowerPoints),
+      linePath: buildSmoothLinePath(upperPoints),
+    };
+  });
+
+  const tickIndexes = Array.from(
+    new Set([
+      0,
+      Math.floor((rows.length - 1) * 0.33),
+      Math.floor((rows.length - 1) * 0.66),
+      rows.length - 1,
+    ]),
+  ).filter((index) => index >= 0 && index < rows.length);
 
   return (
     <div
@@ -664,53 +857,37 @@ function QualifiedPlayTrendChart(props: { rows: TrendDay[] }) {
           alignItems: "center",
         }}
       >
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            color: TEXT_MUTED,
-            fontSize: FONT_SIZE_UI,
-          }}
-        >
-          <span
+        {stackedLayers.map((layer) => (
+          <div
+            key={layer.key}
             style={{
-              width: 10,
-              height: 10,
-              borderRadius: 999,
-              background: BG_MEMBER,
-              display: "inline-block",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              color: TEXT_MUTED,
+              fontSize: FONT_SIZE_UI,
             }}
-          />
-          Member plays
-        </div>
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            color: TEXT_MUTED,
-            fontSize: FONT_SIZE_UI,
-          }}
-        >
-          <span
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: 999,
-              background: BG_ANON,
-              display: "inline-block",
-            }}
-          />
-          Anonymous plays
-        </div>
+          >
+            <span
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 999,
+                background: layer.fill,
+                display: "inline-block",
+              }}
+            />
+            {layer.label}
+          </div>
+        ))}
+
         <div
           style={{
             color: TEXT_FAINT,
             fontSize: FONT_SIZE_UI,
           }}
         >
-          Last 30 days
+          Total qualified plays
         </div>
       </div>
 
@@ -726,80 +903,66 @@ function QualifiedPlayTrendChart(props: { rows: TrendDay[] }) {
           viewBox={`0 0 ${width} ${height}`}
           style={{ width: "100%", height: "auto", display: "block" }}
           role="img"
-          aria-label="Qualified plays over the last 30 days"
+          aria-label={`Qualified plays over the selected ${props.range} range`}
         >
-          {[0.25, 0.5, 0.75, 1].map((ratio) => {
-            const y = paddingTop + chartHeight - chartHeight * ratio;
-            return (
+          {yTicks.map((tick) => (
+            <g key={`${tick.value}:${tick.y}`}>
               <line
-                key={ratio}
-                x1={0}
-                y1={y}
-                x2={width}
-                y2={y}
+                x1={paddingLeft}
+                y1={tick.y}
+                x2={width - paddingRight}
+                y2={tick.y}
                 stroke="rgba(255,255,255,0.08)"
                 strokeWidth="1"
               />
-            );
-          })}
+              <text
+                x={paddingLeft - 8}
+                y={tick.y + 3}
+                textAnchor="end"
+                fill={TEXT_FAINT}
+                fontSize="10"
+              >
+                {formatNumber(tick.value)}
+              </text>
+            </g>
+          ))}
 
-          {rows.map((row, index) => {
-            const x = index * (barWidth + barGap);
-            const memberHeight =
-              maxCount > 0 ? (row.memberPlayCount / maxCount) * chartHeight : 0;
-            const anonymousHeight =
-              maxCount > 0
-                ? (row.anonymousPlayCount / maxCount) * chartHeight
-                : 0;
+          {stackedLayers.map((layer) => (
+            <path
+              key={`${layer.key}:fill`}
+              d={layer.areaPath}
+              fill={layer.fill}
+              fillOpacity={0.72}
+              stroke="none"
+            />
+          ))}
 
-            const anonY = paddingTop + chartHeight - anonymousHeight;
-            const memberY = anonY - memberHeight;
+          {stackedLayers.map((layer) => (
+            <path
+              key={`${layer.key}:line`}
+              d={layer.linePath}
+              fill="none"
+              stroke="rgba(255,255,255,0.78)"
+              strokeWidth="1"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          ))}
 
-            const isFirst = index === 0;
-            const isMiddle = index === Math.floor(rows.length / 2);
-            const isLast = index === rows.length - 1;
-            const showTick = isFirst || isMiddle || isLast;
-
-            return (
-              <g key={row.date}>
-                {row.anonymousPlayCount > 0 ? (
-                  <rect
-                    x={x}
-                    y={anonY}
-                    width={barWidth}
-                    height={anonymousHeight}
-                    rx={3}
-                    ry={3}
-                    fill={BG_ANON}
-                  />
-                ) : null}
-
-                {row.memberPlayCount > 0 ? (
-                  <rect
-                    x={x}
-                    y={memberY}
-                    width={barWidth}
-                    height={memberHeight}
-                    rx={3}
-                    ry={3}
-                    fill={BG_MEMBER}
-                  />
-                ) : null}
-
-                {showTick ? (
-                  <text
-                    x={x + barWidth / 2}
-                    y={height - 8}
-                    textAnchor="middle"
-                    fill={TEXT_FAINT}
-                    fontSize="10"
-                  >
-                    {fmtDayTick(row.date)}
-                  </text>
-                ) : null}
-              </g>
-            );
-          })}
+          {tickIndexes.map((index) => (
+            <text
+              key={rows[index]?.bucketStart ?? index}
+              x={xForIndex(index)}
+              y={height - 8}
+              textAnchor="middle"
+              fill={TEXT_FAINT}
+              fontSize="10"
+            >
+              {rows[index]
+                ? fmtTrendTick(rows[index].bucketStart, props.range)
+                : ""}
+            </text>
+          ))}
         </svg>
       </div>
     </div>
@@ -1015,6 +1178,7 @@ export default function PlaybackTelemetryDashboardClient(props: {
   const router = useRouter();
   const [autoRefresh, setAutoRefresh] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
+  const [trendRange, setTrendRange] = React.useState<TrendRangeKey>("day");
   const snapshot = props.initialSnapshot;
 
   React.useEffect(() => {
@@ -1032,7 +1196,8 @@ export default function PlaybackTelemetryDashboardClient(props: {
     setRefreshing(false);
   }, [snapshot.generatedAt]);
 
-  const recentPlayTotal = snapshot.qualifiedPlayTrend30d.reduce(
+  const selectedTrend = snapshot.qualifiedPlayTrends[trendRange];
+  const recentPlayTotal = selectedTrend.buckets.reduce(
     (sum, row) => sum + row.sitePlayCount,
     0,
   );
@@ -1134,7 +1299,7 @@ export default function PlaybackTelemetryDashboardClient(props: {
               value={formatNumber(snapshot.site30d.playCount)}
             />
             <MetricPill
-              label="Trend total · 30d"
+              label={`Trend total · ${selectedTrend.label}`}
               value={formatNumber(recentPlayTotal)}
             />
           </div>
@@ -1142,9 +1307,15 @@ export default function PlaybackTelemetryDashboardClient(props: {
 
         <SectionCard
           title="Qualified plays over time"
-          subtitle="Stacked daily bars show the last 30 days of qualified play activity, split between signed-in members and anonymous listeners."
+          subtitle="Stacked area layers show total qualified plays across the selected time horizon, split between signed-in members and anonymous listeners."
+          headerRight={
+            <TrendRangeToggle value={trendRange} onChange={setTrendRange} />
+          }
         >
-          <QualifiedPlayTrendChart rows={snapshot.qualifiedPlayTrend30d} />
+          <QualifiedPlayTrendChart
+            rows={selectedTrend.buckets}
+            range={trendRange}
+          />
         </SectionCard>
 
         <div
