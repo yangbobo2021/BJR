@@ -1,8 +1,15 @@
 // web/app/(site)/exegesis/[displayId]/components/ExegesisTrackLoadingShell.tsx
 import React from "react";
-import ExegesisDiscourseShimmer from "./ExegesisDiscourseShimmer";
 
-export default function ExegesisTrackLoadingShell() {
+export default function ExegesisTrackLoadingShell(props: {
+  title?: string | null;
+  artist?: string | null;
+  headerLeading?: React.ReactNode;
+  headerArtwork?: React.ReactNode;
+}) {
+  const title = (props.title ?? "").trim();
+  const artist = (props.artist ?? "").trim();
+
   return (
     <div
       className="w-full max-w-none p-0 pb-4"
@@ -44,11 +51,39 @@ export default function ExegesisTrackLoadingShell() {
 
       <div className="min-w-0 py-2">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="afShimmerBlock h-14 w-14 shrink-0 rounded-md bg-white/5" />
+          {props.headerLeading ? (
+            <div className="flex shrink-0 items-center justify-center">
+              {props.headerLeading}
+            </div>
+          ) : (
+            <div className="afShimmerBlock h-9 w-9 shrink-0 rounded-md bg-white/5" />
+          )}
+
+          {props.headerArtwork ? (
+            <div className="flex shrink-0 items-center justify-center">
+              {props.headerArtwork}
+            </div>
+          ) : (
+            <div className="afShimmerBlock h-10 w-10 shrink-0 rounded-md bg-white/5" />
+          )}
 
           <div className="min-w-0 flex-1">
-            <div className="afShimmerBlock h-7 w-[52%] rounded bg-white/5" />
-            <div className="mt-2 afShimmerBlock h-4 w-[28%] rounded bg-white/5" />
+            {title ? (
+              <h1 className="text-xl font-semibold leading-tight">
+                <span className="opacity-90">{title}</span>
+              </h1>
+            ) : (
+              <div className="afShimmerBlock h-7 w-[52%] rounded bg-white/5" />
+            )}
+
+            {artist ? (
+              <div className="mt-1 text-sm leading-tight opacity-70">
+                {artist}
+              </div>
+            ) : (
+              <div className="mt-2 afShimmerBlock h-4 w-[28%] rounded bg-white/5" />
+            )}
+
             <div className="mt-3 afShimmerBlock h-8 w-8 rounded-md bg-white/5" />
           </div>
         </div>
@@ -75,8 +110,13 @@ export default function ExegesisTrackLoadingShell() {
         </div>
 
         <div className="hidden md:block">
-          <div className="rounded-xl bg-white/5 p-4">
-            <ExegesisDiscourseShimmer />
+          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+            <div className="afShimmerBlock h-5 w-40 rounded bg-white/5" />
+            <div className="mt-4 space-y-3">
+              <div className="afShimmerBlock h-10 w-full rounded-md bg-white/5" />
+              <div className="afShimmerBlock h-10 w-full rounded-md bg-white/5" />
+              <div className="afShimmerBlock h-10 w-[82%] rounded-md bg-white/5" />
+            </div>
           </div>
         </div>
 
