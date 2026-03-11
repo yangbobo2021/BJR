@@ -1,10 +1,10 @@
+// web/app/admin/playback/PlaybackTelemetryDashboardClient.tsx
 "use client";
 
 import React from "react";
 import { useRouter } from "next/navigation";
 import type { PlaybackAdminSnapshot } from "@/lib/playbackAdmin";
 import AdminPageFrame from "../AdminPageFrame";
-import { AggregateTable } from "./dashboard/AggregateTable";
 import { AudienceSplitCard } from "./dashboard/AudienceSplitCard";
 import { DedupeTable } from "./dashboard/DedupeTable";
 import {
@@ -109,7 +109,7 @@ export default function PlaybackTelemetryDashboardClient(props: {
       embed={props.embed}
       maxWidth={1360}
       title="Playback telemetry"
-      subtitle="Monitor site-wide listening aggregates, recent recording activity, audience provenance, and telemetry dedupe behaviour."
+      subtitle="Monitor site-wide qualified play trends, audience provenance, top tracks by listened time, and telemetry dedupe behaviour."
       headerActions={headerActions}
     >
       <div
@@ -177,40 +177,17 @@ export default function PlaybackTelemetryDashboardClient(props: {
           style={{
             display: "grid",
             gap: 16,
-            gridTemplateColumns: "minmax(0, 1.6fr) minmax(320px, 0.9fr)",
-            alignItems: "start",
-          }}
-        >
-          <SectionCard
-            title="Listening aggregates"
-            subtitle=""
-          >
-            <AggregateTable snapshot={snapshot} />
-          </SectionCard>
-
-          <AudienceSplitCard snapshot={snapshot} />
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gap: 16,
             gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-            alignItems: "start",
+            alignItems: "stretch",
           }}
         >
+          <AudienceSplitCard snapshot={snapshot} />
+
           <SectionCard
             title="Top tracks by listened time"
             subtitle=""
           >
             <TrackTable rows={snapshot.topTracksByListenedMs} />
-          </SectionCard>
-
-          <SectionCard
-            title="Most recent track activity"
-            subtitle=""
-          >
-            <TrackTable rows={snapshot.recentTracks} />
           </SectionCard>
         </div>
 
