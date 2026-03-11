@@ -7,6 +7,7 @@ import { EVENT_TYPES } from "@/lib/vocab";
 
 const RECENT_WINDOW_DAYS = 30;
 const TELEMETRY_PROGRESS_STEP_MS = 15_000;
+const RECENT_DEDUPE_SESSION_LIMIT = 24;
 
 type AggregateRow = {
   listened_ms: string | number;
@@ -727,7 +728,7 @@ async function getRecentDedupe(): Promise<PlaybackAdminDedupeRow[]> {
         limit 1
       ) evt on true
     ),
-        recent_anonymous_dedupe as (
+    recent_anonymous_dedupe as (
       select
         null::uuid as member_id,
         null::text as member_email,
@@ -738,6 +739,27 @@ async function getRecentDedupe(): Promise<PlaybackAdminDedupeRow[]> {
         d.created_at::text as created_at,
         'anonymous'::text as audience
       from anonymous_playback_telemetry_dedupe d
+    ),
+    all_dedupe_rows as (
+      select * from recent_member_dedupe
+      union all
+      select * from recent_anonymous_dedupe
+    ),
+    recent_sessions as (
+      select
+        audience,
+        coalesce(member_id::text, 'anonymous') as identity_key,
+        coalesce(recording_id, '__unknown_recording__') as recording_key,
+        playback_id,
+        max(created_at::timestamptz) as latest_at
+      from all_dedupe_rows
+      group by
+        audience,
+        coalesce(member_id::text, 'anonymous'),
+        coalesce(recording_id, '__unknown_recording__'),
+        playback_id
+      order by latest_at desc
+      limit ${RECENT_DEDUPE_SESSION_LIMIT}
     )
     select
       t.member_id::text as member_id,
@@ -748,13 +770,13 @@ async function getRecentDedupe(): Promise<PlaybackAdminDedupeRow[]> {
       t.milestone_key,
       t.created_at,
       t.audience
-    from (
-      select * from recent_member_dedupe
-      union all
-      select * from recent_anonymous_dedupe
-    ) t
+    from all_dedupe_rows t
+    inner join recent_sessions s
+      on s.audience = t.audience
+      and s.identity_key = coalesce(t.member_id::text, 'anonymous')
+      and s.recording_key = coalesce(t.recording_id, '__unknown_recording__')
+      and s.playback_id = t.playback_id
     order by t.created_at desc
-    limit 40
   `;
 
   const titleByRecordingId = new Map<string, string | null>();

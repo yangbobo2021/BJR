@@ -179,13 +179,22 @@ export default async function Home() {
         }
 
         .landingBackdrop::after {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background:
-            linear-gradient(180deg, rgba(0,0,0,0.68) 0%, rgba(0,0,0,0.48) 38%, rgba(0,0,0,0.78) 100%),
-            linear-gradient(90deg, rgba(0,0,0,0.24) 0%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.24) 100%);
-        }
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,0.68) 0%, rgba(0,0,0,0.48) 38%, rgba(0,0,0,0.78) 100%),
+    linear-gradient(90deg, rgba(0,0,0,0.24) 0%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.24) 100%),
+    repeating-radial-gradient(circle at 12% 18%, rgba(255,255,255,0.035) 0 0.6px, transparent 0.6px 2px),
+    repeating-radial-gradient(circle at 78% 62%, rgba(255,255,255,0.025) 0 0.8px, transparent 0.8px 2.6px);
+  background-size:
+    auto,
+    auto,
+    120px 100px,
+    160px 140px;
+  opacity: 0.16;
+  mix-blend-mode: soft-light;
+}
 
         .landingBackdropGrain {
           position: absolute;
@@ -338,56 +347,56 @@ export default async function Home() {
           will-change: transform, opacity, background-position;
         }
 
-        .landingLogoGlisten {
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          z-index: 6;
-          -webkit-mask-image: var(--afLogoMaskUrl);
-          mask-image: var(--afLogoMaskUrl);
-          -webkit-mask-repeat: no-repeat;
-          mask-repeat: no-repeat;
-          -webkit-mask-size: contain;
-          mask-size: contain;
-          -webkit-mask-position: center;
-          mask-position: center;
-          mix-blend-mode: screen;
-          opacity: 0;
-          animation: afLogoGlistenOpacity 62s ease-in-out infinite;
-          will-change: opacity;
-        }
+       .landingLogoGlisten {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  -webkit-mask-image: var(--afLogoMaskUrl);
+  mask-image: var(--afLogoMaskUrl);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  mask-position: center;
+  mix-blend-mode: lighten;
+  opacity: 0;
+  animation: afLogoGlistenOpacity 62s ease-in-out infinite;
+  will-change: opacity;
+}
 
         .landingLogoGlisten::before {
-          content: "";
-          position: absolute;
-          inset: -20%;
-          pointer-events: none;
-          background-image:
-            linear-gradient(
-              120deg,
-              rgba(255,255,255,0.00) 0%,
-              rgba(255,255,255,0.00) 16%,
-              rgba(255,255,255,0.07) 46%,
-              rgba(255,255,255,0.00) 76%,
-              rgba(255,255,255,0.00) 100%
-            ),
-            linear-gradient(
-              120deg,
-              rgba(255,255,255,0.00) 0%,
-              rgba(255,255,255,0.00) 36%,
-              rgba(255,255,255,0.24) 50%,
-              rgba(255,255,255,0.00) 64%,
-              rgba(255,255,255,0.00) 100%
-            );
-          background-repeat: no-repeat;
-          background-size: 420% 420%, 420% 420%;
-          background-position: -260% -260%, -260% -260%;
-          filter: blur(1.1px);
-          transform: rotate(-10deg) skewX(-10deg) scaleY(1.06);
-          border-radius: 999px;
-          animation: afLogoGlistenTravel 62s ease-in-out infinite;
-          will-change: background-position, transform;
-        }
+  content: "";
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  background-image:
+    linear-gradient(
+      120deg,
+      rgba(255,255,255,0.00) 0%,
+      rgba(255,255,255,0.00) 18%,
+      rgba(255,255,255,0.10) 46%,
+      rgba(255,255,255,0.00) 74%,
+      rgba(255,255,255,0.00) 100%
+    ),
+    linear-gradient(
+      120deg,
+      rgba(255,255,255,0.00) 0%,
+      rgba(255,255,255,0.00) 38%,
+      rgba(255,255,255,0.34) 50%,
+      rgba(255,255,255,0.00) 62%,
+      rgba(255,255,255,0.00) 100%
+    );
+  background-repeat: no-repeat;
+  background-size: 420% 420%, 420% 420%;
+  background-position: -260% -260%, -260% -260%;
+  filter: blur(0.6px);
+  transform: rotate(-10deg) skewX(-10deg) scaleY(1.04);
+  border-radius: 999px;
+  animation: afLogoGlistenTravel 62s ease-in-out infinite;
+  will-change: background-position, transform;
+}
 
         .landingHeadingFallback {
           margin: 0;
@@ -549,9 +558,7 @@ export default async function Home() {
         style={{
           position: "absolute",
           inset: 0,
-          backgroundImage: bgUrl
-            ? `url(${bgUrl})`
-            : "linear-gradient(180deg, #050506 0%, #0a0a10 54%, #050506 100%)",
+          background: bgUrl ? `url(${bgUrl}) center / cover no-repeat` : "#000",
           backgroundSize: "cover",
           backgroundPosition: "center",
           filter: bgUrl

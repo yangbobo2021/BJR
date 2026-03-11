@@ -621,7 +621,7 @@ function buildDedupeSessionRows(rows: DedupeRow[]): DedupeSessionRow[] {
 
       const progressPct = hasComplete
         ? 100
-        : Math.max(0, Math.min(100, maxProgressMs / 1000));
+        : Math.max(0, Math.min(92, maxProgressMs / 1000));
 
       const statusLabel = hasComplete
         ? "Completed"

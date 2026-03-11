@@ -33,6 +33,11 @@ function fmtPlayCount(value: number | undefined): string {
   return `${(n / 1_000_000).toFixed(1)}M plays`;
 }
 
+function fmtActiveListeners(value: number): string {
+  const n = Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
+  return n === 1 ? "1 listening now" : `${n} listening now`;
+}
+
 function tierRank(t: Tier): number {
   if (t === "partner") return 3;
   if (t === "patron") return 2;
@@ -673,6 +678,52 @@ export default function FullPlayer(props: {
 
   const playingish = p.status === "playing" || p.status === "loading";
 
+  const [activeListeners, setActiveListeners] = React.useState<number>(0);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function refreshActiveListeners(): Promise<void> {
+      try {
+        const res = await fetch("/api/playback/live?windowSeconds=30", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (!res.ok) return;
+
+        const body = (await res.json()) as {
+          ok?: boolean;
+          activeListeners?: number;
+        };
+
+        if (cancelled) return;
+
+        const next =
+          typeof body.activeListeners === "number" &&
+          Number.isFinite(body.activeListeners) &&
+          body.activeListeners >= 0
+            ? Math.floor(body.activeListeners)
+            : 0;
+
+        setActiveListeners(next);
+      } catch {
+        if (cancelled) return;
+      }
+    }
+
+    void refreshActiveListeners();
+
+    const id = window.setInterval(() => {
+      void refreshActiveListeners();
+    }, 10_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, []);
+
   const [access, setAccess] = React.useState<{
     forCatalogueId: string;
     allowed: boolean;
@@ -1052,107 +1103,118 @@ export default function FullPlayer(props: {
           </div>
         ) : null}
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            marginTop: 8,
-          }}
-        >
-          <IconCircleBtn label="Download" onClick={gotoDownload}>
-            <DownloadIcon />
-          </IconCircleBtn>
-
-          <IconCircleBtn
-            label="Previous"
-            disabled={prevDisabled}
-            onClick={() => {
-              lockTransportFor(350);
-              if (prevDisabled) return;
-              playAlbumIndex(albumIdx - 1);
-            }}
-          >
-            <PrevIcon />
-          </IconCircleBtn>
-
-          <div style={{ position: "relative", width: 64, height: 64 }}>
-            <button
-              type="button"
-              onClick={canPlay && !playLock ? onTogglePlay : undefined}
-              onMouseEnter={() => prefetchTrack(effTracks[0])}
-              onFocus={() => prefetchTrack(effTracks[0])}
-              disabled={!canPlay || playLock}
-              aria-label={playingThisAlbum ? "Pause" : "Play"}
-              title={playingThisAlbum ? "Pause" : "Play"}
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: 999,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(245,245,245,0.95)",
-                color: "rgba(0,0,0,0.92)",
-                display: "grid",
-                placeItems: "center",
-                cursor: canPlay ? "pointer" : "default",
-                opacity: canPlay ? 1 : 0.55,
-                boxShadow: playingThisAlbum
-                  ? "0 18px 50px rgba(0,0,0,0.35)"
-                  : "0 18px 50px rgba(0,0,0,0.30)",
-                transform: "translateZ(0)",
-                position: "relative",
-                zIndex: 2,
-              }}
-            >
-              <PlayPauseBig playing={playingThisAlbum} />
-            </button>
-
-            {canPlay ? (
+        <div className="afTransportRow">
+          <div className="afTransportBadgeSlot">
+            {activeListeners > 0 ? (
               <div
-                style={{
-                  position: "absolute",
-                  inset: -5,
-                  zIndex: 1,
-                  pointerEvents: "none",
-                  overflow: "visible",
-                  isolation: "isolate",
-                  transform: "translateZ(0)",
-                  display: "grid",
-                  placeItems: "center",
-                }}
+                className="afLiveBadge"
+                aria-live="polite"
+                aria-label={fmtActiveListeners(activeListeners)}
+                title={fmtActiveListeners(activeListeners)}
               >
-                <PatternRingGlow
-                  size={64}
-                  ringPx={1}
-                  glowPx={2}
-                  blurPx={4}
-                  opacity={0.45}
-                  seed={913}
-                />
+                <span className="afLiveBadgeDot" aria-hidden="true" />
+                <span>{fmtActiveListeners(activeListeners)}</span>
               </div>
             ) : null}
           </div>
 
-          <IconCircleBtn
-            label="Next"
-            disabled={nextDisabled}
-            onClick={() => {
-              lockTransportFor(350);
-              if (nextDisabled) return;
-              playAlbumIndex(albumIdx + 1);
-            }}
-          >
-            <NextIcon />
-          </IconCircleBtn>
+          <div className="afTransportControls">
+            <IconCircleBtn label="Download" onClick={gotoDownload}>
+              <DownloadIcon />
+            </IconCircleBtn>
 
-          <IconCircleBtn
-            label="Share"
-            onClick={() => {
-              void shareAlbum(shareCtx);
-            }}
-          >
-            <ShareIcon />
-          </IconCircleBtn>
+            <IconCircleBtn
+              label="Previous"
+              disabled={prevDisabled}
+              onClick={() => {
+                lockTransportFor(350);
+                if (prevDisabled) return;
+                playAlbumIndex(albumIdx - 1);
+              }}
+            >
+              <PrevIcon />
+            </IconCircleBtn>
+
+            <div style={{ position: "relative", width: 64, height: 64 }}>
+              <button
+                type="button"
+                onClick={canPlay && !playLock ? onTogglePlay : undefined}
+                onMouseEnter={() => prefetchTrack(effTracks[0])}
+                onFocus={() => prefetchTrack(effTracks[0])}
+                disabled={!canPlay || playLock}
+                aria-label={playingThisAlbum ? "Pause" : "Play"}
+                title={playingThisAlbum ? "Pause" : "Play"}
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "rgba(245,245,245,0.95)",
+                  color: "rgba(0,0,0,0.92)",
+                  display: "grid",
+                  placeItems: "center",
+                  cursor: canPlay ? "pointer" : "default",
+                  opacity: canPlay ? 1 : 0.55,
+                  boxShadow: playingThisAlbum
+                    ? "0 18px 50px rgba(0,0,0,0.35)"
+                    : "0 18px 50px rgba(0,0,0,0.30)",
+                  transform: "translateZ(0)",
+                  position: "relative",
+                  zIndex: 2,
+                }}
+              >
+                <PlayPauseBig playing={playingThisAlbum} />
+              </button>
+
+              {canPlay ? (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: -5,
+                    zIndex: 1,
+                    pointerEvents: "none",
+                    overflow: "visible",
+                    isolation: "isolate",
+                    transform: "translateZ(0)",
+                    display: "grid",
+                    placeItems: "center",
+                  }}
+                >
+                  <PatternRingGlow
+                    size={64}
+                    ringPx={1}
+                    glowPx={2}
+                    blurPx={4}
+                    opacity={0.45}
+                    seed={913}
+                  />
+                </div>
+              ) : null}
+            </div>
+
+            <IconCircleBtn
+              label="Next"
+              disabled={nextDisabled}
+              onClick={() => {
+                lockTransportFor(350);
+                if (nextDisabled) return;
+                playAlbumIndex(albumIdx + 1);
+              }}
+            >
+              <NextIcon />
+            </IconCircleBtn>
+
+            <IconCircleBtn
+              label="Share"
+              onClick={() => {
+                void shareAlbum(shareCtx);
+              }}
+            >
+              <ShareIcon />
+            </IconCircleBtn>
+          </div>
+
+          <div aria-hidden="true" />
         </div>
       </div>
 
@@ -1694,6 +1756,81 @@ export default function FullPlayer(props: {
 
         @media (prefers-reduced-motion: reduce){
           .afEq i{ animation: none; }
+        }
+
+               .afTransportRow{
+          width: 100%;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+          align-items: center;
+          gap: 12px;
+          margin-top: 8px;
+        }
+
+        .afTransportBadgeSlot{
+          justify-self: start;
+          min-height: 36px;
+          display: flex;
+          align-items: center;
+        }
+
+        .afTransportControls{
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .afLiveBadge{
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          min-height: 34px;
+          padding: 0 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.14);
+          background: rgba(255,255,255,0.05);
+          color: rgba(255,255,255,0.88);
+          font-size: 12px;
+          font-weight: 650;
+          letter-spacing: 0.01em;
+          white-space: nowrap;
+          box-shadow: 0 10px 24px rgba(0,0,0,0.16);
+        }
+
+        .afLiveBadgeDot{
+          width: 8px;
+          height: 8px;
+          border-radius: 999px;
+          background: color-mix(in srgb, var(--accent) 84%, white 16%);
+          box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+          animation: afLivePulse 1.9s ease-in-out infinite;
+          flex: 0 0 auto;
+        }
+
+        @keyframes afLivePulse{
+          0%, 100%{ transform: scale(0.92); opacity: 0.82; }
+          50%{ transform: scale(1.08); opacity: 1; }
+        }
+
+        @media (prefers-reduced-motion: reduce){
+          .afLiveBadgeDot{ animation: none; }
+        }
+
+        @media (max-width: 640px){
+          .afTransportRow{
+            grid-template-columns: 1fr;
+            justify-items: center;
+          }
+
+          .afTransportControls{
+            grid-row: 1;
+          }
+
+          .afTransportBadgeSlot{
+            grid-row: 2;
+            justify-self: center;
+            min-height: 0;
+          }
         }
 
         .afTrackRow .afRowShare{
