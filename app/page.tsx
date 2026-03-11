@@ -223,13 +223,13 @@ export default async function Home() {
           gap: 24px;
         }
 
-                .landingEyebrow,
-        .landingSubtitlePill {
+               .landingEyebrow {
           display: inline-flex;
           align-items: center;
           justify-content: center;
           min-height: 34px;
           padding: 0 14px;
+          gap: 10px;
           border: 1px solid rgba(255,255,255,0.12);
           border-radius: 999px;
           background: rgba(255,255,255,0.04);
@@ -237,10 +237,6 @@ export default async function Home() {
           backdrop-filter: blur(14px);
           -webkit-backdrop-filter: blur(14px);
           white-space: nowrap;
-        }
-
-        .landingEyebrow {
-          gap: 10px;
           color: rgba(255,255,255,0.74);
           font-size: 12px;
           line-height: 1;
@@ -402,45 +398,40 @@ export default async function Home() {
           text-shadow: 0 18px 38px rgba(0,0,0,0.34);
         }
 
-                .landingSubtitlePill {
+                  .landingSubtitleText {
           position: relative;
+          display: inline-block;
           max-width: min(100%, 560px);
-          min-height: 40px;
-          padding: 0 22px;
-          border-color: rgba(255,255,255,0.10);
-          background:
-            linear-gradient(180deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.018) 100%);
-          box-shadow:
-            0 16px 34px rgba(0,0,0,0.18),
-            inset 0 1px 0 rgba(255,255,255,0.04);
-          color: rgba(255,255,255,0.58);
-          font-size: clamp(11px, 1.05vw, 12px);
-          line-height: 1;
-          letter-spacing: 0.22em;
+          padding: 0 0 8px;
+          color: rgba(255,255,255,0.72);
+          font-size: clamp(15px, 1.8vw, 19px);
+          line-height: 1.2;
+          letter-spacing: 0.14em;
           text-transform: uppercase;
           text-shadow:
-            0 1px 0 rgba(255,255,255,0.04),
-            0 -1px 0 rgba(0,0,0,0.28);
-          filter: saturate(0.85);
+            0 1px 0 rgba(255,255,255,0.03),
+            0 -1px 0 rgba(0,0,0,0.22);
         }
 
-        .landingSubtitlePill::before {
+        .landingSubtitleText::after {
           content: "";
           position: absolute;
-          inset: 1px;
-          border-radius: 999px;
-          pointer-events: none;
-          background:
-            linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.00));
-          opacity: 0.7;
+          left: 0;
+          bottom: 0;
+          width: 100%;
+          height: 1px;
+          background: linear-gradient(
+            90deg,
+            transparent 0%,
+            rgba(255,255,255,0.82) 50%,
+            transparent 100%
+          );
+          opacity: 0.72;
         }
 
-        .landingSubtitlePill > span {
-          position: relative;
-          z-index: 1;
+        .landingSubtitleText > span {
           display: inline-block;
-          transform: translateX(0.11em);
-          mix-blend-mode: screen;
+          transform: translateX(0.07em);
         }
 
                 .landingActions {
@@ -519,15 +510,14 @@ export default async function Home() {
             gap: 16px;
           }
 
-                    .landingSubtitlePill {
+                     .landingSubtitleText {
             max-width: 100%;
             white-space: normal;
             line-height: 1.35;
-            padding-top: 9px;
-            padding-bottom: 9px;
+            padding-bottom: 8px;
           }
 
-          .landingSubtitlePill > span {
+          .landingSubtitleText > span {
             transform: none;
           }
         }
@@ -612,7 +602,7 @@ export default async function Home() {
               <h1 className="landingHeadingFallback">{title}</h1>
             )}
 
-            <div className="landingSubtitlePill">
+            <div className="landingSubtitleText">
               <span>{subtitle}</span>
             </div>
           </div>
