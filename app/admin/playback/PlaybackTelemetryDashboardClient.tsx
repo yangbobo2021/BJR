@@ -7,7 +7,11 @@ import AdminPageFrame from "../AdminPageFrame";
 import { AggregateTable } from "./dashboard/AggregateTable";
 import { AudienceSplitCard } from "./dashboard/AudienceSplitCard";
 import { DedupeTable } from "./dashboard/DedupeTable";
-import { MetricPill, SectionCard, TrendRangeToggle } from "./dashboard/PlaybackDashboardPrimitives";
+import {
+  MetricPill,
+  SectionCard,
+  TrendRangeToggle,
+} from "./dashboard/PlaybackDashboardPrimitives";
 import { QualifiedPlayTrendChart } from "./dashboard/QualifiedPlayTrendChart";
 import { TrackTable } from "./dashboard/TrackTable";
 import {
@@ -125,6 +129,27 @@ export default function PlaybackTelemetryDashboardClient(props: {
         >
           <div
             style={{
+              display: "flex",
+              gap: 10,
+              flexWrap: "wrap",
+            }}
+          >
+            <MetricPill
+              label="Plays · all time"
+              value={formatNumber(snapshot.siteTotals.playCount)}
+            />
+            <MetricPill
+              label="Plays · 30d"
+              value={formatNumber(snapshot.site30d.playCount)}
+            />
+            <MetricPill
+              label={`Plays · ${selectedTrend.label}`}
+              value={formatNumber(recentPlayTotal)}
+            />
+          </div>
+
+          <div
+            style={{
               fontSize: FONT_SIZE_UI,
               lineHeight: 1.5,
               color: TEXT_MUTED,
@@ -133,32 +158,11 @@ export default function PlaybackTelemetryDashboardClient(props: {
             Generated {formatAgo(snapshot.generatedAt)} · snapshot{" "}
             {fmtSnapshotStamp(snapshot.generatedAt)}
           </div>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              flexWrap: "wrap",
-            }}
-          >
-            <MetricPill
-              label="Site plays · all time"
-              value={formatNumber(snapshot.siteTotals.playCount)}
-            />
-            <MetricPill
-              label="Site plays · 30d"
-              value={formatNumber(snapshot.site30d.playCount)}
-            />
-            <MetricPill
-              label={`Trend total · ${selectedTrend.label}`}
-              value={formatNumber(recentPlayTotal)}
-            />
-          </div>
         </div>
 
         <SectionCard
           title="Qualified plays over time"
-          subtitle="Stacked area layers show total qualified plays across the selected horizon, split between signed-in members and anonymous listeners. Each view now uses bucket sizes that match the named duration."
+          subtitle=""
           headerRight={
             <TrendRangeToggle value={trendRange} onChange={setTrendRange} />
           }
@@ -179,7 +183,7 @@ export default function PlaybackTelemetryDashboardClient(props: {
         >
           <SectionCard
             title="Listening aggregates"
-            subtitle="All-time totals and past-30-days telemetry shown side by side. Recent listened time is derived from credited 15-second progress milestones."
+            subtitle=""
           >
             <AggregateTable snapshot={snapshot} />
           </SectionCard>
@@ -197,14 +201,14 @@ export default function PlaybackTelemetryDashboardClient(props: {
         >
           <SectionCard
             title="Top tracks by listened time"
-            subtitle="Ranked by cumulative listened milliseconds."
+            subtitle=""
           >
             <TrackTable rows={snapshot.topTracksByListenedMs} />
           </SectionCard>
 
           <SectionCard
             title="Most recent track activity"
-            subtitle="Latest recording-level activity ordered by most recent listening."
+            subtitle=""
           >
             <TrackTable rows={snapshot.recentTracks} />
           </SectionCard>
@@ -212,7 +216,7 @@ export default function PlaybackTelemetryDashboardClient(props: {
 
         <SectionCard
           title="Recent telemetry sessions"
-          subtitle="Recent member and anonymous telemetry is rolled up by listener, track, and playback session so progress milestones read as a single session bar rather than many separate rows."
+          subtitle=""
         >
           <DedupeTable rows={snapshot.recentDedupe} />
         </SectionCard>

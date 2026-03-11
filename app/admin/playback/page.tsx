@@ -1,3 +1,4 @@
+// web/app/admin/playback/page.tsx
 import "server-only";
 
 import PlaybackTelemetryDashboardClient from "./PlaybackTelemetryDashboardClient";

@@ -1,3 +1,4 @@
+// web/app/admin/playback/dashboard/playbackTelemetryDashboardStyles.ts
 export const PANEL_BORDER = "1px solid rgba(255,255,255,0.12)";
 export const ROW_BORDER = "1px solid rgba(255,255,255,0.08)";
 export const TEXT_PRIMARY = "rgba(255,255,255,0.92)";

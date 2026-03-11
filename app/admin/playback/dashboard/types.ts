@@ -1,3 +1,4 @@
+// web/app/admin/playback/dashboard/types.ts
 import type { PlaybackAdminSnapshot } from "@/lib/playbackAdmin";
 
 export type TrackRow = PlaybackAdminSnapshot["topTracksByListenedMs"][number];

@@ -1,3 +1,4 @@
+// web/app/admin/playback/dashboard/AggregateTable.tsx
 "use client";
 
 import React from "react";
@@ -20,13 +21,6 @@ export function AggregateTable(props: { snapshot: PlaybackAdminSnapshot }) {
       member30d: props.snapshot.member30d.playCount,
       siteAllTime: props.snapshot.siteTotals.playCount,
       site30d: props.snapshot.site30d.playCount,
-    },
-    {
-      label: "Active",
-      memberAllTime: props.snapshot.memberTotals.activeCount,
-      member30d: props.snapshot.member30d.activeCount,
-      siteAllTime: props.snapshot.siteTotals.activeCount,
-      site30d: props.snapshot.site30d.activeCount,
     },
     {
       label: "Hours listened",

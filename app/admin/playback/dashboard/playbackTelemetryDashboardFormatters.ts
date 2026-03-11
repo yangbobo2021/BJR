@@ -1,3 +1,4 @@
+// web/app/admin/playback/dashboard/playbackTelemetryDashboardFormatters.ts
 import type { TrendRangeKey } from "./types";
 
 export function formatNumber(value: number): string {

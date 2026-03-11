@@ -1,3 +1,4 @@
+// web/app/admin/playback/dashboard/DedupeTable.tsx
 "use client";
 
 import React from "react";
@@ -18,11 +19,9 @@ import {
 import {
   ellipsisMiddle,
   formatAgo,
-  formatNumber,
 } from "./playbackTelemetryDashboardFormatters";
 import {
   buildDedupeSessionRows,
-  formatProgressLabel,
   resolveDedupeIdentityLabel,
 } from "./playbackTelemetryDashboardModel";
 
@@ -108,14 +107,6 @@ export function DedupeTable(props: {
                   }}
                 >
                   <div>{formatAgo(row.latestAt)}</div>
-                  <div
-                    style={{
-                      marginTop: 4,
-                      color: TEXT_FAINT,
-                    }}
-                  >
-                    {row.sourceRows.length} events
-                  </div>
                 </td>
 
                 <td
@@ -136,14 +127,6 @@ export function DedupeTable(props: {
                   >
                     {row.recordingTitle ??
                       `session ${ellipsisMiddle(row.playbackId, 10)}`}
-                  </div>
-                  <div
-                    style={{
-                      marginTop: 4,
-                      color: TEXT_FAINT,
-                    }}
-                  >
-                    {ellipsisMiddle(row.playbackId, 10)}
                   </div>
                 </td>
 
@@ -176,28 +159,6 @@ export function DedupeTable(props: {
                         transition: "width 180ms ease-out",
                       }}
                     />
-                  </div>
-
-                  <div
-                    style={{
-                      marginTop: 6,
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 8,
-                      flexWrap: "wrap",
-                      color: TEXT_MUTED,
-                    }}
-                  >
-                    <span>
-                      {formatProgressLabel(row.progressMs, row.hasComplete)}
-                    </span>
-                    <span>
-                      {row.creditedMilestoneCount > 0
-                        ? `${formatNumber(row.creditedMilestoneCount)} milestones`
-                        : row.hasPlay
-                          ? "Play recorded"
-                          : "No progress milestones"}
-                    </span>
                   </div>
                 </td>
 

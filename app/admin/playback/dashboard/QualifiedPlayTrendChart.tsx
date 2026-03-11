@@ -1,3 +1,4 @@
+// web/app/admin/playback/dashboard/QualifiedPlayTrendChart.tsx
 "use client";
 
 import React from "react";
@@ -163,48 +164,6 @@ export function QualifiedPlayTrendChart(props: {
     >
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, minmax(0, max-content))",
-          gap: 8,
-          alignItems: "center",
-        }}
-      >
-        {stackedLayers.map((layer) => (
-          <div
-            key={layer.key}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              color: TEXT_MUTED,
-              fontSize: FONT_SIZE_UI,
-            }}
-          >
-            <span
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: 999,
-                background: layer.fill,
-                display: "inline-block",
-              }}
-            />
-            {layer.label}
-          </div>
-        ))}
-
-        <div
-          style={{
-            color: TEXT_FAINT,
-            fontSize: FONT_SIZE_UI,
-          }}
-        >
-          Total qualified plays
-        </div>
-      </div>
-
-      <div
-        style={{
           border: PANEL_BORDER,
           borderRadius: 12,
           background: BG_INSET,
@@ -268,7 +227,7 @@ export function QualifiedPlayTrendChart(props: {
               y={height - 8}
               textAnchor="middle"
               fill={TEXT_FAINT}
-              fontSize="10"
+              fontSize="8"
             >
               {rows[index]
                 ? fmtTrendTick(rows[index].bucketStart, props.range)
@@ -276,6 +235,39 @@ export function QualifiedPlayTrendChart(props: {
             </text>
           ))}
         </svg>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, minmax(0, max-content))",
+          gap: 8,
+          alignItems: "center",
+        }}
+      >
+        {stackedLayers.map((layer) => (
+          <div
+            key={layer.key}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              color: TEXT_MUTED,
+              fontSize: FONT_SIZE_UI,
+            }}
+          >
+            <span
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 999,
+                background: layer.fill,
+                display: "inline-block",
+              }}
+            />
+            {layer.label}
+          </div>
+        ))}
       </div>
     </div>
   );
