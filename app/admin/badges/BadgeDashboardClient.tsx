@@ -7,11 +7,6 @@ import { BadgeCatalogueSection } from "./_components/BadgeCatalogueSection";
 import { BadgeQualificationFormSection } from "./_components/BadgeQualificationFormSection";
 import { PreviewResultsSection } from "./_components/PreviewResultsSection";
 import { MetricPill } from "../playback/dashboard/PlaybackDashboardPrimitives";
-import {
-  FONT_SIZE_UI,
-  TEXT_MUTED,
-  TEXT_PRIMARY,
-} from "../playback/dashboard/playbackTelemetryDashboardStyles";
 import type {
   AwardResponse,
   BadgeDefinitionOption,
@@ -327,66 +322,12 @@ export default function BadgeDashboardClient({
   const selectedModeLabel = selectedMode?.label ?? "—";
   const selectedBadgeLabel = selectedBadge?.title ?? "—";
 
-  const headerActions = (
-    <>
-      <button
-        type="button"
-        onClick={() => void runPreview()}
-        disabled={previewLoading}
-        style={{
-          height: 30,
-          padding: "0 12px",
-          borderRadius: 999,
-          border: "1px solid rgba(255,255,255,0.14)",
-          background: "rgba(255,255,255,0.04)",
-          color: TEXT_PRIMARY,
-          cursor: previewLoading ? "default" : "pointer",
-          fontSize: FONT_SIZE_UI,
-          fontWeight: 700,
-          opacity: previewLoading ? 0.72 : 1,
-        }}
-      >
-        {previewLoading ? "Previewing…" : "Preview cohort"}
-      </button>
-
-      <button
-        type="button"
-        onClick={() => void runAward()}
-        disabled={awardLoading || previewLoading || previewRows.length === 0}
-        style={{
-          height: 30,
-          padding: "0 12px",
-          borderRadius: 999,
-          border: "1px solid rgba(255,255,255,0.14)",
-          background:
-            awardLoading || previewLoading || previewRows.length === 0
-              ? "rgba(255,255,255,0.04)"
-              : "rgba(255,255,255,0.10)",
-          color: TEXT_PRIMARY,
-          cursor:
-            awardLoading || previewLoading || previewRows.length === 0
-              ? "default"
-              : "pointer",
-          fontSize: FONT_SIZE_UI,
-          fontWeight: 700,
-          opacity:
-            awardLoading || previewLoading || previewRows.length === 0
-              ? 0.72
-              : 1,
-        }}
-      >
-        {awardLoading ? "Awarding…" : "Award badge"}
-      </button>
-    </>
-  );
-
   return (
     <AdminPageFrame
       embed={embed}
       maxWidth={1360}
       title="Badge dashboard"
       subtitle="Preview and award entitlement-backed badges using live member and playback aggregates."
-      headerActions={headerActions}
     >
       <div
         style={{
@@ -420,25 +361,6 @@ export default function BadgeDashboardClient({
               label="Preview matches"
               value={previewCount.toLocaleString()}
             />
-          </div>
-
-          <div
-            style={{
-              fontSize: FONT_SIZE_UI,
-              lineHeight: 1.5,
-              color: TEXT_MUTED,
-            }}
-          >
-            {selectedBadge ? (
-              <>
-                Targeting{" "}
-                <span style={{ color: TEXT_PRIMARY }}>
-                  {selectedBadge.entitlementKey}
-                </span>
-              </>
-            ) : (
-              "No badge selected"
-            )}
           </div>
         </div>
 

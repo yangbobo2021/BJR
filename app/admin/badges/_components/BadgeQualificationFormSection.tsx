@@ -1,3 +1,4 @@
+// web/app/admin/badges/_components/BadgeQualificationFormSection.tsx
 "use client";
 
 import React from "react";
@@ -5,6 +6,13 @@ import {
   BADGE_PREVIEW_MODES,
   type BadgeQualificationMode,
 } from "@/lib/badgePreviewModes";
+import {
+  BG_INSET,
+  FONT_SIZE_UI,
+  PANEL_BORDER,
+  TEXT_MUTED,
+  TEXT_PRIMARY,
+} from "../../playback/dashboard/playbackTelemetryDashboardStyles";
 import type {
   BadgeDefinitionOption,
   FormState,
@@ -53,6 +61,80 @@ type Props = {
   onRunAward: () => void;
 };
 
+const labelTextStyle: React.CSSProperties = {
+  fontSize: FONT_SIZE_UI,
+  lineHeight: 1.4,
+  color: TEXT_PRIMARY,
+  fontWeight: 700,
+};
+
+const helpTextStyle: React.CSSProperties = {
+  fontSize: 12,
+  lineHeight: 1.45,
+  color: TEXT_MUTED,
+};
+
+const controlStyle: React.CSSProperties = {
+  width: "100%",
+  height: 38,
+  borderRadius: 12,
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(255,255,255,0.04)",
+  color: TEXT_PRIMARY,
+  padding: "0 12px",
+  fontSize: FONT_SIZE_UI,
+  outline: "none",
+};
+
+const actionButtonBaseStyle: React.CSSProperties = {
+  height: 32,
+  padding: "0 12px",
+  borderRadius: 999,
+  border: "1px solid rgba(255,255,255,0.14)",
+  color: TEXT_PRIMARY,
+  fontSize: FONT_SIZE_UI,
+  fontWeight: 700,
+};
+
+function Field(props: {
+  label: string;
+  helpText?: string | null;
+  children: React.ReactNode;
+}) {
+  const { label, helpText, children } = props;
+
+  return (
+    <label style={{ display: "grid", gap: 6 }}>
+      <span style={labelTextStyle}>{label}</span>
+      {children}
+      {helpText ? <span style={helpTextStyle}>{helpText}</span> : null}
+    </label>
+  );
+}
+
+function FlagPill({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      style={{
+        height: 22,
+        padding: "0 8px",
+        borderRadius: 999,
+        display: "inline-flex",
+        alignItems: "center",
+        border: "1px solid rgba(255,255,255,0.10)",
+        background: "rgba(255,255,255,0.05)",
+        color: TEXT_PRIMARY,
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: 0.2,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
 export function BadgeQualificationFormSection(props: Props) {
   const {
     badges,
@@ -84,16 +166,34 @@ export function BadgeQualificationFormSection(props: Props) {
   return (
     <section
       style={{
-        border: "1px solid rgba(255,255,255,0.12)",
-        borderRadius: 16,
+        border: PANEL_BORDER,
+        borderRadius: 18,
+        background: BG_INSET,
         padding: 16,
         display: "grid",
         gap: 16,
       }}
     >
       <div style={{ display: "grid", gap: 4 }}>
-        <h2 style={{ margin: 0, fontSize: 20 }}>Award badge</h2>
-        <p style={{ margin: 0, opacity: 0.72, maxWidth: 820 }}>
+        <h2
+          style={{
+            margin: 0,
+            fontSize: 18,
+            lineHeight: 1.15,
+            color: TEXT_PRIMARY,
+          }}
+        >
+          Award badge
+        </h2>
+        <p
+          style={{
+            margin: 0,
+            maxWidth: 820,
+            fontSize: FONT_SIZE_UI,
+            lineHeight: 1.5,
+            color: TEXT_MUTED,
+          }}
+        >
           Choose a badge, define a qualifying cohort, preview matching members,
           and then execute a durable entitlement grant.
         </p>
@@ -106,13 +206,13 @@ export function BadgeQualificationFormSection(props: Props) {
           gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
         }}
       >
-        <label style={{ display: "grid", gap: 6 }}>
-          <span>Badge</span>
+        <Field label="Badge">
           <select
             value={form.entitlementKey}
             onChange={(event) =>
               onFormChange("entitlementKey", event.target.value)
             }
+            style={controlStyle}
           >
             {badges.map((badge) => (
               <option key={badge.entitlementKey} value={badge.entitlementKey}>
@@ -120,15 +220,15 @@ export function BadgeQualificationFormSection(props: Props) {
               </option>
             ))}
           </select>
-        </label>
+        </Field>
 
-        <label style={{ display: "grid", gap: 6 }}>
-          <span>Qualification mode</span>
+        <Field label="Qualification mode">
           <select
             value={form.mode}
             onChange={(event) =>
               onFormChange("mode", event.target.value as BadgeQualificationMode)
             }
+            style={controlStyle}
           >
             {BADGE_PREVIEW_MODES.map((mode) => (
               <option key={mode.key} value={mode.key}>
@@ -136,125 +236,128 @@ export function BadgeQualificationFormSection(props: Props) {
               </option>
             ))}
           </select>
-        </label>
+        </Field>
 
-        <label style={{ display: "grid", gap: 6 }}>
-          <span>Preview limit</span>
+        <Field label="Preview limit">
           <input
             value={form.limit}
             onChange={(event) => onFormChange("limit", event.target.value)}
             inputMode="numeric"
+            style={controlStyle}
           />
-        </label>
+        </Field>
       </div>
 
       {selectedMode ? (
         <div
           style={{
-            padding: "10px 12px",
-            borderRadius: 12,
+            padding: "12px 14px",
+            borderRadius: 14,
+            border: "1px solid rgba(255,255,255,0.08)",
             background: "rgba(255,255,255,0.035)",
-            opacity: 0.8,
-            lineHeight: 1.45,
             display: "grid",
             gap: 6,
           }}
         >
-          <span>{selectedMode.description}</span>
-          <span style={{ fontSize: 12, opacity: 0.72 }}>
+          <div
+            style={{
+              fontSize: FONT_SIZE_UI,
+              lineHeight: 1.5,
+              color: TEXT_PRIMARY,
+            }}
+          >
+            {selectedMode.description}
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              lineHeight: 1.45,
+              color: TEXT_MUTED,
+            }}
+          >
             Metric family: {selectedMode.metricFamily}
             {selectedMode.requiresRecording ? " • recording-scoped" : ""}
             {selectedMode.supportsDateWindow ? " • date-windowed" : ""}
-          </span>
+          </div>
         </div>
       ) : null}
 
       {modeInputs.minMinutes ? (
-        <label style={{ display: "grid", gap: 6 }}>
-          <span>{modeFieldText.minMinutesLabel}</span>
+        <Field
+          label={modeFieldText.minMinutesLabel}
+          helpText={modeFieldText.minMinutesHelp}
+        >
           <input
             value={form.minMinutes}
             onChange={(event) => onFormChange("minMinutes", event.target.value)}
             inputMode="numeric"
+            style={controlStyle}
           />
-          {modeFieldText.minMinutesHelp ? (
-            <span style={{ opacity: 0.62, fontSize: 12 }}>
-              {modeFieldText.minMinutesHelp}
-            </span>
-          ) : null}
-        </label>
+        </Field>
       ) : null}
 
       {modeInputs.minPlayCount && !modeInputs.activeWindow ? (
-        <label style={{ display: "grid", gap: 6 }}>
-          <span>{modeFieldText.minPlayCountLabel}</span>
+        <Field
+          label={modeFieldText.minPlayCountLabel}
+          helpText={modeFieldText.minPlayCountHelp}
+        >
           <input
             value={form.minPlayCount}
             onChange={(event) =>
               onFormChange("minPlayCount", event.target.value)
             }
             inputMode="numeric"
+            style={controlStyle}
           />
-          {modeFieldText.minPlayCountHelp ? (
-            <span style={{ opacity: 0.62, fontSize: 12 }}>
-              {modeFieldText.minPlayCountHelp}
-            </span>
-          ) : null}
-        </label>
+        </Field>
       ) : null}
 
       {modeInputs.minCompletedCount && !modeInputs.activeWindow ? (
-        <label style={{ display: "grid", gap: 6 }}>
-          <span>{modeFieldText.minCompletedCountLabel}</span>
+        <Field
+          label={modeFieldText.minCompletedCountLabel}
+          helpText={modeFieldText.minCompletedCountHelp}
+        >
           <input
             value={form.minCompletedCount}
             onChange={(event) =>
               onFormChange("minCompletedCount", event.target.value)
             }
             inputMode="numeric"
+            style={controlStyle}
           />
-          {modeFieldText.minCompletedCountHelp ? (
-            <span style={{ opacity: 0.62, fontSize: 12 }}>
-              {modeFieldText.minCompletedCountHelp}
-            </span>
-          ) : null}
-        </label>
+        </Field>
       ) : null}
 
       {modeInputs.minContributionCount ? (
-        <label style={{ display: "grid", gap: 6 }}>
-          <span>{modeFieldText.minContributionCountLabel}</span>
+        <Field
+          label={modeFieldText.minContributionCountLabel}
+          helpText={modeFieldText.minContributionCountHelp}
+        >
           <input
             value={form.minContributionCount}
             onChange={(event) =>
               onFormChange("minContributionCount", event.target.value)
             }
             inputMode="numeric"
+            style={controlStyle}
           />
-          {modeFieldText.minContributionCountHelp ? (
-            <span style={{ opacity: 0.62, fontSize: 12 }}>
-              {modeFieldText.minContributionCountHelp}
-            </span>
-          ) : null}
-        </label>
+        </Field>
       ) : null}
 
       {modeInputs.minVoteCount ? (
-        <label style={{ display: "grid", gap: 6 }}>
-          <span>{modeFieldText.minVoteCountLabel}</span>
+        <Field
+          label={modeFieldText.minVoteCountLabel}
+          helpText={modeFieldText.minVoteCountHelp}
+        >
           <input
             value={form.minVoteCount}
             onChange={(event) =>
               onFormChange("minVoteCount", event.target.value)
             }
             inputMode="numeric"
+            style={controlStyle}
           />
-          {modeFieldText.minVoteCountHelp ? (
-            <span style={{ opacity: 0.62, fontSize: 12 }}>
-              {modeFieldText.minVoteCountHelp}
-            </span>
-          ) : null}
-        </label>
+        </Field>
       ) : null}
 
       {modeInputs.joinedWindow ? (
@@ -266,33 +369,31 @@ export function BadgeQualificationFormSection(props: Props) {
               gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
             }}
           >
-            <label style={{ display: "grid", gap: 6 }}>
-              <span>{modeFieldText.joinedOnOrAfterLabel}</span>
+            <Field label={modeFieldText.joinedOnOrAfterLabel}>
               <input
                 type="datetime-local"
                 value={form.joinedOnOrAfter}
                 onChange={(event) =>
                   onFormChange("joinedOnOrAfter", event.target.value)
                 }
+                style={controlStyle}
               />
-            </label>
+            </Field>
 
-            <label style={{ display: "grid", gap: 6 }}>
-              <span>{modeFieldText.joinedBeforeLabel}</span>
+            <Field label={modeFieldText.joinedBeforeLabel}>
               <input
                 type="datetime-local"
                 value={form.joinedBefore}
                 onChange={(event) =>
                   onFormChange("joinedBefore", event.target.value)
                 }
+                style={controlStyle}
               />
-            </label>
+            </Field>
           </div>
 
           {modeFieldText.joinedWindowHelp ? (
-            <span style={{ opacity: 0.62, fontSize: 12 }}>
-              {modeFieldText.joinedWindowHelp}
-            </span>
+            <span style={helpTextStyle}>{modeFieldText.joinedWindowHelp}</span>
           ) : null}
         </div>
       ) : null}
@@ -306,27 +407,27 @@ export function BadgeQualificationFormSection(props: Props) {
               gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
             }}
           >
-            <label style={{ display: "grid", gap: 6 }}>
-              <span>{modeFieldText.activeOnOrAfterLabel}</span>
+            <Field label={modeFieldText.activeOnOrAfterLabel}>
               <input
                 type="datetime-local"
                 value={form.activeOnOrAfter}
                 onChange={(event) =>
                   onFormChange("activeOnOrAfter", event.target.value)
                 }
+                style={controlStyle}
               />
-            </label>
+            </Field>
 
-            <label style={{ display: "grid", gap: 6 }}>
-              <span>{modeFieldText.activeBeforeLabel}</span>
+            <Field label={modeFieldText.activeBeforeLabel}>
               <input
                 type="datetime-local"
                 value={form.activeBefore}
                 onChange={(event) =>
                   onFormChange("activeBefore", event.target.value)
                 }
+                style={controlStyle}
               />
-            </label>
+            </Field>
           </div>
 
           <div
@@ -336,59 +437,51 @@ export function BadgeQualificationFormSection(props: Props) {
               gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
             }}
           >
-            <label style={{ display: "grid", gap: 6 }}>
-              <span>{modeFieldText.minPlayCountLabel}</span>
+            <Field
+              label={modeFieldText.minPlayCountLabel}
+              helpText={modeFieldText.minPlayCountHelp}
+            >
               <input
                 value={form.minPlayCount}
                 onChange={(event) =>
                   onFormChange("minPlayCount", event.target.value)
                 }
                 inputMode="numeric"
+                style={controlStyle}
               />
-              {modeFieldText.minPlayCountHelp ? (
-                <span style={{ opacity: 0.62, fontSize: 12 }}>
-                  {modeFieldText.minPlayCountHelp}
-                </span>
-              ) : null}
-            </label>
+            </Field>
 
-            <label style={{ display: "grid", gap: 6 }}>
-              <span>{modeFieldText.minProgressCountLabel}</span>
+            <Field
+              label={modeFieldText.minProgressCountLabel}
+              helpText={modeFieldText.minProgressCountHelp}
+            >
               <input
                 value={form.minProgressCount}
                 onChange={(event) =>
                   onFormChange("minProgressCount", event.target.value)
                 }
                 inputMode="numeric"
+                style={controlStyle}
               />
-              {modeFieldText.minProgressCountHelp ? (
-                <span style={{ opacity: 0.62, fontSize: 12 }}>
-                  {modeFieldText.minProgressCountHelp}
-                </span>
-              ) : null}
-            </label>
+            </Field>
 
-            <label style={{ display: "grid", gap: 6 }}>
-              <span>{modeFieldText.minCompletedCountLabel}</span>
+            <Field
+              label={modeFieldText.minCompletedCountLabel}
+              helpText={modeFieldText.minCompletedCountHelp}
+            >
               <input
                 value={form.minCompletedCount}
                 onChange={(event) =>
                   onFormChange("minCompletedCount", event.target.value)
                 }
                 inputMode="numeric"
+                style={controlStyle}
               />
-              {modeFieldText.minCompletedCountHelp ? (
-                <span style={{ opacity: 0.62, fontSize: 12 }}>
-                  {modeFieldText.minCompletedCountHelp}
-                </span>
-              ) : null}
-            </label>
+            </Field>
           </div>
 
           {modeFieldText.activeWindowHelp ? (
-            <span style={{ opacity: 0.62, fontSize: 12 }}>
-              {modeFieldText.activeWindowHelp}
-            </span>
+            <span style={helpTextStyle}>{modeFieldText.activeWindowHelp}</span>
           ) : null}
         </div>
       ) : null}
@@ -410,20 +503,21 @@ export function BadgeQualificationFormSection(props: Props) {
         />
       ) : null}
 
-      <label style={{ display: "grid", gap: 6 }}>
-        <span>Grant reason</span>
+      <Field label="Grant reason">
         <input
           value={form.grantReason}
           onChange={(event) => onFormChange("grantReason", event.target.value)}
           placeholder="Optional note stored with the grant"
+          style={controlStyle}
         />
-      </label>
+      </Field>
 
       {selectedBadge ? (
         <div
           style={{
-            padding: 12,
-            borderRadius: 12,
+            padding: 14,
+            borderRadius: 14,
+            border: "1px solid rgba(255,255,255,0.08)",
             background: "rgba(255,255,255,0.04)",
             display: "grid",
             gap: 8,
@@ -439,56 +533,70 @@ export function BadgeQualificationFormSection(props: Props) {
             }}
           >
             <div style={{ display: "grid", gap: 4 }}>
-              <strong>{selectedBadge.title}</strong>
-              <span style={{ opacity: 0.75 }}>
+              <strong
+                style={{
+                  fontSize: 14,
+                  lineHeight: 1.2,
+                  color: TEXT_PRIMARY,
+                }}
+              >
+                {selectedBadge.title}
+              </strong>
+              <span
+                style={{
+                  fontSize: 12,
+                  lineHeight: 1.4,
+                  color: TEXT_MUTED,
+                }}
+              >
                 {selectedBadge.entitlementKey}
               </span>
             </div>
 
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {selectedBadge.featured ? (
-                <span
-                  style={{
-                    fontSize: 11,
-                    padding: "3px 7px",
-                    borderRadius: 999,
-                    background: "rgba(255,255,255,0.08)",
-                    opacity: 0.85,
-                  }}
-                >
-                  Featured
-                </span>
-              ) : null}
-
-              {selectedBadge.shareable ? (
-                <span
-                  style={{
-                    fontSize: 11,
-                    padding: "3px 7px",
-                    borderRadius: 999,
-                    background: "rgba(255,255,255,0.08)",
-                    opacity: 0.85,
-                  }}
-                >
-                  Shareable
-                </span>
-              ) : null}
+              {selectedBadge.featured ? <FlagPill>Featured</FlagPill> : null}
+              {selectedBadge.shareable ? <FlagPill>Shareable</FlagPill> : null}
             </div>
           </div>
 
           {selectedBadge.description ? (
-            <span style={{ opacity: 0.75 }}>{selectedBadge.description}</span>
+            <div
+              style={{
+                fontSize: FONT_SIZE_UI,
+                lineHeight: 1.5,
+                color: TEXT_PRIMARY,
+                opacity: 0.88,
+              }}
+            >
+              {selectedBadge.description}
+            </div>
           ) : null}
 
-          <span style={{ opacity: 0.58, fontSize: 12 }}>
+          <div
+            style={{
+              fontSize: 12,
+              lineHeight: 1.45,
+              color: TEXT_MUTED,
+            }}
+          >
             Display order {selectedBadge.displayOrder}
             {selectedBadge.imageUrl ? " • image present" : " • no image"}
-          </span>
+          </div>
         </div>
       ) : null}
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <button type="button" onClick={onRunPreview} disabled={previewLoading}>
+        <button
+          type="button"
+          onClick={onRunPreview}
+          disabled={previewLoading}
+          style={{
+            ...actionButtonBaseStyle,
+            background: "rgba(255,255,255,0.04)",
+            cursor: previewLoading ? "default" : "pointer",
+            opacity: previewLoading ? 0.72 : 1,
+          }}
+        >
           {previewLoading ? "Previewing…" : "Preview cohort"}
         </button>
 
@@ -496,17 +604,72 @@ export function BadgeQualificationFormSection(props: Props) {
           type="button"
           onClick={onRunAward}
           disabled={awardLoading || previewLoading || previewRowCount === 0}
+          style={{
+            ...actionButtonBaseStyle,
+            background:
+              awardLoading || previewLoading || previewRowCount === 0
+                ? "rgba(255,255,255,0.04)"
+                : "rgba(255,255,255,0.10)",
+            cursor:
+              awardLoading || previewLoading || previewRowCount === 0
+                ? "default"
+                : "pointer",
+            opacity:
+              awardLoading || previewLoading || previewRowCount === 0
+                ? 0.72
+                : 1,
+          }}
         >
           {awardLoading ? "Awarding…" : "Award badge"}
         </button>
       </div>
 
       {previewError ? (
-        <div style={{ color: "#ff8f8f" }}>{previewError}</div>
+        <div
+          style={{
+            borderRadius: 12,
+            border: "1px solid rgba(255,143,143,0.22)",
+            background: "rgba(255,143,143,0.08)",
+            padding: "10px 12px",
+            color: "#ffb1b1",
+            fontSize: FONT_SIZE_UI,
+            lineHeight: 1.5,
+          }}
+        >
+          {previewError}
+        </div>
       ) : null}
-      {awardError ? <div style={{ color: "#ff8f8f" }}>{awardError}</div> : null}
+
+      {awardError ? (
+        <div
+          style={{
+            borderRadius: 12,
+            border: "1px solid rgba(255,143,143,0.22)",
+            background: "rgba(255,143,143,0.08)",
+            padding: "10px 12px",
+            color: "#ffb1b1",
+            fontSize: FONT_SIZE_UI,
+            lineHeight: 1.5,
+          }}
+        >
+          {awardError}
+        </div>
+      ) : null}
+
       {awardMessage ? (
-        <div style={{ color: "#9ff0b8" }}>{awardMessage}</div>
+        <div
+          style={{
+            borderRadius: 12,
+            border: "1px solid rgba(159,240,184,0.22)",
+            background: "rgba(159,240,184,0.08)",
+            padding: "10px 12px",
+            color: "#baf4ca",
+            fontSize: FONT_SIZE_UI,
+            lineHeight: 1.5,
+          }}
+        >
+          {awardMessage}
+        </div>
       ) : null}
     </section>
   );
