@@ -6,14 +6,12 @@ import type { TrackRow } from "./types";
 import {
   FONT_SIZE_UI,
   ROW_BORDER,
-  TEXT_FAINT,
   TEXT_MUTED,
   TEXT_PRIMARY,
   TEXT_STRONG,
 } from "./playbackTelemetryDashboardStyles";
 import {
   formatAgo,
-  formatHoursFromMs,
   formatNumber,
 } from "./playbackTelemetryDashboardFormatters";
 
@@ -158,16 +156,6 @@ export function TrackTable(props: { rows: TrackRow[]; emptyLabel?: string }) {
                           transition: "width 180ms ease",
                         }}
                       />
-                    </div>
-
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: TEXT_FAINT,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {formatHoursFromMs(row.listenedMs)}
                     </div>
                   </div>
                 </td>

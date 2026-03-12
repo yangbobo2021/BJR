@@ -1,3 +1,4 @@
+// sanity/schemaTypes/badgeDefinition.ts
 import { defineField, defineType } from "sanity";
 
 export const badgeDefinition = defineType({

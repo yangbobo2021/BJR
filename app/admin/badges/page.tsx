@@ -1,3 +1,4 @@
+// web/app/admin/badges/page.tsx
 import "server-only";
 
 import BadgeDashboardClient from "./BadgeDashboardClient";
