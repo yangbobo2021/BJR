@@ -6,7 +6,7 @@ import React from "react";
 import {
   BADGE_PREVIEW_MODES,
   type BadgeQualificationMode,
-} from "@/lib/badgeAdmin";
+} from "@/lib/badgePreviewModes";
 
 type BadgeDefinitionOption = {
   entitlementKey: string;

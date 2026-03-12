@@ -2,11 +2,13 @@
 import { NextResponse } from "next/server";
 import { requireAdminMemberId } from "@/lib/adminAuth";
 import {
-  BADGE_PREVIEW_MODE_DESCRIPTORS,
   previewBadgeQualification,
   type BadgePreviewInput,
-  type BadgeQualificationMode,
 } from "@/lib/badgeAdmin";
+import {
+  BADGE_PREVIEW_MODE_DESCRIPTORS,
+  type BadgeQualificationMode,
+} from "@/lib/badgePreviewModes";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
