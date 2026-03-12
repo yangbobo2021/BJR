@@ -267,7 +267,7 @@ async function previewByMinutesStreamed(
     select
       mlt.member_id,
       m.email,
-      m.display_name,
+      null::text as display_name,
       m.created_at,
       mlt.listened_ms,
       mlt.play_count,
@@ -295,7 +295,7 @@ async function previewByPlayCount(
     select
       mlt.member_id,
       m.email,
-      m.display_name,
+      null::text as display_name,
       m.created_at,
       mlt.listened_ms,
       mlt.play_count,
@@ -323,7 +323,7 @@ async function previewByCompleteCount(
     select
       mlt.member_id,
       m.email,
-      m.display_name,
+      null::text as display_name,
       m.created_at,
       mlt.listened_ms,
       mlt.play_count,
@@ -351,7 +351,7 @@ async function previewByJoinedWindow(
     select
       m.id,
       m.email,
-      m.display_name,
+      null::text as display_name,
       m.created_at
     from members m
     where m.created_at >= ${input.joinedOnOrAfter}
@@ -399,7 +399,7 @@ async function previewByActiveWithinWindow(
     select
       wc.member_id,
       m.email,
-      m.display_name,
+      null::text as display_name,
       m.created_at,
       (wc.listened_ms_steps * 15000)::bigint as listened_ms,
       wc.play_count,
@@ -436,7 +436,7 @@ async function previewByRecordingMinutesStreamed(
     select
       mts.member_id,
       m.email,
-      m.display_name,
+      null::text as display_name,
       m.created_at,
       mts.listened_ms,
       mts.play_count,
@@ -466,7 +466,7 @@ async function previewByRecordingPlayCount(
     select
       mts.member_id,
       m.email,
-      m.display_name,
+      null::text as display_name,
       m.created_at,
       mts.listened_ms,
       mts.play_count,
@@ -496,7 +496,7 @@ async function previewByRecordingCompleteCount(
     select
       mts.member_id,
       m.email,
-      m.display_name,
+      null::text as display_name,
       m.created_at,
       mts.listened_ms,
       mts.play_count,

@@ -2,7 +2,6 @@
 import "server-only";
 
 import { cache } from "react";
-import { sanityFetch } from "@/sanity/lib/live";
 import { client } from "@/sanity/lib/client";
 
 export type BadgeDefinition = {
@@ -77,28 +76,15 @@ function coerceBadgeDefinition(
 
 export const getActiveBadgeDefinitions = cache(
   async (): Promise<BadgeDefinition[]> => {
-    const liveResult = await sanityFetch({
-      query: BADGE_DEFINITIONS_QUERY,
-    });
+    const result = await client.fetch(BADGE_DEFINITIONS_QUERY);
 
-    const directResult = await client.fetch(BADGE_DEFINITIONS_QUERY);
+    const rows = Array.isArray(result)
+      ? (result as BadgeDefinitionQueryRow[])
+      : [];
 
-    console.log("BADGE_LIVE_RESULT", JSON.stringify(liveResult, null, 2));
-    console.log("BADGE_DIRECT_RESULT", JSON.stringify(directResult, null, 2));
-
-    const rows = Array.isArray(directResult)
-      ? (directResult as BadgeDefinitionQueryRow[])
-      : Array.isArray(liveResult.data)
-        ? (liveResult.data as BadgeDefinitionQueryRow[])
-        : [];
-
-    const coerced = rows.map((row: BadgeDefinitionQueryRow) =>
-      coerceBadgeDefinition(row),
-    );
-
-    console.log("BADGE_QUERY_COERCED", JSON.stringify(coerced, null, 2));
-
-    return coerced.filter((row): row is BadgeDefinition => row !== null);
+    return rows
+      .map((row: BadgeDefinitionQueryRow) => coerceBadgeDefinition(row))
+      .filter((row): row is BadgeDefinition => row !== null);
   },
 );
 
