@@ -137,6 +137,21 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
   return (
     <>
       <style jsx>{`
+        :global(:root) {
+          --portal-badge-size: 52px;
+        }
+
+        @media (max-width: 640px) {
+          :global(:root) {
+            --portal-badge-size: 36px;
+          }
+        }
+
+        @media (max-width: 420px) {
+          :global(:root) {
+            --portal-badge-size: 30px;
+          }
+        }
         @keyframes portalBadgeLockedPulse {
           0%,
           100% {
@@ -167,10 +182,19 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
             opacity: 0;
           }
           18% {
+            transform: translate3d(-1px, -4px, 0) scale(0.82);
             opacity: 0.46;
           }
+          42% {
+            transform: translate3d(1px, -10px, 0) scale(0.92);
+            opacity: 0.34;
+          }
+          68% {
+            transform: translate3d(-2px, -15px, 0) scale(1);
+            opacity: 0.2;
+          }
           100% {
-            transform: translate3d(-2px, -20px, 0) scale(1.08);
+            transform: translate3d(1px, -20px, 0) scale(1.08);
             opacity: 0;
           }
         }
@@ -181,10 +205,19 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
             opacity: 0;
           }
           20% {
+            transform: translate3d(1px, -5px, 0) scale(0.78);
             opacity: 0.38;
           }
+          46% {
+            transform: translate3d(-1px, -12px, 0) scale(0.88);
+            opacity: 0.28;
+          }
+          74% {
+            transform: translate3d(2px, -18px, 0) scale(0.96);
+            opacity: 0.16;
+          }
           100% {
-            transform: translate3d(2px, -24px, 0) scale(1);
+            transform: translate3d(-1px, -24px, 0) scale(1);
             opacity: 0;
           }
         }
@@ -195,10 +228,19 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
             opacity: 0;
           }
           22% {
+            transform: translate3d(1px, -4px, 0) scale(0.82);
             opacity: 0.34;
           }
+          48% {
+            transform: translate3d(-2px, -9px, 0) scale(0.88);
+            opacity: 0.24;
+          }
+          70% {
+            transform: translate3d(0px, -14px, 0) scale(0.92);
+            opacity: 0.14;
+          }
           100% {
-            transform: translate3d(1px, -18px, 0) scale(0.96);
+            transform: translate3d(2px, -18px, 0) scale(0.96);
             opacity: 0;
           }
         }
@@ -209,10 +251,19 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
             opacity: 0;
           }
           14% {
+            transform: translate3d(-1px, -5px, 0) scale(0.84);
             opacity: 0.65;
           }
+          38% {
+            transform: translate3d(2px, -14px, 0) scale(0.98);
+            opacity: 0.42;
+          }
+          66% {
+            transform: translate3d(-3px, -24px, 0) scale(1.08);
+            opacity: 0.2;
+          }
           100% {
-            transform: translate3d(-3px, -32px, 0) scale(1.18);
+            transform: translate3d(2px, -32px, 0) scale(1.18);
             opacity: 0;
           }
         }
@@ -223,10 +274,19 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
             opacity: 0;
           }
           16% {
+            transform: translate3d(1px, -6px, 0) scale(0.76);
             opacity: 0.54;
           }
+          40% {
+            transform: translate3d(-2px, -16px, 0) scale(0.88);
+            opacity: 0.36;
+          }
+          68% {
+            transform: translate3d(4px, -27px, 0) scale(0.98);
+            opacity: 0.16;
+          }
           100% {
-            transform: translate3d(4px, -36px, 0) scale(1.08);
+            transform: translate3d(-2px, -36px, 0) scale(1.08);
             opacity: 0;
           }
         }
@@ -237,10 +297,19 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
             opacity: 0;
           }
           18% {
+            transform: translate3d(-1px, -5px, 0) scale(0.8);
             opacity: 0.48;
           }
+          42% {
+            transform: translate3d(2px, -13px, 0) scale(0.9);
+            opacity: 0.3;
+          }
+          72% {
+            transform: translate3d(-2px, -22px, 0) scale(0.98);
+            opacity: 0.14;
+          }
           100% {
-            transform: translate3d(-1px, -30px, 0) scale(1.04);
+            transform: translate3d(1px, -30px, 0) scale(1.04);
             opacity: 0;
           }
         }
@@ -278,32 +347,38 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
 
         .portal-member-badge-spark-a {
           opacity: 0;
-          animation: portalBadgeEmberRiseA 1300ms ease-out infinite;
+          animation: portalBadgeEmberRiseA 1300ms
+            cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
         }
 
         .portal-member-badge-spark-b {
           opacity: 0;
-          animation: portalBadgeEmberRiseB 1600ms ease-out infinite 160ms;
+          animation: portalBadgeEmberRiseB 1600ms
+            cubic-bezier(0.19, 0.72, 0.32, 1) infinite 160ms;
         }
 
         .portal-member-badge-spark-c {
           opacity: 0;
-          animation: portalBadgeEmberRiseC 1450ms ease-out infinite 320ms;
+          animation: portalBadgeEmberRiseC 1450ms
+            cubic-bezier(0.25, 0.68, 0.3, 1) infinite 320ms;
         }
 
         .portal-member-badge-wrap:hover .portal-member-badge-spark-a,
         .portal-member-badge-wrap:focus-within .portal-member-badge-spark-a {
-          animation: portalBadgeEmberBurstA 950ms ease-out infinite;
+          animation: portalBadgeEmberBurstA 950ms
+            cubic-bezier(0.2, 0.72, 0.28, 1) infinite;
         }
 
         .portal-member-badge-wrap:hover .portal-member-badge-spark-b,
         .portal-member-badge-wrap:focus-within .portal-member-badge-spark-b {
-          animation: portalBadgeEmberBurstB 1100ms ease-out infinite 120ms;
+          animation: portalBadgeEmberBurstB 1100ms
+            cubic-bezier(0.18, 0.75, 0.3, 1) infinite 120ms;
         }
 
         .portal-member-badge-wrap:hover .portal-member-badge-spark-c,
         .portal-member-badge-wrap:focus-within .portal-member-badge-spark-c {
-          animation: portalBadgeEmberBurstC 1000ms ease-out infinite 220ms;
+          animation: portalBadgeEmberBurstC 1000ms
+            cubic-bezier(0.24, 0.7, 0.3, 1) infinite 220ms;
         }
 
         .portal-member-badge-burst-a,
@@ -314,17 +389,20 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
 
         .portal-member-badge-wrap:hover .portal-member-badge-burst-a,
         .portal-member-badge-wrap:focus-within .portal-member-badge-burst-a {
-          animation: portalBadgeEmberBurstA 820ms ease-out infinite 40ms;
+          animation: portalBadgeEmberBurstA 820ms
+            cubic-bezier(0.2, 0.74, 0.28, 1) infinite 40ms;
         }
 
         .portal-member-badge-wrap:hover .portal-member-badge-burst-b,
         .portal-member-badge-wrap:focus-within .portal-member-badge-burst-b {
-          animation: portalBadgeEmberBurstB 900ms ease-out infinite 180ms;
+          animation: portalBadgeEmberBurstB 900ms
+            cubic-bezier(0.18, 0.76, 0.3, 1) infinite 180ms;
         }
 
         .portal-member-badge-wrap:hover .portal-member-badge-burst-c,
         .portal-member-badge-wrap:focus-within .portal-member-badge-burst-c {
-          animation: portalBadgeEmberBurstC 860ms ease-out infinite 300ms;
+          animation: portalBadgeEmberBurstC 860ms
+            cubic-bezier(0.22, 0.72, 0.3, 1) infinite 300ms;
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -348,7 +426,7 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, 52px)",
+          gridTemplateColumns: "repeat(auto-fill, var(--portal-badge-size))",
           gap: 14,
           justifyContent: "flex-start",
           alignItems: "start",
@@ -389,7 +467,7 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
                 style={{
                   position: "relative",
                   width: "100%",
-                  maxWidth: 52,
+                  maxWidth: "var(--portal-badge-size)",
                   aspectRatio: "1 / 1",
                   overflow: "visible",
                   outline: "none",
@@ -418,9 +496,9 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
                       style={{
                         position: "absolute",
                         left: "50%",
-                        bottom: -2,
-                        width: 34,
-                        height: 40,
+                        bottom: "calc(var(--portal-badge-size) * -0.04)",
+                        width: "calc(var(--portal-badge-size) * 0.65)",
+                        height: "calc(var(--portal-badge-size) * 0.8)",
                         transform: "translateX(-50%)",
                         overflow: "visible",
                       }}
@@ -431,8 +509,8 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
                           position: "absolute",
                           left: 6,
                           bottom: 2,
-                          width: 3,
-                          height: 3,
+                          width: "calc(var(--portal-badge-size) * 0.06)",
+                          height: "calc(var(--portal-badge-size) * 0.06)",
                           borderRadius: "50%",
                           background: "rgba(255,255,255,0.82)",
                           boxShadow: "0 0 8px rgba(255,255,255,0.18)",
@@ -445,8 +523,8 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
                           position: "absolute",
                           left: 16,
                           bottom: 0,
-                          width: 2,
-                          height: 2,
+                          width: "calc(var(--portal-badge-size) * 0.045)",
+                          height: "calc(var(--portal-badge-size) * 0.045)",
                           borderRadius: "50%",
                           background: "rgba(255,255,255,0.76)",
                           boxShadow: "0 0 7px rgba(255,255,255,0.16)",
@@ -459,8 +537,8 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
                           position: "absolute",
                           left: 24,
                           bottom: 3,
-                          width: 2,
-                          height: 2,
+                          width: "calc(var(--portal-badge-size) * 0.045)",
+                          height: "calc(var(--portal-badge-size) * 0.045)",
                           borderRadius: "50%",
                           background: "rgba(255,255,255,0.72)",
                           boxShadow: "0 0 6px rgba(255,255,255,0.14)",
