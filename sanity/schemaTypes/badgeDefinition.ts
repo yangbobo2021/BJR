@@ -13,20 +13,20 @@ export const badgeDefinition = defineType({
       validation: (rule) => rule.required().min(1),
     }),
     defineField({
-      name: "entitlementKey",
-      title: "Entitlement key",
+      name: "keySuffix",
+      title: "Badge key suffix",
       type: "string",
       description:
-        "Exact entitlement key used in Postgres, for example badge_early_supporter.",
+        "Enter only the suffix portion, for example early_supporter. The app will derive the entitlement key as badge_early_supporter.",
       validation: (rule) =>
         rule
           .required()
-          .regex(/^badge_[a-z0-9]+(?:_[a-z0-9]+)*$/, {
-            name: "badge entitlement key",
+          .regex(/^[a-z0-9]+(?:_[a-z0-9]+)*$/, {
+            name: "badge key suffix",
             invert: false,
           })
           .error(
-            "Badge keys must start with badge_ and use lowercase letters, numbers, and underscores only.",
+            "Badge key suffixes must use lowercase letters, numbers, and underscores only.",
           ),
     }),
     defineField({
@@ -96,7 +96,7 @@ export const badgeDefinition = defineType({
   preview: {
     select: {
       title: "title",
-      entitlementKey: "entitlementKey",
+      keySuffix: "keySuffix",
       media: "image",
       active: "active",
       undisclosed: "undisclosed",
@@ -108,9 +108,8 @@ export const badgeDefinition = defineType({
           : "Untitled badge";
 
       const entitlementKey =
-        typeof selection.entitlementKey === "string" &&
-        selection.entitlementKey.trim()
-          ? selection.entitlementKey.trim()
+        typeof selection.keySuffix === "string" && selection.keySuffix.trim()
+          ? `badge_${selection.keySuffix.trim()}`
           : "No entitlement key";
 
       const stateBits = [

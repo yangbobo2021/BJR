@@ -20,7 +20,7 @@ export type BadgeDefinition = {
 type BadgeDefinitionQueryRow = {
   _id: string;
   title?: string | null;
-  entitlementKey?: string | null;
+  keySuffix?: string | null;
   description?: string | null;
   imageUrl?: string | null;
   displayOrder?: number | null;
@@ -34,7 +34,7 @@ const BADGE_DEFINITIONS_QUERY = `
   *[_type == "badgeDefinition" && coalesce(active, true) == true]{
     _id,
     title,
-    entitlementKey,
+    keySuffix,
     description,
     "imageUrl": image.asset->url,
     displayOrder,
@@ -48,12 +48,14 @@ const BADGE_DEFINITIONS_QUERY = `
 function coerceBadgeDefinition(
   row: BadgeDefinitionQueryRow,
 ): BadgeDefinition | null {
-  const entitlementKey =
-    typeof row.entitlementKey === "string" ? row.entitlementKey.trim() : "";
+  const keySuffix =
+    typeof row.keySuffix === "string" ? row.keySuffix.trim() : "";
   const title = typeof row.title === "string" ? row.title.trim() : "";
 
-  if (!entitlementKey || !title) return null;
-  if (!entitlementKey.startsWith("badge_")) return null;
+  if (!keySuffix || !title) return null;
+  if (!/^[a-z0-9]+(?:_[a-z0-9]+)*$/.test(keySuffix)) return null;
+
+  const entitlementKey = `badge_${keySuffix}`;
 
   return {
     _id: row._id,

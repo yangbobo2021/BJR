@@ -104,8 +104,9 @@ export function BadgeCatalogueSection(props: Props) {
       <div
         style={{
           display: "grid",
-          gap: 12,
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: 10,
+          gridTemplateColumns: "repeat(auto-fill, minmax(120px, 120px))",
+          justifyContent: "flex-start",
         }}
       >
         {badges.length === 0 ? (
@@ -133,10 +134,12 @@ export function BadgeCatalogueSection(props: Props) {
                 key={badge.entitlementKey}
                 type="button"
                 onClick={() => onSelectEntitlementKey(badge.entitlementKey)}
+                title={badge.description || badge.title}
                 style={{
                   appearance: "none",
-                  width: "100%",
-                  textAlign: "left",
+                  width: 120,
+                  minWidth: 120,
+                  textAlign: "center",
                   color: "inherit",
                   cursor: "pointer",
                   border: getBadgeCardBorder(isSelected, badge.featured),
@@ -144,9 +147,11 @@ export function BadgeCatalogueSection(props: Props) {
                   background: isSelected
                     ? "rgba(255,255,255,0.08)"
                     : "rgba(255,255,255,0.035)",
-                  padding: 14,
+                  padding: 10,
                   display: "grid",
-                  gap: 12,
+                  gap: 8,
+                  alignContent: "start",
+                  justifyItems: "center",
                   boxShadow: isSelected
                     ? "0 0 0 1px rgba(255,255,255,0.03) inset"
                     : "none",
@@ -157,64 +162,35 @@ export function BadgeCatalogueSection(props: Props) {
                 <div
                   style={{
                     display: "flex",
-                    justifyContent: "space-between",
-                    gap: 10,
-                    alignItems: "flex-start",
+                    gap: 4,
+                    flexWrap: "wrap",
+                    justifyContent: "center",
+                    minHeight: 22,
                   }}
                 >
-                  <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
-                    <strong
-                      style={{
-                        lineHeight: 1.2,
-                        fontSize: 14,
-                        color: TEXT_PRIMARY,
-                      }}
-                    >
-                      {badge.title}
-                    </strong>
-                    <span
-                      style={{
-                        fontSize: 12,
-                        lineHeight: 1.4,
-                        color: TEXT_MUTED,
-                        wordBreak: "break-word",
-                      }}
-                    >
-                      {badge.entitlementKey}
-                    </span>
-                  </div>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 6,
-                      flexWrap: "wrap",
-                      justifyContent: "flex-end",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {badge.featured ? <FlagPill>Featured</FlagPill> : null}
-                    {badge.shareable ? <FlagPill>Shareable</FlagPill> : null}
-                  </div>
+                  {badge.featured ? <FlagPill>Featured</FlagPill> : null}
+                  {badge.shareable ? <FlagPill>Shareable</FlagPill> : null}
                 </div>
 
                 {badge.imageUrl ? (
                   <div
                     style={{
                       position: "relative",
-                      width: "100%",
-                      aspectRatio: "16 / 9",
-                      borderRadius: 12,
+                      width: 72,
+                      height: 72,
+                      borderRadius: 999,
                       overflow: "hidden",
                       background: "rgba(255,255,255,0.04)",
                       border: "1px solid rgba(255,255,255,0.08)",
+                      boxShadow:
+                        "inset 0 1px 0 rgba(255,255,255,0.05), 0 6px 18px rgba(0,0,0,0.18)",
                     }}
                   >
                     <Image
                       src={badge.imageUrl}
                       alt={badge.title}
                       fill
-                      sizes="(max-width: 768px) 100vw, 33vw"
+                      sizes="72px"
                       style={{
                         objectFit: "cover",
                         display: "block",
@@ -224,43 +200,61 @@ export function BadgeCatalogueSection(props: Props) {
                 ) : (
                   <div
                     style={{
-                      width: "100%",
-                      aspectRatio: "16 / 9",
-                      borderRadius: 12,
+                      width: 72,
+                      height: 72,
+                      borderRadius: 999,
                       border: "1px dashed rgba(255,255,255,0.12)",
                       background: "rgba(255,255,255,0.02)",
                       display: "grid",
                       placeItems: "center",
-                      fontSize: 12,
+                      fontSize: 18,
                       color: TEXT_MUTED,
                     }}
                   >
-                    No image
+                    ✦
                   </div>
                 )}
 
-                <div style={{ display: "grid", gap: 6 }}>
-                  <div
+                <div
+                  style={{
+                    display: "grid",
+                    gap: 4,
+                    width: "100%",
+                    minWidth: 0,
+                  }}
+                >
+                  <strong
                     style={{
-                      fontSize: FONT_SIZE_UI,
-                      lineHeight: 1.5,
-                      color: badge.description ? TEXT_PRIMARY : TEXT_MUTED,
-                      opacity: badge.description ? 0.88 : 1,
+                      lineHeight: 1.25,
+                      fontSize: 12,
+                      color: TEXT_PRIMARY,
+                      overflowWrap: "anywhere",
                     }}
                   >
-                    {badge.description || "No description"}
-                  </div>
+                    {badge.title}
+                  </strong>
 
-                  <div
+                  <span
                     style={{
-                      fontSize: 12,
-                      lineHeight: 1.4,
+                      fontSize: 10,
+                      lineHeight: 1.3,
+                      color: TEXT_MUTED,
+                      overflowWrap: "anywhere",
+                    }}
+                  >
+                    {badge.entitlementKey}
+                  </span>
+
+                  <span
+                    style={{
+                      fontSize: 10,
+                      lineHeight: 1.3,
                       color: TEXT_MUTED,
                     }}
                   >
-                    Display order {badge.displayOrder}
+                    #{badge.displayOrder}
                     {isSelected ? " • selected" : ""}
-                  </div>
+                  </span>
                 </div>
               </button>
             );

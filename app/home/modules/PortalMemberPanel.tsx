@@ -32,18 +32,40 @@ function formatUnlockedAt(value?: string | null): string | null {
   });
 }
 
-function useRotatingGreetingPrefix(intervalMs = 4800): string {
+const GREETING_SESSION_STORAGE_KEY = "portal-member-greeting-index";
+
+function getSessionGreetingIndex(): number {
+  if (typeof window === "undefined") return 0;
+  if (GREETING_PREFIXES.length <= 1) return 0;
+
+  const existing = window.sessionStorage.getItem(GREETING_SESSION_STORAGE_KEY);
+
+  if (existing != null) {
+    const parsed = Number(existing);
+
+    if (
+      Number.isInteger(parsed) &&
+      parsed >= 0 &&
+      parsed < GREETING_PREFIXES.length
+    ) {
+      return parsed;
+    }
+  }
+
+  const nextIndex = Math.floor(Math.random() * GREETING_PREFIXES.length);
+  window.sessionStorage.setItem(
+    GREETING_SESSION_STORAGE_KEY,
+    String(nextIndex),
+  );
+  return nextIndex;
+}
+
+function useSessionGreetingPrefix(): string {
   const [index, setIndex] = React.useState(0);
 
   React.useEffect(() => {
-    if (GREETING_PREFIXES.length <= 1) return undefined;
-
-    const timer = window.setInterval(() => {
-      setIndex((current) => (current + 1) % GREETING_PREFIXES.length);
-    }, intervalMs);
-
-    return () => window.clearInterval(timer);
-  }, [intervalMs]);
+    setIndex(getSessionGreetingIndex());
+  }, []);
 
   return GREETING_PREFIXES[index] ?? GREETING_PREFIXES[0];
 }
@@ -153,9 +175,7 @@ function BadgeTooltip(props: {
         style={{
           fontSize: 10,
           lineHeight: 1.25,
-          color: unlocked
-            ? "rgba(255,255,255,0.58)"
-            : "rgba(255,255,255,0.48)",
+          color: unlocked ? "rgba(255,255,255,0.58)" : "rgba(255,255,255,0.48)",
         }}
       >
         {unlocked
@@ -332,7 +352,7 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
 export default function PortalMemberPanel(props: Props) {
   const { summary, title = "Member" } = props;
 
-  const greetingPrefix = useRotatingGreetingPrefix();
+  const greetingPrefix = useSessionGreetingPrefix();
   const displayName = summary.identity?.displayName?.trim() || "Anonymous";
   const contributionCount = summary.contributionCount;
   const minutesStreamed = summary.minutesStreamed;
