@@ -65,16 +65,18 @@ function PullTag(props: { collapsed: boolean; onClick: () => void }) {
         position: "absolute",
         left: 14,
         top: "100%",
-        transform: "translateY(-1px)",
+        transform: props.collapsed ? "translateY(-1px)" : "translateY(1px)",
         width: 34,
-        height: props.collapsed ? 28 : 24,
+        height: props.collapsed ? 28 : 22,
         padding: 0,
-        border: `1px solid ${ADMIN_RIBBON_GOLD_EDGE}`,
+        borderLeft: `1px solid ${ADMIN_RIBBON_GOLD_EDGE}`,
+        borderRight: `1px solid ${ADMIN_RIBBON_GOLD_EDGE}`,
+        borderBottom: `1px solid ${ADMIN_RIBBON_GOLD_EDGE}`,
         borderTop: "none",
         borderBottomLeftRadius: 11,
         borderBottomRightRadius: 11,
         background: `
-          linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.01)),
+          linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.01)),
           ${ADMIN_TAG_BG}
         `,
         color: ADMIN_RIBBON_GOLD,
@@ -83,7 +85,7 @@ function PullTag(props: { collapsed: boolean; onClick: () => void }) {
         justifyContent: "center",
         cursor: "pointer",
         boxShadow:
-          "0 8px 18px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.05)",
+          "0 8px 18px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.04)",
         zIndex: 4,
         transition:
           "height 160ms ease, transform 160ms ease, background 160ms ease, box-shadow 160ms ease, opacity 160ms ease",
@@ -94,7 +96,7 @@ function PullTag(props: { collapsed: boolean; onClick: () => void }) {
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          transform: props.collapsed ? "translateY(1px)" : "translateY(0)",
+          transform: props.collapsed ? "translateY(1px)" : "translateY(-1px)",
           transition: "transform 160ms ease",
           lineHeight: 0,
         }}

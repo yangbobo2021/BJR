@@ -203,6 +203,48 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
           }
         }
 
+        @keyframes portalBadgeEmberBurstA {
+          0% {
+            transform: translate3d(0, 0, 0) scale(0.74);
+            opacity: 0;
+          }
+          14% {
+            opacity: 0.65;
+          }
+          100% {
+            transform: translate3d(-3px, -32px, 0) scale(1.18);
+            opacity: 0;
+          }
+        }
+
+        @keyframes portalBadgeEmberBurstB {
+          0% {
+            transform: translate3d(0, 0, 0) scale(0.66);
+            opacity: 0;
+          }
+          16% {
+            opacity: 0.54;
+          }
+          100% {
+            transform: translate3d(4px, -36px, 0) scale(1.08);
+            opacity: 0;
+          }
+        }
+
+        @keyframes portalBadgeEmberBurstC {
+          0% {
+            transform: translate3d(0, 0, 0) scale(0.7);
+            opacity: 0;
+          }
+          18% {
+            opacity: 0.48;
+          }
+          100% {
+            transform: translate3d(-1px, -30px, 0) scale(1.04);
+            opacity: 0;
+          }
+        }
+
         .portal-member-badge-core--locked {
           animation: portalBadgeLockedPulse 2400ms ease-in-out infinite;
           transform-origin: center;
@@ -214,36 +256,75 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
           will-change: transform, opacity;
         }
 
+        .portal-member-badge-wrap:hover .portal-member-badge-idle-glow,
+        .portal-member-badge-wrap:focus-within .portal-member-badge-idle-glow {
+          opacity: 0.42;
+          transform: scale(1.06);
+        }
+
         .portal-member-badge-embers {
-          opacity: 0.06;
-          transition: opacity 180ms ease;
+          opacity: 0.34;
+          transition:
+            opacity 180ms ease,
+            transform 180ms ease;
           pointer-events: none;
         }
 
         .portal-member-badge-wrap:hover .portal-member-badge-embers,
         .portal-member-badge-wrap:focus-within .portal-member-badge-embers {
-          opacity: 1;
+          opacity: 0.92;
+          transform: translateY(-1px);
         }
 
-        .portal-member-badge-spark-a,
-        .portal-member-badge-spark-b,
+        .portal-member-badge-spark-a {
+          opacity: 0;
+          animation: portalBadgeEmberRiseA 1300ms ease-out infinite;
+        }
+
+        .portal-member-badge-spark-b {
+          opacity: 0;
+          animation: portalBadgeEmberRiseB 1600ms ease-out infinite 160ms;
+        }
+
         .portal-member-badge-spark-c {
           opacity: 0;
+          animation: portalBadgeEmberRiseC 1450ms ease-out infinite 320ms;
         }
 
         .portal-member-badge-wrap:hover .portal-member-badge-spark-a,
         .portal-member-badge-wrap:focus-within .portal-member-badge-spark-a {
-          animation: portalBadgeEmberRiseA 1300ms ease-out infinite;
+          animation: portalBadgeEmberBurstA 950ms ease-out infinite;
         }
 
         .portal-member-badge-wrap:hover .portal-member-badge-spark-b,
         .portal-member-badge-wrap:focus-within .portal-member-badge-spark-b {
-          animation: portalBadgeEmberRiseB 1600ms ease-out infinite 160ms;
+          animation: portalBadgeEmberBurstB 1100ms ease-out infinite 120ms;
         }
 
         .portal-member-badge-wrap:hover .portal-member-badge-spark-c,
         .portal-member-badge-wrap:focus-within .portal-member-badge-spark-c {
-          animation: portalBadgeEmberRiseC 1450ms ease-out infinite 320ms;
+          animation: portalBadgeEmberBurstC 1000ms ease-out infinite 220ms;
+        }
+
+        .portal-member-badge-burst-a,
+        .portal-member-badge-burst-b,
+        .portal-member-badge-burst-c {
+          opacity: 0;
+        }
+
+        .portal-member-badge-wrap:hover .portal-member-badge-burst-a,
+        .portal-member-badge-wrap:focus-within .portal-member-badge-burst-a {
+          animation: portalBadgeEmberBurstA 820ms ease-out infinite 40ms;
+        }
+
+        .portal-member-badge-wrap:hover .portal-member-badge-burst-b,
+        .portal-member-badge-wrap:focus-within .portal-member-badge-burst-b {
+          animation: portalBadgeEmberBurstB 900ms ease-out infinite 180ms;
+        }
+
+        .portal-member-badge-wrap:hover .portal-member-badge-burst-c,
+        .portal-member-badge-wrap:focus-within .portal-member-badge-burst-c {
+          animation: portalBadgeEmberBurstC 860ms ease-out infinite 300ms;
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -251,7 +332,10 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
           .portal-member-badge-idle-glow,
           .portal-member-badge-spark-a,
           .portal-member-badge-spark-b,
-          .portal-member-badge-spark-c {
+          .portal-member-badge-spark-c,
+          .portal-member-badge-burst-a,
+          .portal-member-badge-burst-b,
+          .portal-member-badge-burst-c {
             animation: none !important;
           }
 
@@ -324,6 +408,7 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
                           "radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 34%, rgba(255,255,255,0.00) 72%)",
                         filter: "blur(4px)",
                         pointerEvents: "none",
+                        transition: "opacity 180ms ease, transform 180ms ease",
                       }}
                     />
 
@@ -335,7 +420,7 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
                         left: "50%",
                         bottom: -2,
                         width: 34,
-                        height: 34,
+                        height: 40,
                         transform: "translateX(-50%)",
                         overflow: "visible",
                       }}
@@ -381,6 +466,48 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
                           boxShadow: "0 0 6px rgba(255,255,255,0.14)",
                         }}
                       />
+
+                      <div
+                        className="portal-member-badge-burst-a"
+                        style={{
+                          position: "absolute",
+                          left: 10,
+                          bottom: 1,
+                          width: 2,
+                          height: 2,
+                          borderRadius: "50%",
+                          background: "rgba(255,255,255,0.88)",
+                          boxShadow: "0 0 10px rgba(255,255,255,0.22)",
+                        }}
+                      />
+
+                      <div
+                        className="portal-member-badge-burst-b"
+                        style={{
+                          position: "absolute",
+                          left: 19,
+                          bottom: 2,
+                          width: 2,
+                          height: 2,
+                          borderRadius: "50%",
+                          background: "rgba(255,255,255,0.82)",
+                          boxShadow: "0 0 8px rgba(255,255,255,0.20)",
+                        }}
+                      />
+
+                      <div
+                        className="portal-member-badge-burst-c"
+                        style={{
+                          position: "absolute",
+                          left: 27,
+                          bottom: 1,
+                          width: 1.5,
+                          height: 1.5,
+                          borderRadius: "50%",
+                          background: "rgba(255,255,255,0.78)",
+                          boxShadow: "0 0 7px rgba(255,255,255,0.18)",
+                        }}
+                      />
                     </div>
                   </>
                 ) : null}
@@ -417,7 +544,7 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
                         filter: badge.unlocked
                           ? "drop-shadow(0 0 4px rgba(255,255,255,0.08))"
                           : "grayscale(1) saturate(0) brightness(0.60) contrast(0.85) blur(0.2px)",
-                        opacity: badge.unlocked ? 1 : 0.42,
+                        opacity: badge.unlocked ? 1 : 0.35,
                       }}
                     />
                   </>
