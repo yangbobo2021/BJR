@@ -1,6 +1,7 @@
 // web/app/home/modules/PortalMemberPanel.tsx
 "use client";
 
+import Image from "next/image";
 import React from "react";
 import type { PortalMemberSummary } from "@/lib/memberDashboard";
 
@@ -8,6 +9,19 @@ type Props = {
   summary: PortalMemberSummary;
   title?: string;
 };
+
+function formatUnlockedAt(value?: string | null): string | null {
+  if (!value) return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
 
 function StatTile(props: {
   label: string;
@@ -54,10 +68,11 @@ function StatTile(props: {
   );
 }
 
-function BadgeRow(props: { labels: string[] }) {
-  const { labels } = props;
+function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
+  const { badges } = props;
 
-  const lockedSilhouettes = Array.from({ length: 6 }, (_, i) => i);
+  const lockedCount = Math.max(0, 6 - badges.length);
+  const lockedSilhouettes = Array.from({ length: lockedCount }, (_, i) => i);
 
   return (
     <div
@@ -66,56 +81,146 @@ function BadgeRow(props: { labels: string[] }) {
         gap: 12,
       }}
     >
-      {labels.length > 0 ? (
+      {badges.length > 0 ? (
         <div
           style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 8,
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(84px, 1fr))",
+            gap: 10,
           }}
         >
-          {labels.map((label) => (
-            <div
-              key={label}
-              style={{
-                borderRadius: 999,
-                border: "1px solid rgba(255,255,255,0.10)",
-                background: "rgba(255,255,255,0.045)",
-                padding: "7px 10px",
-                fontSize: 12,
-                lineHeight: 1,
-                opacity: 0.86,
-              }}
-            >
-              {label}
-            </div>
-          ))}
+          {badges.map((badge) => {
+            const unlockedAt = formatUnlockedAt(badge.unlockedAt);
+
+            return (
+              <div
+                key={badge.key}
+                title={badge.description || badge.label}
+                style={{
+                  display: "grid",
+                  gap: 8,
+                  justifyItems: "center",
+                  alignContent: "start",
+                  minWidth: 0,
+                }}
+              >
+                <div
+                  style={{
+                    position: "relative",
+                    width: "100%",
+                    maxWidth: 88,
+                    aspectRatio: "1 / 1",
+                    borderRadius: 999,
+                    overflow: "hidden",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: badge.imageUrl
+                      ? "rgba(255,255,255,0.05)"
+                      : "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.18), rgba(255,255,255,0.055) 58%, rgba(255,255,255,0.02) 100%)",
+                    boxShadow:
+                      "inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 18px rgba(0,0,0,0.22)",
+                  }}
+                >
+                  {badge.imageUrl ? (
+                    <Image
+                      src={badge.imageUrl}
+                      alt={badge.label}
+                      fill
+                      sizes="88px"
+                      style={{
+                        objectFit: "cover",
+                        display: "block",
+                      }}
+                    />
+                  ) : (
+                    <div
+                      aria-hidden="true"
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "grid",
+                        placeItems: "center",
+                        fontSize: 22,
+                        opacity: 0.72,
+                      }}
+                    >
+                      ✦
+                    </div>
+                  )}
+
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background:
+                        "linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02) 42%, rgba(0,0,0,0.18) 100%)",
+                    }}
+                  />
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gap: 2,
+                    width: "100%",
+                    minWidth: 0,
+                    textAlign: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 12,
+                      lineHeight: 1.25,
+                      opacity: 0.92,
+                      overflowWrap: "anywhere",
+                    }}
+                  >
+                    {badge.label}
+                  </div>
+
+                  {unlockedAt ? (
+                    <div
+                      style={{
+                        fontSize: 10,
+                        lineHeight: 1.2,
+                        opacity: 0.52,
+                      }}
+                    >
+                      {unlockedAt}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
         </div>
       ) : null}
 
-      <div
-        aria-hidden="true"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
-          gap: 8,
-        }}
-      >
-        {lockedSilhouettes.map((index) => (
-          <div
-            key={index}
-            style={{
-              aspectRatio: "1 / 1",
-              borderRadius: 999,
-              border: "1px solid rgba(255,255,255,0.06)",
-              background:
-                "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.10), rgba(255,255,255,0.025) 58%, rgba(255,255,255,0.01) 100%)",
-              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
-              opacity: 0.28,
-            }}
-          />
-        ))}
-      </div>
+      {lockedSilhouettes.length > 0 ? (
+        <div
+          aria-hidden="true"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+            gap: 8,
+          }}
+        >
+          {lockedSilhouettes.map((index) => (
+            <div
+              key={index}
+              style={{
+                aspectRatio: "1 / 1",
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.06)",
+                background:
+                  "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.10), rgba(255,255,255,0.025) 58%, rgba(255,255,255,0.01) 100%)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+                opacity: 0.28,
+              }}
+            />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -127,9 +232,9 @@ export default function PortalMemberPanel(props: Props) {
   const contributionCount = summary.contributionCount;
   const minutesStreamed = summary.minutesStreamed;
   const favouriteTrack = summary.favouriteTrack;
-  const badgeLabels = summary.badges
-    .map((badge) => badge.label?.trim())
-    .filter((label): label is string => Boolean(label));
+  const badges = summary.badges.filter(
+    (badge) => typeof badge.label === "string" && badge.label.trim().length > 0,
+  );
 
   return (
     <div
@@ -263,18 +368,37 @@ export default function PortalMemberPanel(props: Props) {
         >
           <div
             style={{
-              fontSize: 11,
-              letterSpacing: 0.3,
-              textTransform: "uppercase",
-              opacity: 0.5,
-              lineHeight: 1.2,
+              display: "grid",
+              gap: 6,
             }}
           >
-            Badges
+            <div
+              style={{
+                fontSize: 11,
+                letterSpacing: 0.3,
+                textTransform: "uppercase",
+                opacity: 0.5,
+                lineHeight: 1.2,
+              }}
+            >
+              Badges
+            </div>
+
+            <div
+              style={{
+                fontSize: 13,
+                lineHeight: 1.45,
+                opacity: 0.66,
+              }}
+            >
+              {badges.length > 0
+                ? `${badges.length} unlocked`
+                : "No unlocked badges yet"}
+            </div>
           </div>
 
           <div style={{ marginTop: 10, minWidth: 0 }}>
-            <BadgeRow labels={badgeLabels} />
+            <BadgeRow badges={badges} />
           </div>
         </div>
       </div>

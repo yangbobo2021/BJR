@@ -118,6 +118,8 @@ async function getUnlockedDashboardBadges(
       key: definition.entitlementKey,
       label: definition.title,
       description: definition.description ?? undefined,
+      imageUrl: definition.imageUrl ?? undefined,
+      shareable: definition.shareable,
       unlockedAt: entitlement.grantedAt,
       displayOrder: definition.displayOrder,
     });
@@ -135,6 +137,8 @@ async function getUnlockedDashboardBadges(
     key: badge.key,
     label: badge.label,
     description: badge.description ?? undefined,
+    imageUrl: badge.imageUrl ?? undefined,
+    shareable: badge.shareable,
     unlockedAt: badge.unlockedAt,
   }));
 }

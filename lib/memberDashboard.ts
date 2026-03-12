@@ -5,6 +5,8 @@ export type MemberDashboardBadge = {
   key: string;
   label: string;
   description?: string | null;
+  imageUrl?: string | null;
+  shareable?: boolean;
   unlockedAt?: string | null;
 };
 

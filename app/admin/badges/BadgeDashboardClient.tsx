@@ -27,6 +27,7 @@ type PreviewRow = {
   playCount: number | null;
   completedCount: number | null;
   matchedRecordingId: string | null;
+  matchedRecordingTitle: string | null;
   matchedWindowEventCount: number | null;
 };
 
@@ -57,6 +58,20 @@ type AwardResponse = {
 type Props = {
   embed: boolean;
   badgeDefinitions: BadgeDefinitionOption[];
+};
+
+type RecordingSearchResult = {
+  recordingId: string;
+  title: string;
+  artist?: string | null;
+  albumSlug?: string | null;
+  albumTitle?: string | null;
+};
+
+type RecordingSearchResponse = {
+  ok: boolean;
+  results?: RecordingSearchResult[];
+  error?: string;
 };
 
 type FormState = {
@@ -221,6 +236,18 @@ export default function BadgeDashboardClient({
   const [awardMessage, setAwardMessage] = React.useState<string | null>(null);
   const [awardLoading, setAwardLoading] = React.useState(false);
 
+  const [recordingQuery, setRecordingQuery] = React.useState("");
+  const [recordingResults, setRecordingResults] = React.useState<
+    RecordingSearchResult[]
+  >([]);
+  const [recordingSearchError, setRecordingSearchError] = React.useState<
+    string | null
+  >(null);
+  const [recordingSearchLoading, setRecordingSearchLoading] =
+    React.useState(false);
+  const [selectedRecording, setSelectedRecording] =
+    React.useState<RecordingSearchResult | null>(null);
+
   const selectedBadge = React.useMemo(() => {
     return (
       sortedBadges.find(
@@ -273,7 +300,88 @@ export default function BadgeDashboardClient({
     [],
   );
 
+  const runRecordingSearch = React.useCallback(async () => {
+    const query = recordingQuery.trim();
+
+    if (!query) {
+      setRecordingResults([]);
+      setRecordingSearchError(
+        "Enter a track title, artist, album, or recording ID.",
+      );
+      return;
+    }
+
+    setRecordingSearchLoading(true);
+    setRecordingSearchError(null);
+
+    try {
+      const params = new URLSearchParams({
+        q: query,
+        limit: "12",
+      });
+
+      const response = await fetch(
+        `/api/admin/recordings/search?${params.toString()}`,
+        {
+          method: "GET",
+        },
+      );
+
+      const json = (await response.json()) as RecordingSearchResponse;
+
+      if (!response.ok || !json.ok) {
+        throw new Error(json.error || "Unable to search recordings.");
+      }
+
+      const results = Array.isArray(json.results) ? json.results : [];
+      setRecordingResults(results);
+
+      if (results.length === 0) {
+        setRecordingSearchError("No recordings matched that search.");
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to search recordings.";
+      setRecordingResults([]);
+      setRecordingSearchError(message);
+    } finally {
+      setRecordingSearchLoading(false);
+    }
+  }, [recordingQuery]);
+
+  const selectRecording = React.useCallback(
+    (recording: RecordingSearchResult) => {
+      setSelectedRecording(recording);
+      setRecordingQuery(
+        [recording.title, recording.artist, recording.albumTitle]
+          .filter((value): value is string => Boolean(value && value.trim()))
+          .join(" • "),
+      );
+      setRecordingResults([]);
+      setRecordingSearchError(null);
+      updateForm("recordingId", recording.recordingId);
+    },
+    [updateForm],
+  );
+
+  const clearSelectedRecording = React.useCallback(() => {
+    setSelectedRecording(null);
+    setRecordingResults([]);
+    setRecordingSearchError(null);
+    setRecordingQuery("");
+    updateForm("recordingId", "");
+  }, [updateForm]);
+
   const runPreview = React.useCallback(async () => {
+    if (modeInputs.recordingId && !form.recordingId.trim()) {
+      setPreviewError(
+        "Select a recording before previewing this badge cohort.",
+      );
+      setAwardError(null);
+      setAwardMessage(null);
+      return;
+    }
+
     setPreviewLoading(true);
     setPreviewError(null);
     setAwardError(null);
@@ -376,6 +484,19 @@ export default function BadgeDashboardClient({
       }));
     }
   }, [form.entitlementKey, sortedBadges]);
+
+  React.useEffect(() => {
+    if (!modeInputs.recordingId && form.recordingId) {
+      setSelectedRecording(null);
+      setRecordingResults([]);
+      setRecordingSearchError(null);
+      setRecordingQuery("");
+      setForm((current) => ({
+        ...current,
+        recordingId: "",
+      }));
+    }
+  }, [form.recordingId, modeInputs.recordingId]);
 
   return (
     <div
@@ -860,21 +981,139 @@ export default function BadgeDashboardClient({
         ) : null}
 
         {modeInputs.recordingId ? (
-          <label style={{ display: "grid", gap: 6 }}>
+          <div style={{ display: "grid", gap: 10 }}>
             <span>{modeFieldText.recordingIdLabel}</span>
-            <input
-              value={form.recordingId}
-              onChange={(event) =>
-                updateForm("recordingId", event.target.value)
-              }
-              placeholder={modeFieldText.recordingIdPlaceholder}
-            />
+
+            <div
+              style={{
+                display: "grid",
+                gap: 10,
+                gridTemplateColumns: "minmax(0, 1fr) auto",
+                alignItems: "end",
+              }}
+            >
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ opacity: 0.78, fontSize: 12 }}>
+                  Search recording
+                </span>
+                <input
+                  value={recordingQuery}
+                  onChange={(event) => setRecordingQuery(event.target.value)}
+                  placeholder="Track title, artist, album, or recording ID"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void runRecordingSearch();
+                    }
+                  }}
+                />
+              </label>
+
+              <button
+                type="button"
+                onClick={() => void runRecordingSearch()}
+                disabled={recordingSearchLoading}
+              >
+                {recordingSearchLoading ? "Searching…" : "Search"}
+              </button>
+            </div>
+
             {modeFieldText.recordingIdHelp ? (
               <span style={{ opacity: 0.62, fontSize: 12 }}>
                 {modeFieldText.recordingIdHelp}
               </span>
             ) : null}
-          </label>
+
+            {selectedRecording ? (
+              <div
+                style={{
+                  padding: 12,
+                  borderRadius: 12,
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  display: "grid",
+                  gap: 6,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    alignItems: "flex-start",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div style={{ display: "grid", gap: 4 }}>
+                    <strong>{selectedRecording.title}</strong>
+                    <span style={{ opacity: 0.75 }}>
+                      {selectedRecording.artist || "Unknown artist"}
+                      {selectedRecording.albumTitle
+                        ? ` • ${selectedRecording.albumTitle}`
+                        : ""}
+                    </span>
+                    <span style={{ opacity: 0.58, fontSize: 12 }}>
+                      {selectedRecording.recordingId}
+                    </span>
+                  </div>
+
+                  <button type="button" onClick={clearSelectedRecording}>
+                    Clear
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {recordingSearchError ? (
+              <div style={{ color: "#ffb3b3", fontSize: 13 }}>
+                {recordingSearchError}
+              </div>
+            ) : null}
+
+            {!selectedRecording && recordingResults.length > 0 ? (
+              <div
+                style={{
+                  display: "grid",
+                  gap: 8,
+                }}
+              >
+                {recordingResults.map((recording) => (
+                  <button
+                    key={recording.recordingId}
+                    type="button"
+                    onClick={() => selectRecording(recording)}
+                    style={{
+                      appearance: "none",
+                      textAlign: "left",
+                      color: "inherit",
+                      background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      borderRadius: 12,
+                      padding: 12,
+                      cursor: "pointer",
+                      display: "grid",
+                      gap: 4,
+                    }}
+                  >
+                    <strong>{recording.title}</strong>
+                    <span style={{ opacity: 0.75 }}>
+                      {recording.artist || "Unknown artist"}
+                      {recording.albumTitle ? ` • ${recording.albumTitle}` : ""}
+                    </span>
+                    <span style={{ opacity: 0.55, fontSize: 12 }}>
+                      {recording.recordingId}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {form.recordingId ? (
+              <span style={{ opacity: 0.55, fontSize: 12 }}>
+                Selected recording ID: {form.recordingId}
+              </span>
+            ) : null}
+          </div>
         ) : null}
 
         <label style={{ display: "grid", gap: 6 }}>
@@ -1117,7 +1356,19 @@ export default function BadgeDashboardClient({
                         borderTop: "1px solid rgba(255,255,255,0.08)",
                       }}
                     >
-                      {row.matchedRecordingId || "—"}
+                      {row.matchedRecordingId ? (
+                        <div style={{ display: "grid", gap: 3 }}>
+                          <span>
+                            {row.matchedRecordingTitle ||
+                              row.matchedRecordingId}
+                          </span>
+                          <span style={{ opacity: 0.55, fontSize: 12 }}>
+                            {row.matchedRecordingId}
+                          </span>
+                        </div>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                   </tr>
                 ))

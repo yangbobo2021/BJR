@@ -2,6 +2,7 @@
 import "server-only";
 
 import { sql } from "@vercel/postgres";
+import { getRecordingSummaryByRecordingId } from "@/lib/albums";
 import { grantEntitlement } from "@/lib/entitlementOps";
 
 export type AwardBadgeToMembersInput = {
@@ -79,6 +80,7 @@ export type BadgePreviewMemberRow = {
   playCount: number | null;
   completedCount: number | null;
   matchedRecordingId: string | null;
+  matchedRecordingTitle: string | null;
   matchedWindowEventCount: number | null;
 };
 
@@ -239,6 +241,7 @@ function mapAggregateRow(row: AggregateRow): BadgePreviewMemberRow {
     playCount,
     completedCount,
     matchedRecordingId: row.recording_id ?? null,
+    matchedRecordingTitle: null,
     matchedWindowEventCount,
   };
 }
@@ -253,6 +256,7 @@ function mapMemberBaseRow(row: MemberBaseRow): BadgePreviewMemberRow {
     playCount: null,
     completedCount: null,
     matchedRecordingId: null,
+    matchedRecordingTitle: null,
     matchedWindowEventCount: null,
   };
 }
@@ -268,6 +272,45 @@ const BADGE_PREVIEW_HANDLERS: BadgePreviewHandlerMap = {
   recording_complete_count: previewByRecordingCompleteCount,
 };
 
+async function hydratePreviewRecordingTitles(
+  rows: BadgePreviewMemberRow[],
+): Promise<BadgePreviewMemberRow[]> {
+  const distinctRecordingIds = Array.from(
+    new Set(
+      rows
+        .map((row) => row.matchedRecordingId)
+        .filter(
+          (recordingId): recordingId is string =>
+            typeof recordingId === "string" && recordingId.trim().length > 0,
+        ),
+    ),
+  );
+
+  if (distinctRecordingIds.length === 0) {
+    return rows;
+  }
+
+  const titleByRecordingId = new Map<string, string | null>();
+
+  await Promise.all(
+    distinctRecordingIds.map(async (recordingId) => {
+      const summary = await getRecordingSummaryByRecordingId(recordingId);
+      titleByRecordingId.set(recordingId, summary?.title ?? recordingId);
+    }),
+  );
+
+  return rows.map((row) => {
+    if (!row.matchedRecordingId) return row;
+
+    return {
+      ...row,
+      matchedRecordingTitle:
+        titleByRecordingId.get(row.matchedRecordingId) ??
+        row.matchedRecordingId,
+    };
+  });
+}
+
 export async function previewBadgeQualification(
   input: BadgePreviewInput,
 ): Promise<BadgePreviewMemberRow[]> {
@@ -275,7 +318,8 @@ export async function previewBadgeQualification(
     value: BadgePreviewInput,
   ) => Promise<BadgePreviewMemberRow[]>;
 
-  return handler(input);
+  const rows = await handler(input);
+  return hydratePreviewRecordingTitles(rows);
 }
 
 async function previewByMinutesStreamed(

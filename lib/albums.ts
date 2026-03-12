@@ -394,6 +394,127 @@ export async function listAlbumsForBrowse(): Promise<AlbumBrowseItem[]> {
   }));
 }
 
+export type RecordingSearchResult = {
+  recordingId: string;
+  title: string;
+  artist?: string | null;
+  albumSlug?: string | null;
+  albumTitle?: string | null;
+};
+
+export async function searchRecordingsForAdmin(args: {
+  query: string;
+  limit?: number;
+}): Promise<RecordingSearchResult[]> {
+  const rawQuery = normStr(args.query);
+  if (!rawQuery) return [];
+
+  const limit = Math.max(1, Math.min(25, Math.floor(args.limit ?? 12)));
+
+  const wildcard = `*${rawQuery}*`;
+  const exactId = rawQuery;
+
+  const q = `
+    *[
+      _type == "album" &&
+      count(
+        tracks[
+          defined(recordingId) && (
+            recordingId == $exactId ||
+            recordingId match $wildcard ||
+            title match $wildcard ||
+            artist match $wildcard
+          )
+        ]
+      ) > 0
+    ] | order(title asc) {
+      "albumSlug": slug.current,
+      "albumTitle": title,
+      "albumArtist": artist,
+      "matches": tracks[
+        defined(recordingId) && (
+          recordingId == $exactId ||
+          recordingId match $wildcard ||
+          title match $wildcard ||
+          artist match $wildcard
+        )
+      ]{
+        recordingId,
+        title,
+        artist
+      }
+    }
+  `;
+
+  const docs = await client.fetch<
+    Array<{
+      albumSlug?: string;
+      albumTitle?: string;
+      albumArtist?: string;
+      matches?: Array<{
+        recordingId?: string;
+        title?: string;
+        artist?: string;
+      }>;
+    }>
+  >(q, {
+    exactId,
+    wildcard,
+  });
+
+  const flattened: RecordingSearchResult[] = [];
+  const seen = new Set<string>();
+
+  for (const doc of Array.isArray(docs) ? docs : []) {
+    const albumSlug = normStr(doc?.albumSlug) ?? null;
+    const albumTitle = normStr(doc?.albumTitle) ?? null;
+    const albumArtist = normStr(doc?.albumArtist) ?? null;
+
+    for (const match of Array.isArray(doc?.matches) ? doc.matches : []) {
+      const recordingId = normStr(match?.recordingId);
+      const title = normStr(match?.title);
+
+      if (!recordingId || !title || seen.has(recordingId)) continue;
+      seen.add(recordingId);
+
+      flattened.push({
+        recordingId,
+        title,
+        artist: normStr(match?.artist) ?? albumArtist,
+        albumSlug,
+        albumTitle,
+      });
+    }
+  }
+
+  const normalizedQuery = rawQuery.toLowerCase();
+
+  flattened.sort((a, b) => {
+    const aId = a.recordingId.toLowerCase();
+    const bId = b.recordingId.toLowerCase();
+    const aTitle = a.title.toLowerCase();
+    const bTitle = b.title.toLowerCase();
+
+    const aExact = aId === normalizedQuery ? 1 : 0;
+    const bExact = bId === normalizedQuery ? 1 : 0;
+    if (aExact !== bExact) return bExact - aExact;
+
+    const aTitleStarts = aTitle.startsWith(normalizedQuery) ? 1 : 0;
+    const bTitleStarts = bTitle.startsWith(normalizedQuery) ? 1 : 0;
+    if (aTitleStarts !== bTitleStarts) return bTitleStarts - aTitleStarts;
+
+    const aTitleIncludes = aTitle.includes(normalizedQuery) ? 1 : 0;
+    const bTitleIncludes = bTitle.includes(normalizedQuery) ? 1 : 0;
+    if (aTitleIncludes !== bTitleIncludes) {
+      return bTitleIncludes - aTitleIncludes;
+    }
+
+    return a.title.localeCompare(b.title);
+  });
+
+  return flattened.slice(0, limit);
+}
+
 export async function getRecordingSummaryByRecordingId(
   recordingId: string,
 ): Promise<RecordingSummary | null> {
