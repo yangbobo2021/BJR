@@ -319,7 +319,7 @@ export default function BadgeCabinet(props: Props) {
     unlockReleaseTimeoutRef.current = window.setTimeout(() => {
       setUnlockPhase("move");
       setPendingUnlockKeys(new Set());
-      setDisplayItemsOverride(items);
+      setDisplayItemsOverride(null);
       setFlipLayoutNonce((current) => current + 1);
       unlockReleaseTimeoutRef.current = null;
     }, UNLOCK_REVEAL_MS);

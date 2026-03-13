@@ -38,59 +38,20 @@ function resetNodeTransform(node: HTMLDivElement): void {
   node.style.willChange = "";
 }
 
-function rectIntersectsContainer(
-  rect: DOMRect,
-  containerRect: DOMRect,
-  bleedPx: number,
-): boolean {
-  return !(
-    rect.right < containerRect.left - bleedPx ||
-    rect.left > containerRect.right + bleedPx ||
-    rect.bottom < containerRect.top - bleedPx ||
-    rect.top > containerRect.bottom + bleedPx
-  );
-}
-
 function isReasonableDelta(
   deltaX: number,
   deltaY: number,
-  previousRect: DOMRect,
-  nextRect: DOMRect,
-  containerRect: DOMRect | null,
+  rect: DOMRect,
 ): boolean {
   if (typeof window === "undefined") return true;
 
   const viewportX = window.innerWidth || 0;
   const viewportY = window.innerHeight || 0;
 
-  const referenceWidth = Math.max(previousRect.width, nextRect.width);
-  const referenceHeight = Math.max(previousRect.height, nextRect.height);
+  const maxDeltaX = Math.max(viewportX * 1.25, rect.width * 8, 320);
+  const maxDeltaY = Math.max(viewportY * 1.25, rect.height * 8, 320);
 
-  const baseMaxDeltaX = Math.max(viewportX * 0.6, referenceWidth * 4, 180);
-  const baseMaxDeltaY = Math.max(viewportY * 0.6, referenceHeight * 6, 220);
-
-  const maxDeltaX = containerRect
-    ? Math.max(baseMaxDeltaX, containerRect.width * 1.1)
-    : baseMaxDeltaX;
-
-  const maxDeltaY = containerRect
-    ? Math.max(baseMaxDeltaY, containerRect.height * 1.1)
-    : baseMaxDeltaY;
-
-  if (Math.abs(deltaX) > maxDeltaX || Math.abs(deltaY) > maxDeltaY) {
-    return false;
-  }
-
-  if (!containerRect) {
-    return true;
-  }
-
-  const bleedPx = 40;
-
-  return (
-    rectIntersectsContainer(previousRect, containerRect, bleedPx) &&
-    rectIntersectsContainer(nextRect, containerRect, bleedPx)
-  );
+  return Math.abs(deltaX) <= maxDeltaX && Math.abs(deltaY) <= maxDeltaY;
 }
 
 export function useFlipGridAnimation(options: Options): {
@@ -214,23 +175,9 @@ export function useFlipGridAnimation(options: Options): {
 
       const deltaX = previousRect.left - nextRect.left;
       const deltaY = previousRect.top - nextRect.top;
-      const containerRect = node.parentElement
-        ? node.parentElement.getBoundingClientRect()
-        : null;
 
       if (Math.abs(deltaX) < 0.5 && Math.abs(deltaY) < 0.5) continue;
-
-      if (
-        !isReasonableDelta(
-          deltaX,
-          deltaY,
-          previousRect,
-          nextRect,
-          containerRect,
-        )
-      ) {
-        continue;
-      }
+      if (!isReasonableDelta(deltaX, deltaY, nextRect)) continue;
 
       animations.push({
         key,
