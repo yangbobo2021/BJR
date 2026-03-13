@@ -29,7 +29,21 @@ export default function BadgeCabinetItem(props: Props) {
         minWidth: 0,
       }}
     >
-      <div tabIndex={0} title={item.titleText} aria-label={item.titleText}>
+      <div
+        tabIndex={0}
+        title={item.titleText}
+        aria-label={item.titleText}
+        className="portal-member-badge-visual"
+        style={{
+          position: "relative",
+          width: "100%",
+          aspectRatio: "1 / 1",
+          overflow: "visible",
+          outline: "none",
+          perspective: "900px",
+          perspectiveOrigin: "50% 50%",
+        }}
+      >
         <BadgeUnlockVisual
           imageUrl={item.imageUrl}
           label={item.label}
