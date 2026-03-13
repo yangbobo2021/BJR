@@ -13,10 +13,11 @@ type Props = {
   badges: MemberDashboardBadge[];
 };
 
-const DEBUG_REPLAY_RESET_MS = 48;
-const UNLOCK_PRE_MOVE_MS = 960;
-const DEFAULT_FLIP_DURATION_MS = 360;
-const UNLOCK_FLIP_DURATION_MS = 720;
+const DEBUG_REPLAY_RESET_MS = 72;
+const UNLOCK_REVEAL_MS = 1680;
+const DEFAULT_FLIP_DURATION_MS = 420;
+const UNLOCK_FLIP_DURATION_MS = 1320;
+const UNLOCK_SETTLE_MS = 640;
 
 function pickRandomItem<T>(items: T[]): T | null {
   if (items.length === 0) return null;
@@ -49,9 +50,13 @@ export default function BadgeCabinet(props: Props) {
   const [pendingUnlockKeys, setPendingUnlockKeys] = React.useState<Set<string>>(
     () => new Set(),
   );
+  const [unlockPhase, setUnlockPhase] = React.useState<
+    "idle" | "reveal" | "move"
+  >("idle");
   const [flipDurationMs, setFlipDurationMs] = React.useState(
     DEFAULT_FLIP_DURATION_MS,
   );
+  const [flipLayoutNonce, setFlipLayoutNonce] = React.useState(0);
 
   const sourceItems = React.useMemo(
     () => buildBadgeCabinetItems(badges),
@@ -126,11 +131,22 @@ export default function BadgeCabinet(props: Props) {
     [displayItems],
   );
 
+  const flipLayoutDependency = React.useMemo(
+    () =>
+      [
+        expanded ? "expanded" : "collapsed",
+        displayLayoutToken,
+        unlockPhase,
+        flipLayoutNonce,
+      ].join(":"),
+    [displayLayoutToken, expanded, flipLayoutNonce, unlockPhase],
+  );
+
   const { registerItemRef } = useFlipGridAnimation({
     keys: itemKeys,
     disabled: prefersReducedMotion,
     durationMs: flipDurationMs,
-    layoutDependency: `${expanded}:${displayLayoutToken}:${debugUnlockedKey ?? ""}`,
+    layoutDependency: flipLayoutDependency,
   });
 
   const previousUnlockedKeysRef = React.useRef<Set<string> | null>(null);
@@ -176,8 +192,9 @@ export default function BadgeCabinet(props: Props) {
 
   React.useEffect(() => {
     if (pendingUnlockKeys.size > 0) return;
+    if (unlockPhase !== "idle") return;
     setPreviousStableItems(items);
-  }, [items, pendingUnlockKeys]);
+  }, [items, pendingUnlockKeys, unlockPhase]);
 
   React.useEffect(() => {
     if (debugCandidateItems.length === 0) {
@@ -228,7 +245,22 @@ export default function BadgeCabinet(props: Props) {
       debugReplayTimeoutRef.current = null;
     }
 
+    if (unlockReleaseTimeoutRef.current !== null) {
+      window.clearTimeout(unlockReleaseTimeoutRef.current);
+      unlockReleaseTimeoutRef.current = null;
+    }
+
+    if (unlockCleanupTimeoutRef.current !== null) {
+      window.clearTimeout(unlockCleanupTimeoutRef.current);
+      unlockCleanupTimeoutRef.current = null;
+    }
+
     setDebugUnlockedKey(null);
+    setPendingUnlockKeys(new Set());
+    setNewlyUnlockedKeys(new Set());
+    setUnlockPhase("idle");
+    setFlipDurationMs(DEFAULT_FLIP_DURATION_MS);
+    setFlipLayoutNonce((current) => current + 1);
   }, []);
 
   React.useEffect(() => {
@@ -268,21 +300,26 @@ export default function BadgeCabinet(props: Props) {
 
     setNewlyUnlockedKeys(freshUnlockKeySet);
     setPendingUnlockKeys(freshUnlockKeySet);
+    setUnlockPhase("reveal");
     setFlipDurationMs(UNLOCK_FLIP_DURATION_MS);
     setLiveAnnouncement(liveText);
 
     unlockReleaseTimeoutRef.current = window.setTimeout(() => {
+      setUnlockPhase("move");
       setPendingUnlockKeys(new Set());
+      setFlipLayoutNonce((current) => current + 1);
       unlockReleaseTimeoutRef.current = null;
-    }, UNLOCK_PRE_MOVE_MS);
+    }, UNLOCK_REVEAL_MS);
 
     unlockCleanupTimeoutRef.current = window.setTimeout(
       () => {
         setNewlyUnlockedKeys(new Set());
+        setUnlockPhase("idle");
         setFlipDurationMs(DEFAULT_FLIP_DURATION_MS);
+        setFlipLayoutNonce((current) => current + 1);
         unlockCleanupTimeoutRef.current = null;
       },
-      UNLOCK_PRE_MOVE_MS + UNLOCK_FLIP_DURATION_MS + 220,
+      UNLOCK_REVEAL_MS + UNLOCK_FLIP_DURATION_MS + UNLOCK_SETTLE_MS,
     );
 
     return () => {

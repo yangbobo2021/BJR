@@ -1,3 +1,4 @@
+// web/app/admin/badges/BadgeDashboardClient.tsx
 "use client";
 
 import React from "react";

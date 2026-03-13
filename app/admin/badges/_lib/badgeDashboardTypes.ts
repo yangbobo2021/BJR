@@ -1,3 +1,4 @@
+// web/app/admin/badges/_lib/badgeDashboardTypes.ts
 import type { BadgeQualificationMode } from "@/lib/badgePreviewModes";
 
 export type BadgeDefinitionOption = {

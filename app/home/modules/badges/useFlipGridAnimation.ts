@@ -1,4 +1,3 @@
-// web/app/home/modules/badges/useFlipGridAnimation.ts
 "use client";
 
 import React from "react";
@@ -15,6 +14,8 @@ type Options = {
 
 type RectMap = Map<string, DOMRect>;
 
+type CleanupFn = () => void;
+
 function snapshotRects(
   keys: string[],
   nodeByKey: Map<string, HTMLDivElement>,
@@ -30,6 +31,28 @@ function snapshotRects(
   return rects;
 }
 
+function resetNodeTransform(node: HTMLDivElement): void {
+  node.style.transform = "";
+  node.style.transition = "";
+  node.style.willChange = "";
+}
+
+function isReasonableDelta(
+  deltaX: number,
+  deltaY: number,
+  rect: DOMRect,
+): boolean {
+  if (typeof window === "undefined") return true;
+
+  const viewportX = window.innerWidth || 0;
+  const viewportY = window.innerHeight || 0;
+
+  const maxDeltaX = Math.max(viewportX * 1.25, rect.width * 8, 320);
+  const maxDeltaY = Math.max(viewportY * 1.25, rect.height * 8, 320);
+
+  return Math.abs(deltaX) <= maxDeltaX && Math.abs(deltaY) <= maxDeltaY;
+}
+
 export function useFlipGridAnimation(options: Options): {
   registerItemRef: RegisterItemRef;
 } {
@@ -43,25 +66,36 @@ export function useFlipGridAnimation(options: Options): {
 
   const nodeByKeyRef = React.useRef<Map<string, HTMLDivElement>>(new Map());
   const previousRectsRef = React.useRef<RectMap>(new Map());
-  const cleanupByKeyRef = React.useRef<Map<string, () => void>>(new Map());
+  const cleanupByKeyRef = React.useRef<Map<string, CleanupFn>>(new Map());
   const rafIdRef = React.useRef<number | null>(null);
+  const settleRafIdRef = React.useRef<number | null>(null);
   const hasMeasuredInitialLayoutRef = React.useRef(false);
 
   const registerItemRef = React.useCallback<RegisterItemRef>(
     (key: string) => (node: HTMLDivElement | null) => {
-      const map = nodeByKeyRef.current;
+      const nodeByKey = nodeByKeyRef.current;
+      const cleanupByKey = cleanupByKeyRef.current;
+      const existingNode = nodeByKey.get(key);
+
+      if (existingNode && existingNode !== node) {
+        const cleanup = cleanupByKey.get(key);
+        if (cleanup) {
+          cleanup();
+          cleanupByKey.delete(key);
+        }
+      }
 
       if (node) {
-        map.set(key, node);
+        nodeByKey.set(key, node);
         return;
       }
 
-      map.delete(key);
+      nodeByKey.delete(key);
 
-      const cleanup = cleanupByKeyRef.current.get(key);
+      const cleanup = cleanupByKey.get(key);
       if (cleanup) {
         cleanup();
-        cleanupByKeyRef.current.delete(key);
+        cleanupByKey.delete(key);
       }
     },
     [],
@@ -73,6 +107,12 @@ export function useFlipGridAnimation(options: Options): {
     return () => {
       if (rafIdRef.current !== null) {
         window.cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+
+      if (settleRafIdRef.current !== null) {
+        window.cancelAnimationFrame(settleRafIdRef.current);
+        settleRafIdRef.current = null;
       }
 
       for (const cleanup of cleanupByKey.values()) {
@@ -84,6 +124,27 @@ export function useFlipGridAnimation(options: Options): {
   }, []);
 
   React.useLayoutEffect(() => {
+    if (rafIdRef.current !== null) {
+      window.cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+
+    if (settleRafIdRef.current !== null) {
+      window.cancelAnimationFrame(settleRafIdRef.current);
+      settleRafIdRef.current = null;
+    }
+
+    for (const cleanup of cleanupByKeyRef.current.values()) {
+      cleanup();
+    }
+    cleanupByKeyRef.current.clear();
+
+    for (const key of keys) {
+      const node = nodeByKeyRef.current.get(key);
+      if (!node) continue;
+      resetNodeTransform(node);
+    }
+
     const nextRects = snapshotRects(keys, nodeByKeyRef.current);
 
     if (!hasMeasuredInitialLayoutRef.current) {
@@ -115,6 +176,7 @@ export function useFlipGridAnimation(options: Options): {
       const deltaY = previousRect.top - nextRect.top;
 
       if (Math.abs(deltaX) < 0.5 && Math.abs(deltaY) < 0.5) continue;
+      if (!isReasonableDelta(deltaX, deltaY, nextRect)) continue;
 
       animations.push({
         key,
@@ -124,22 +186,29 @@ export function useFlipGridAnimation(options: Options): {
       });
     }
 
-    if (rafIdRef.current !== null) {
-      window.cancelAnimationFrame(rafIdRef.current);
-      rafIdRef.current = null;
+    if (animations.length === 0) {
+      previousRectsRef.current = nextRects;
+      return;
     }
-
-    for (const cleanup of cleanupByKeyRef.current.values()) {
-      cleanup();
-    }
-    cleanupByKeyRef.current.clear();
 
     for (const animation of animations) {
       const { key, node, deltaX, deltaY } = animation;
 
       node.style.transition = "none";
-      node.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+      node.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0)`;
       node.style.willChange = "transform";
+
+      let timeoutId: number | null = null;
+
+      const cleanup = () => {
+        node.removeEventListener("transitionend", handleTransitionEnd);
+        if (timeoutId !== null) {
+          window.clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        resetNodeTransform(node);
+        cleanupByKeyRef.current.delete(key);
+      };
 
       const handleTransitionEnd = (event: TransitionEvent) => {
         if (event.target !== node) return;
@@ -147,29 +216,28 @@ export function useFlipGridAnimation(options: Options): {
         cleanup();
       };
 
-      const cleanup = () => {
-        node.removeEventListener("transitionend", handleTransitionEnd);
-        node.style.transform = "";
-        node.style.transition = "";
-        node.style.willChange = "";
-        cleanupByKeyRef.current.delete(key);
-      };
-
       node.addEventListener("transitionend", handleTransitionEnd);
+
+      timeoutId = window.setTimeout(() => {
+        cleanup();
+      }, durationMs + 120);
+
       cleanupByKeyRef.current.set(key, cleanup);
     }
 
-    if (animations.length > 0) {
-      rafIdRef.current = window.requestAnimationFrame(() => {
-        rafIdRef.current = null;
+    rafIdRef.current = window.requestAnimationFrame(() => {
+      rafIdRef.current = null;
+
+      settleRafIdRef.current = window.requestAnimationFrame(() => {
+        settleRafIdRef.current = null;
 
         for (const animation of animations) {
           const { node } = animation;
           node.style.transition = `transform ${durationMs}ms ${easing}`;
-          node.style.transform = "translate(0px, 0px)";
+          node.style.transform = "translate3d(0px, 0px, 0)";
         }
       });
-    }
+    });
 
     previousRectsRef.current = nextRects;
   }, [keys, disabled, durationMs, easing, layoutDependency]);
