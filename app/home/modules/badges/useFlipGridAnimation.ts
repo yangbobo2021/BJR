@@ -11,6 +11,7 @@ type Options = {
   durationMs?: number;
   easing?: string;
   layoutDependency?: string | number | boolean | null;
+  captureBaselineToken?: string | number | boolean | null;
 };
 
 type RectMap = Map<string, DOMRect>;
@@ -63,6 +64,7 @@ export function useFlipGridAnimation(options: Options): {
     durationMs = 320,
     easing = "cubic-bezier(0.22, 1, 0.36, 1)",
     layoutDependency = null,
+    captureBaselineToken = null,
   } = options;
 
   const nodeByKeyRef = React.useRef<Map<string, HTMLDivElement>>(new Map());
@@ -71,6 +73,10 @@ export function useFlipGridAnimation(options: Options): {
   const rafIdRef = React.useRef<number | null>(null);
   const settleRafIdRef = React.useRef<number | null>(null);
   const hasMeasuredInitialLayoutRef = React.useRef(false);
+  const lastCaptureBaselineTokenRef = React.useRef<
+    string | number | boolean | null
+  >(captureBaselineToken);
+  const animateFromCapturedBaselineRef = React.useRef(false);
 
   const registerItemRef = React.useCallback<RegisterItemRef>(
     (key: string) => (node: HTMLDivElement | null) => {
@@ -147,10 +153,20 @@ export function useFlipGridAnimation(options: Options): {
     }
 
     const nextRects = snapshotRects(keys, nodeByKeyRef.current);
+    const captureBaselineChanged =
+      captureBaselineToken !== lastCaptureBaselineTokenRef.current;
+
+    lastCaptureBaselineTokenRef.current = captureBaselineToken;
 
     if (!hasMeasuredInitialLayoutRef.current) {
       hasMeasuredInitialLayoutRef.current = true;
       previousRectsRef.current = nextRects;
+      return;
+    }
+
+    if (captureBaselineChanged) {
+      previousRectsRef.current = nextRects;
+      animateFromCapturedBaselineRef.current = true;
       return;
     }
 
@@ -188,6 +204,7 @@ export function useFlipGridAnimation(options: Options): {
     }
 
     if (animations.length === 0) {
+      animateFromCapturedBaselineRef.current = false;
       previousRectsRef.current = nextRects;
       return;
     }
@@ -240,8 +257,16 @@ export function useFlipGridAnimation(options: Options): {
       });
     });
 
+    animateFromCapturedBaselineRef.current = false;
     previousRectsRef.current = nextRects;
-  }, [keys, disabled, durationMs, easing, layoutDependency]);
+  }, [
+    keys,
+    disabled,
+    durationMs,
+    easing,
+    layoutDependency,
+    captureBaselineToken,
+  ]);
 
   return { registerItemRef };
 }

@@ -98,7 +98,7 @@ export default function BadgeCabinet(props: Props) {
   const [flipDurationMs, setFlipDurationMs] = React.useState(
     DEFAULT_FLIP_DURATION_MS,
   );
-  const [flipLayoutNonce, setFlipLayoutNonce] = React.useState(0);
+  const [flipBaselineToken, setFlipBaselineToken] = React.useState(0);
 
   const sourceItems = React.useMemo(
     () => buildBadgeCabinetItems(badges),
@@ -151,9 +151,8 @@ export default function BadgeCabinet(props: Props) {
         expanded ? "expanded" : "collapsed",
         displayLayoutToken,
         unlockPhase,
-        flipLayoutNonce,
       ].join(":"),
-    [displayLayoutToken, expanded, flipLayoutNonce, unlockPhase],
+    [displayLayoutToken, expanded, unlockPhase],
   );
 
   const { registerItemRef } = useFlipGridAnimation({
@@ -161,6 +160,7 @@ export default function BadgeCabinet(props: Props) {
     disabled: prefersReducedMotion || isFlipSuspended,
     durationMs: flipDurationMs,
     layoutDependency: flipLayoutDependency,
+    captureBaselineToken: flipBaselineToken,
   });
 
   React.useEffect(() => {
@@ -284,7 +284,6 @@ export default function BadgeCabinet(props: Props) {
     setDisplayItemsOverride(null);
     setIsFlipSuspended(false);
     setFlipDurationMs(DEFAULT_FLIP_DURATION_MS);
-    setFlipLayoutNonce((current) => current + 1);
   }, []);
 
   React.useLayoutEffect(() => {
@@ -334,7 +333,7 @@ export default function BadgeCabinet(props: Props) {
       setUnlockPhase("move");
       setPendingUnlockKeys(new Set());
       setIsFlipSuspended(false);
-      setFlipLayoutNonce((current) => current + 1);
+      setFlipBaselineToken((current) => current + 1);
       unlockReleaseTimeoutRef.current = null;
 
       if (unlockReleaseRafRef.current !== null) {
@@ -343,7 +342,6 @@ export default function BadgeCabinet(props: Props) {
 
       unlockReleaseRafRef.current = window.requestAnimationFrame(() => {
         setDisplayItemsOverride(null);
-        setFlipLayoutNonce((current) => current + 1);
         unlockReleaseRafRef.current = null;
       });
     }, UNLOCK_REVEAL_MS);
@@ -355,7 +353,6 @@ export default function BadgeCabinet(props: Props) {
         setDisplayItemsOverride(null);
         setIsFlipSuspended(false);
         setFlipDurationMs(DEFAULT_FLIP_DURATION_MS);
-        setFlipLayoutNonce((current) => current + 1);
         unlockCleanupTimeoutRef.current = null;
       },
       UNLOCK_REVEAL_MS + UNLOCK_FLIP_DURATION_MS + UNLOCK_SETTLE_MS,
