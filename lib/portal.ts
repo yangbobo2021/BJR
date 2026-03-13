@@ -18,6 +18,7 @@ export type PortalModulePanel = {
   full?: PortableTextBlock[];
   requiresEntitlement?: string;
   styleVariant?: PanelStyleVariant;
+  runtimePanelKind?: "none" | "memberSummary";
 };
 
 export type PortalModulePanels = {
@@ -121,7 +122,8 @@ const portalPageQuery = `
         teaser,
         full,
         requiresEntitlement,
-        styleVariant
+        styleVariant,
+        runtimePanelKind
       },
 
       // moduleDownloads

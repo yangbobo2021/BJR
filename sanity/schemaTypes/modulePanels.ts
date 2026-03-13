@@ -46,10 +46,27 @@ export const modulePanels = defineType({
             }),
 
             defineField({
+              name: "runtimePanelKind",
+              title: "Runtime panel kind",
+              type: "string",
+              initialValue: "none",
+              options: {
+                list: [
+                  { title: "Authored rich text panel", value: "none" },
+                  { title: "Member summary panel", value: "memberSummary" },
+                ],
+              },
+              description:
+                "Use a runtime panel when this slot should render application data instead of authored Portable Text.",
+            }),
+
+            defineField({
               name: "teaser",
               title: "Teaser (locked viewers)",
               type: "array",
               of: [{ type: "block" }],
+              hidden: ({ parent }) =>
+                parent?.runtimePanelKind === "memberSummary",
               description:
                 "Shown when viewer is not entitled (if gated). If empty, panel will not render for locked viewers.",
             }),
@@ -59,9 +76,24 @@ export const modulePanels = defineType({
               title: "Full (entitled viewers)",
               type: "array",
               of: [{ type: "block" }],
+              hidden: ({ parent }) =>
+                parent?.runtimePanelKind === "memberSummary",
               description:
                 "Shown when viewer is entitled (or always if not gated).",
-              validation: (r) => r.required(),
+              validation: (r) =>
+                r.custom((value, context) => {
+                  const parent =
+                    context.parent &&
+                    typeof context.parent === "object" &&
+                    !Array.isArray(context.parent)
+                      ? (context.parent as { runtimePanelKind?: string })
+                      : null;
+
+                  if (parent?.runtimePanelKind === "memberSummary") return true;
+                  return Array.isArray(value) && value.length > 0
+                    ? true
+                    : "Full content is required for authored rich text panels.";
+                }),
             }),
 
             defineField({
@@ -90,11 +122,19 @@ export const modulePanels = defineType({
             select: {
               title: "title",
               requiresEntitlement: "requiresEntitlement",
+              runtimePanelKind: "runtimePanelKind",
             },
-            prepare({ title, requiresEntitlement }) {
+            prepare({ title, requiresEntitlement, runtimePanelKind }) {
+              const kind =
+                runtimePanelKind === "memberSummary"
+                  ? "Runtime member panel"
+                  : "Authored panel";
+
+              const access = requiresEntitlement ? "Gated" : "Ungated";
+
               return {
                 title: title ?? "Panel",
-                subtitle: requiresEntitlement ? "Gated" : "Ungated",
+                subtitle: `${kind} · ${access}`,
               };
             },
           },

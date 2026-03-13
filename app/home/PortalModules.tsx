@@ -6,6 +6,7 @@ import { getAlbumOffer, type AlbumOfferAsset } from "../../lib/albumOffers";
 import { urlFor } from "../../sanity/lib/image";
 import type { PortalMemberSummary } from "../../lib/memberDashboard";
 import type {
+  PanelStyleVariant,
   PortalModule,
   PortalModuleDownloads,
   SanityImage,
@@ -179,7 +180,7 @@ function Panel(props: {
   locked?: boolean;
   variant?: "default" | "gold" | "patternPill";
 }) {
-  const { title, blocks, locked, variant = "default" } = props;
+  const { blocks, locked, variant = "default" } = props;
 
   return (
     <div
@@ -199,6 +200,34 @@ function Panel(props: {
         }}
       >
         <PortableText value={blocks} />
+      </div>
+    </div>
+  );
+}
+
+function RuntimeMemberPanelCard(props: {
+  title: string;
+  summary: PortalMemberSummary;
+}) {
+  const { title, summary } = props;
+
+  return (
+    <div
+      className="portalPanel portalPanel--default"
+      style={{
+        borderRadius: 16,
+        padding: 14,
+        minWidth: 0,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 13,
+          opacity: 0.82,
+          lineHeight: 1.6,
+        }}
+      >
+        <PortalMemberPanel summary={summary} title={title} embedded />
       </div>
     </div>
   );
@@ -507,6 +536,26 @@ function DownloadOfferCard(props: {
 // Module renderer (reused per tab)
 // --------------------
 
+type VisibleAuthoredPanel = {
+  key: string;
+  title: string;
+  blocks: PortableTextBlock[];
+  locked: boolean;
+  variant: PanelStyleVariant;
+  runtimePanelKind: "none";
+};
+
+type VisibleRuntimeMemberPanel = {
+  key: string;
+  title: string;
+  locked: false;
+  variant: PanelStyleVariant;
+  runtimePanelKind: "memberSummary";
+  runtimeSummary: PortalMemberSummary;
+};
+
+type VisiblePanel = VisibleAuthoredPanel | VisibleRuntimeMemberPanel;
+
 function renderModule(
   m: PortalModule,
   entitlementKeys: string[],
@@ -525,37 +574,56 @@ function renderModule(
           ? "grid gap-3 grid-cols-1 sm:grid-cols-2"
           : "grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
 
-    const visiblePanels = (m.panels ?? []).flatMap((p) => {
-      const locked =
-        !!p.requiresEntitlement &&
-        !hasKey(entitlementKeys, p.requiresEntitlement);
+    const visiblePanels: VisiblePanel[] = (m.panels ?? []).flatMap(
+      (p): VisiblePanel[] => {
+        const locked =
+          !!p.requiresEntitlement &&
+          !hasKey(entitlementKeys, p.requiresEntitlement);
 
-      // Locked viewers: only show if teaser has real content
-      if (locked) {
-        if (!portableTextHasContent(p.teaser)) return [];
+        if (p.runtimePanelKind === "memberSummary") {
+          if (locked) return [];
+          if (!memberSummary) return [];
+          if (!hasMeaningfulMemberSummary(memberSummary)) return [];
+
+          return [
+            {
+              key: p._key,
+              title: p.title,
+              locked: false,
+              variant: p.styleVariant ?? "default",
+              runtimePanelKind: "memberSummary",
+              runtimeSummary: memberSummary,
+            },
+          ];
+        }
+
+        if (locked) {
+          if (!portableTextHasContent(p.teaser)) return [];
+          return [
+            {
+              key: p._key,
+              title: p.title,
+              blocks: p.teaser ?? [],
+              locked: true,
+              variant: p.styleVariant ?? "default",
+              runtimePanelKind: "none",
+            },
+          ];
+        }
+
+        if (!portableTextHasContent(p.full)) return [];
         return [
           {
             key: p._key,
             title: p.title,
-            blocks: p.teaser ?? [],
-            locked: true,
+            blocks: p.full ?? [],
+            locked: false,
             variant: p.styleVariant ?? "default",
+            runtimePanelKind: "none",
           },
         ];
-      }
-
-      // Entitled (or ungated): show full if it has content; if it doesn't, skip quietly
-      if (!portableTextHasContent(p.full)) return [];
-      return [
-        {
-          key: p._key,
-          title: p.title,
-          blocks: p.full ?? [],
-          locked: false,
-          variant: p.styleVariant ?? "default",
-        },
-      ];
-    });
+      },
+    );
 
     if (visiblePanels.length === 0) return null;
 
@@ -575,16 +643,29 @@ function renderModule(
         ) : null}
 
         <div className={gridClass}>
-          {visiblePanels.map((p) => (
-            <PanelShell key={p.key} variant={p.variant}>
-              <Panel
-                title={p.title}
-                blocks={p.blocks}
-                locked={p.locked}
-                variant={p.variant}
-              />
-            </PanelShell>
-          ))}
+          {visiblePanels.map((p) => {
+            if (p.runtimePanelKind === "memberSummary") {
+              return (
+                <PanelShell key={p.key} variant={p.variant}>
+                  <RuntimeMemberPanelCard
+                    title={p.title}
+                    summary={p.runtimeSummary}
+                  />
+                </PanelShell>
+              );
+            }
+
+            return (
+              <PanelShell key={p.key} variant={p.variant}>
+                <Panel
+                  title={p.title}
+                  blocks={p.blocks}
+                  locked={p.locked}
+                  variant={p.variant}
+                />
+              </PanelShell>
+            );
+          })}
         </div>
       </div>
     );

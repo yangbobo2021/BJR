@@ -8,6 +8,7 @@ import type { PortalMemberSummary } from "@/lib/memberDashboard";
 type Props = {
   summary: PortalMemberSummary;
   title?: string;
+  embedded?: boolean;
 };
 
 const GREETING_PREFIXES = [
@@ -673,7 +674,7 @@ function BadgeRow(props: { badges: PortalMemberSummary["badges"] }) {
 }
 
 export default function PortalMemberPanel(props: Props) {
-  const { summary, title = "Member" } = props;
+  const { summary, embedded = false } = props;
 
   const greetingPrefix = useSessionGreetingPrefix();
   const displayName = summary.identity?.displayName?.trim() || "Anonymous";
@@ -691,10 +692,10 @@ export default function PortalMemberPanel(props: Props) {
   return (
     <div
       style={{
-        borderRadius: 18,
-        border: "1px solid rgba(255,255,255,0.10)",
-        background: "rgba(255,255,255,0.04)",
-        padding: 16,
+        borderRadius: embedded ? 0 : 18,
+        border: embedded ? "none" : "1px solid rgba(255,255,255,0.10)",
+        background: embedded ? "transparent" : "rgba(255,255,255,0.04)",
+        padding: embedded ? 0 : 16,
         minWidth: 0,
       }}
     >
@@ -708,22 +709,12 @@ export default function PortalMemberPanel(props: Props) {
         <div style={{ minWidth: 0 }}>
           <div
             style={{
-              fontSize: 13,
-              lineHeight: 1.2,
-              opacity: 0.64,
-            }}
-          >
-            {title}
-          </div>
-
-          <div
-            style={{
               marginTop: 8,
               marginBottom: 4,
-              fontSize: 20,
-              lineHeight: 1,
+              fontSize: 18,
+              lineHeight: 1.3,
               letterSpacing: -0.02,
-              opacity: 0.95,
+              opacity: 0.85,
               minWidth: 0,
               overflowWrap: "anywhere",
             }}
@@ -732,7 +723,7 @@ export default function PortalMemberPanel(props: Props) {
             {displayName}
           </div>
 
-          <div style={{ marginTop: 10, minWidth: 0 }}>
+          <div style={{ marginTop: 14, minWidth: 0 }}>
             <BadgeRow badges={badges} />
           </div>
         </div>
