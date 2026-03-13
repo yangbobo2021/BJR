@@ -12,6 +12,7 @@ type Options = {
   easing?: string;
   layoutDependency?: string | number | boolean | null;
   captureBaselineToken?: string | number | boolean | null;
+  debugLabel?: string | null;
 };
 
 type RectMap = Map<string, DOMRect>;
@@ -65,6 +66,7 @@ export function useFlipGridAnimation(options: Options): {
     easing = "cubic-bezier(0.22, 1, 0.36, 1)",
     layoutDependency = null,
     captureBaselineToken = null,
+    debugLabel = null,
   } = options;
 
   const nodeByKeyRef = React.useRef<Map<string, HTMLDivElement>>(new Map());
@@ -77,6 +79,17 @@ export function useFlipGridAnimation(options: Options): {
     string | number | boolean | null
   >(captureBaselineToken);
   const animateFromCapturedBaselineRef = React.useRef(false);
+
+  const debugLog = React.useCallback(
+    (
+      event: string,
+      payload: Record<string, string | number | boolean | null | undefined>,
+    ) => {
+      if (!debugLabel) return;
+      console.log(`[flip:${debugLabel}] ${event}`, payload);
+    },
+    [debugLabel],
+  );
 
   const registerItemRef = React.useCallback<RegisterItemRef>(
     (key: string) => (node: HTMLDivElement | null) => {
@@ -161,6 +174,16 @@ export function useFlipGridAnimation(options: Options): {
     if (!hasMeasuredInitialLayoutRef.current) {
       hasMeasuredInitialLayoutRef.current = true;
       previousRectsRef.current = nextRects;
+      debugLog("initial-measure", {
+        keyCount: keys.length,
+        rectCount: nextRects.size,
+        layoutDependency:
+          typeof layoutDependency === "string" ||
+          typeof layoutDependency === "number" ||
+          typeof layoutDependency === "boolean"
+            ? String(layoutDependency)
+            : "null",
+      });
       return;
     }
 
@@ -173,11 +196,33 @@ export function useFlipGridAnimation(options: Options): {
 
       previousRectsRef.current = snapshotRects(keys, nodeByKeyRef.current);
       animateFromCapturedBaselineRef.current = true;
+
+      debugLog("capture-baseline", {
+        keyCount: keys.length,
+        rectCount: previousRectsRef.current.size,
+        layoutDependency:
+          typeof layoutDependency === "string" ||
+          typeof layoutDependency === "number" ||
+          typeof layoutDependency === "boolean"
+            ? String(layoutDependency)
+            : "null",
+      });
       return;
     }
 
     if (disabled) {
       previousRectsRef.current = nextRects;
+      debugLog("disabled-snapshot", {
+        keyCount: keys.length,
+        rectCount: nextRects.size,
+        armedFromCapture: animateFromCapturedBaselineRef.current,
+        layoutDependency:
+          typeof layoutDependency === "string" ||
+          typeof layoutDependency === "number" ||
+          typeof layoutDependency === "boolean"
+            ? String(layoutDependency)
+            : "null",
+      });
       return;
     }
 
@@ -208,6 +253,34 @@ export function useFlipGridAnimation(options: Options): {
         deltaY,
       });
     }
+
+    const movedKeys: string[] = [];
+    let largestDelta = 0;
+
+    for (const animation of animations) {
+      movedKeys.push(animation.key);
+      const magnitude = Math.max(
+        Math.abs(animation.deltaX),
+        Math.abs(animation.deltaY),
+      );
+      if (magnitude > largestDelta) {
+        largestDelta = magnitude;
+      }
+    }
+
+    debugLog("delta-pass", {
+      keyCount: keys.length,
+      rectCount: nextRects.size,
+      movedCount: movedKeys.length,
+      largestDelta: Math.round(largestDelta * 100) / 100,
+      armedFromCapture: animateFromCapturedBaselineRef.current,
+      layoutDependency:
+        typeof layoutDependency === "string" ||
+        typeof layoutDependency === "number" ||
+        typeof layoutDependency === "boolean"
+          ? String(layoutDependency)
+          : "null",
+    });
 
     if (animations.length === 0) {
       animateFromCapturedBaselineRef.current = false;
@@ -255,6 +328,12 @@ export function useFlipGridAnimation(options: Options): {
       settleRafIdRef.current = window.requestAnimationFrame(() => {
         settleRafIdRef.current = null;
 
+        debugLog("apply-animation", {
+          movedCount: animations.length,
+          durationMs,
+          armedFromCapture: animateFromCapturedBaselineRef.current,
+        });
+
         for (const animation of animations) {
           const { node } = animation;
           node.style.transition = `transform ${durationMs}ms ${easing}`;
@@ -272,6 +351,7 @@ export function useFlipGridAnimation(options: Options): {
     easing,
     layoutDependency,
     captureBaselineToken,
+    debugLog,
   ]);
 
   return { registerItemRef };

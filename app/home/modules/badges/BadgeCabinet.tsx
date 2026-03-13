@@ -163,6 +163,7 @@ export default function BadgeCabinet(props: Props) {
     durationMs: flipDurationMs,
     layoutDependency: flipLayoutDependency,
     captureBaselineToken: flipBaselineToken,
+    debugLabel: isAdminDebug ? "badge-cabinet" : null,
   });
 
   React.useEffect(() => {
