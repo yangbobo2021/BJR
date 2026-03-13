@@ -21,6 +21,9 @@ export default async function Page(props: {
     featured: badge.featured,
     shareable: badge.shareable,
     undisclosed: badge.undisclosed,
+    awardMode: badge.awardMode,
+    autoAwardEnabled: badge.autoAward?.enabled ?? false,
+    autoQualificationMode: badge.autoAward?.qualificationMode ?? null,
   }));
 
   return (

@@ -11,6 +11,10 @@ import {
   newCorrelationId,
 } from "@/lib/events";
 import { EVENT_SOURCES, EVENT_TYPES } from "@/lib/vocab";
+import {
+  runAutoBadgeAwardsForMember,
+  type NewlyAwardedBadge,
+} from "@/lib/badgeAutoAward";
 
 type PlaybackTelemetryEvent = "play" | "progress" | "complete";
 
@@ -576,6 +580,7 @@ export async function POST(req: NextRequest) {
   }
 
   const occurredAtIso = new Date().toISOString();
+  let newlyAwardedBadges: NewlyAwardedBadge[] = [];
 
   if (event === "play") {
     if (memberId) {
@@ -592,6 +597,14 @@ export async function POST(req: NextRequest) {
     });
 
     if (memberId) {
+      newlyAwardedBadges = await runAutoBadgeAwardsForMember({
+        memberId,
+        trigger: "playback_aggregate_updated",
+        recordingId,
+        grantedBy: "system",
+        correlationId,
+      });
+
       await logPlaybackTelemetryPlay({
         memberId,
         source: EVENT_SOURCES.SERVER,
@@ -623,6 +636,14 @@ export async function POST(req: NextRequest) {
     });
 
     if (memberId) {
+      newlyAwardedBadges = await runAutoBadgeAwardsForMember({
+        memberId,
+        trigger: "playback_aggregate_updated",
+        recordingId,
+        grantedBy: "system",
+        correlationId,
+      });
+
       await logPlaybackTelemetryProgress({
         memberId,
         source: EVENT_SOURCES.SERVER,
@@ -653,6 +674,14 @@ export async function POST(req: NextRequest) {
     });
 
     if (memberId) {
+      newlyAwardedBadges = await runAutoBadgeAwardsForMember({
+        memberId,
+        trigger: "playback_aggregate_updated",
+        recordingId,
+        grantedBy: "system",
+        correlationId,
+      });
+
       await logPlaybackTelemetryComplete({
         memberId,
         source: EVENT_SOURCES.SERVER,
@@ -669,7 +698,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const res = NextResponse.json({ ok: true });
+  const res = NextResponse.json({ ok: true, newlyAwardedBadges });
   res.headers.set("x-correlation-id", correlationId);
   return res;
 }

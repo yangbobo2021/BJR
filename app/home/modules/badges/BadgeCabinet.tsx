@@ -87,15 +87,37 @@ export default function BadgeCabinet(props: Props) {
     [effectiveBadges],
   );
 
+  const previousUnlockedKeysRef = React.useRef<Set<string> | null>(null);
+  const [previousUnlockedKeysSnapshot, setPreviousUnlockedKeysSnapshot] =
+    React.useState<Set<string> | null>(null);
+
+  const freshUnlockKeys = React.useMemo(() => {
+    if (!previousUnlockedKeysSnapshot) return new Set<string>();
+
+    return new Set(
+      items
+        .filter(
+          (item) =>
+            item.unlocked && !previousUnlockedKeysSnapshot.has(item.key),
+        )
+        .map((item) => item.key),
+    );
+  }, [items, previousUnlockedKeysSnapshot]);
+
+  const activeUnlockKeys = React.useMemo(() => {
+    if (pendingUnlockKeys.size > 0) return pendingUnlockKeys;
+    return freshUnlockKeys;
+  }, [freshUnlockKeys, pendingUnlockKeys]);
+
   const displayItems = React.useMemo(() => {
-    if (pendingUnlockKeys.size === 0) return items;
+    if (activeUnlockKeys.size === 0) return items;
 
     const previousByKey = new Map(
       previousStableItems.map((item) => [item.key, item]),
     );
 
     const stagedItems = items.map((item) => {
-      if (!pendingUnlockKeys.has(item.key)) return item;
+      if (!activeUnlockKeys.has(item.key)) return item;
 
       const previousItem = previousByKey.get(item.key);
       if (!previousItem) return item;
@@ -119,7 +141,7 @@ export default function BadgeCabinet(props: Props) {
     });
 
     return stagedItems;
-  }, [items, pendingUnlockKeys, previousStableItems]);
+  }, [activeUnlockKeys, items, previousStableItems]);
 
   const itemKeys = React.useMemo(
     () => displayItems.map((item) => item.key),
@@ -148,8 +170,6 @@ export default function BadgeCabinet(props: Props) {
     durationMs: flipDurationMs,
     layoutDependency: flipLayoutDependency,
   });
-
-  const previousUnlockedKeysRef = React.useRef<Set<string> | null>(null);
 
   React.useEffect(() => {
     if (typeof document === "undefined") return;
@@ -191,10 +211,10 @@ export default function BadgeCabinet(props: Props) {
   }, []);
 
   React.useEffect(() => {
-    if (pendingUnlockKeys.size > 0) return;
+    if (activeUnlockKeys.size > 0) return;
     if (unlockPhase !== "idle") return;
     setPreviousStableItems(items);
-  }, [items, pendingUnlockKeys, unlockPhase]);
+  }, [activeUnlockKeys, items, unlockPhase]);
 
   React.useEffect(() => {
     if (debugCandidateItems.length === 0) {
@@ -269,15 +289,14 @@ export default function BadgeCabinet(props: Props) {
     );
 
     const previousUnlockedKeys = previousUnlockedKeysRef.current;
+    const freshUnlocks = previousUnlockedKeys
+      ? items.filter(
+          (item) => item.unlocked && !previousUnlockedKeys.has(item.key),
+        )
+      : [];
+
     previousUnlockedKeysRef.current = nextUnlockedKeys;
-
-    if (!previousUnlockedKeys) {
-      return;
-    }
-
-    const freshUnlocks = items.filter(
-      (item) => item.unlocked && !previousUnlockedKeys.has(item.key),
-    );
+    setPreviousUnlockedKeysSnapshot(nextUnlockedKeys);
 
     if (freshUnlocks.length === 0) {
       return;
@@ -333,7 +352,7 @@ export default function BadgeCabinet(props: Props) {
         unlockCleanupTimeoutRef.current = null;
       }
     };
-  }, [items]);
+  }, [freshUnlockKeys, items]);
 
   if (items.length === 0) return null;
 
@@ -1071,7 +1090,7 @@ export default function BadgeCabinet(props: Props) {
               item={item}
               expanded={expanded}
               isNewlyUnlocked={newlyUnlockedKeys.has(item.key)}
-              isUnlocking={pendingUnlockKeys.has(item.key)}
+              isUnlocking={activeUnlockKeys.has(item.key)}
               itemRef={registerItemRef(item.key)}
             />
           ))}

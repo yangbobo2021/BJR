@@ -1,5 +1,6 @@
 // web/app/admin/badges/_lib/badgeDashboardTypes.ts
 import type { BadgeQualificationMode } from "@/lib/badgePreviewModes";
+import type { BadgeAwardMode } from "@/lib/badges";
 
 export type BadgeDefinitionOption = {
   entitlementKey: string;
@@ -10,6 +11,9 @@ export type BadgeDefinitionOption = {
   featured: boolean;
   shareable: boolean;
   undisclosed: boolean;
+  awardMode: BadgeAwardMode;
+  autoAwardEnabled: boolean;
+  autoQualificationMode: BadgeQualificationMode | null;
 };
 
 export type PreviewRow = {

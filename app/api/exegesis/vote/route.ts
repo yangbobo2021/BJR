@@ -14,6 +14,10 @@ import {
   jsonOk,
   withCorrelationId,
 } from "@/app/api/_gate";
+import {
+  runAutoBadgeAwardsForMember,
+  type NewlyAwardedBadge,
+} from "@/lib/badgeAutoAward";
 
 export const runtime = "nodejs";
 
@@ -22,6 +26,7 @@ type ApiOk = {
   commentId: string;
   viewerHasVoted: boolean;
   voteCount: number;
+  newlyAwardedBadges: NewlyAwardedBadge[];
 };
 
 type ApiErr = { ok: false; error: string; gate?: GatePayload };
@@ -141,10 +146,17 @@ export async function POST(req: NextRequest) {
       viewer_has_voted: boolean;
       vote_count: number;
       err: string | null;
+      author_member_id: string | null;
     }>`
       with
       c as (
-        select id, status::text as status, track_id, group_key, vote_count
+        select
+          id,
+          status::text as status,
+          track_id,
+          group_key,
+          vote_count,
+          created_by_member_id
         from exegesis_comment
         where id = ${commentId}::uuid
         limit 1
@@ -192,7 +204,7 @@ export async function POST(req: NextRequest) {
           and (select err from guard) is null
         returning vote_count
       )
-      select
+       select
         (select err from guard) is null as ok,
         case
           when (select err from guard) is not null then false
@@ -200,7 +212,8 @@ export async function POST(req: NextRequest) {
           else false
         end as viewer_has_voted,
         coalesce((select vote_count from upd), (select vote_count from c), 0)::int as vote_count,
-        (select err from guard) as err
+        (select err from guard) as err,
+        (select created_by_member_id::text from c) as author_member_id
     `;
 
     const row = r.rows?.[0] ?? null;
@@ -255,12 +268,23 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    const newlyAwardedBadges =
+      row.author_member_id && isUuid(row.author_member_id)
+        ? await runAutoBadgeAwardsForMember({
+            memberId: row.author_member_id,
+            trigger: "exegesis_vote_updated",
+            grantedBy: "system",
+            correlationId,
+          })
+        : [];
+
     return jsonOk<ApiOk>(
       {
         ok: true,
         commentId,
         viewerHasVoted: row.viewer_has_voted,
         voteCount: Number(row.vote_count ?? 0),
+        newlyAwardedBadges,
       },
       { correlationId },
     );

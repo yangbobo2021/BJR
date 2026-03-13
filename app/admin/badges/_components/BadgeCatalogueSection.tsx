@@ -215,6 +215,23 @@ export function BadgeCatalogueSection(props: Props) {
                   >
                     #{badge.displayOrder}
                   </span>
+
+                  <span
+                    style={{
+                      fontSize: 10,
+                      lineHeight: 1.3,
+                      color:
+                        badge.awardMode === "automatic"
+                          ? "rgba(186,244,202,0.9)"
+                          : TEXT_MUTED,
+                    }}
+                  >
+                    {badge.awardMode === "automatic"
+                      ? badge.autoQualificationMode
+                        ? `auto · ${badge.autoQualificationMode}`
+                        : "auto"
+                      : "manual"}
+                  </span>
                 </div>
               </button>
             );

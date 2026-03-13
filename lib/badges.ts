@@ -3,6 +3,25 @@ import "server-only";
 
 import { cache } from "react";
 import { client } from "@/sanity/lib/client";
+import type { BadgeQualificationMode } from "@/lib/badgePreviewModes";
+
+export type BadgeAwardMode = "manual" | "automatic";
+
+export type BadgeAutoAwardConfig = {
+  enabled: boolean;
+  qualificationMode: BadgeQualificationMode | null;
+  minMinutes: number | null;
+  minPlayCount: number | null;
+  minCompletedCount: number | null;
+  minProgressCount: number | null;
+  minContributionCount: number | null;
+  minVoteCount: number | null;
+  joinedOnOrAfter: string | null;
+  joinedBefore: string | null;
+  activeOnOrAfter: string | null;
+  activeBefore: string | null;
+  recordingId: string | null;
+};
 
 export type BadgeDefinition = {
   _id: string;
@@ -15,6 +34,8 @@ export type BadgeDefinition = {
   shareable: boolean;
   undisclosed: boolean;
   active: boolean;
+  awardMode: BadgeAwardMode;
+  autoAward: BadgeAutoAwardConfig | null;
 };
 
 type BadgeDefinitionQueryRow = {
@@ -28,10 +49,24 @@ type BadgeDefinitionQueryRow = {
   shareable?: boolean | null;
   undisclosed?: boolean | null;
   active?: boolean | null;
+  awardMode?: string | null;
+  autoAwardEnabled?: boolean | null;
+  autoQualificationMode?: string | null;
+  minMinutes?: number | null;
+  minPlayCount?: number | null;
+  minCompletedCount?: number | null;
+  minProgressCount?: number | null;
+  minContributionCount?: number | null;
+  minVoteCount?: number | null;
+  joinedOnOrAfter?: string | null;
+  joinedBefore?: string | null;
+  activeOnOrAfter?: string | null;
+  activeBefore?: string | null;
+  recordingId?: string | null;
 };
 
 const BADGE_DEFINITIONS_QUERY = `
-  *[_type == "badgeDefinition" && coalesce(active, true) == true]{
+   *[_type == "badgeDefinition" && coalesce(active, true) == true]{
     _id,
     title,
     keySuffix,
@@ -41,9 +76,52 @@ const BADGE_DEFINITIONS_QUERY = `
     featured,
     shareable,
     undisclosed,
-    active
+    active,
+    awardMode,
+    autoAwardEnabled,
+    autoQualificationMode,
+    minMinutes,
+    minPlayCount,
+    minCompletedCount,
+    minProgressCount,
+    minContributionCount,
+    minVoteCount,
+    joinedOnOrAfter,
+    joinedBefore,
+    activeOnOrAfter,
+    activeBefore,
+    recordingId
   }
 `;
+
+function asFiniteNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function asTrimmedString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function asQualificationMode(value: unknown): BadgeQualificationMode | null {
+  const raw = asTrimmedString(value);
+
+  switch (raw) {
+    case "minutes_streamed":
+    case "play_count":
+    case "complete_count":
+    case "joined_within_window":
+    case "active_within_window":
+    case "recording_minutes_streamed":
+    case "recording_play_count":
+    case "recording_complete_count":
+    case "exegesis_contribution_count":
+    case "exegesis_vote_tally":
+    case "public_name_unlocked":
+      return raw;
+    default:
+      return null;
+  }
+}
 
 function coerceBadgeDefinition(
   row: BadgeDefinitionQueryRow,
@@ -56,6 +134,29 @@ function coerceBadgeDefinition(
   if (!/^[a-z0-9]+(?:_[a-z0-9]+)*$/.test(keySuffix)) return null;
 
   const entitlementKey = `badge_${keySuffix}`;
+  const awardMode: BadgeAwardMode =
+    row.awardMode === "automatic" ? "automatic" : "manual";
+
+  const qualificationMode = asQualificationMode(row.autoQualificationMode);
+
+  const autoAward: BadgeAutoAwardConfig | null =
+    awardMode === "automatic"
+      ? {
+          enabled: row.autoAwardEnabled !== false,
+          qualificationMode,
+          minMinutes: asFiniteNumber(row.minMinutes),
+          minPlayCount: asFiniteNumber(row.minPlayCount),
+          minCompletedCount: asFiniteNumber(row.minCompletedCount),
+          minProgressCount: asFiniteNumber(row.minProgressCount),
+          minContributionCount: asFiniteNumber(row.minContributionCount),
+          minVoteCount: asFiniteNumber(row.minVoteCount),
+          joinedOnOrAfter: asTrimmedString(row.joinedOnOrAfter),
+          joinedBefore: asTrimmedString(row.joinedBefore),
+          activeOnOrAfter: asTrimmedString(row.activeOnOrAfter),
+          activeBefore: asTrimmedString(row.activeBefore),
+          recordingId: asTrimmedString(row.recordingId),
+        }
+      : null;
 
   return {
     _id: row._id,
@@ -77,6 +178,8 @@ function coerceBadgeDefinition(
     shareable: row.shareable === true,
     undisclosed: row.undisclosed === true,
     active: row.active !== false,
+    awardMode,
+    autoAward,
   };
 }
 
@@ -99,6 +202,20 @@ export const getActiveBadgeDefinitionsByEntitlementKey = cache(
     const definitions = await getActiveBadgeDefinitions();
     return new Map(
       definitions.map((definition) => [definition.entitlementKey, definition]),
+    );
+  },
+);
+
+export const getAutoAwardBadgeDefinitions = cache(
+  async (): Promise<BadgeDefinition[]> => {
+    const definitions = await getActiveBadgeDefinitions();
+
+    return definitions.filter(
+      (definition) =>
+        definition.awardMode === "automatic" &&
+        definition.autoAward !== null &&
+        definition.autoAward.enabled &&
+        definition.autoAward.qualificationMode !== null,
     );
   },
 );

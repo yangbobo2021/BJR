@@ -1,6 +1,38 @@
 // sanity/schemaTypes/badgeDefinition.ts
 import { defineField, defineType } from "sanity";
 
+const AUTO_QUALIFICATION_MODE_OPTIONS = [
+  { title: "Total minutes streamed", value: "minutes_streamed" },
+  { title: "Total play count", value: "play_count" },
+  { title: "Total complete count", value: "complete_count" },
+  { title: "Joined within date window", value: "joined_within_window" },
+  { title: "Active within playback window", value: "active_within_window" },
+  {
+    title: "Recording-specific minutes streamed",
+    value: "recording_minutes_streamed",
+  },
+  {
+    title: "Recording-specific play count",
+    value: "recording_play_count",
+  },
+  {
+    title: "Recording-specific complete count",
+    value: "recording_complete_count",
+  },
+  {
+    title: "Exegesis contribution count",
+    value: "exegesis_contribution_count",
+  },
+  {
+    title: "Exegesis cumulative vote tally",
+    value: "exegesis_vote_tally",
+  },
+  {
+    title: "Public name unlocked",
+    value: "public_name_unlocked",
+  },
+] as const;
+
 export const badgeDefinition = defineType({
   name: "badgeDefinition",
   title: "Badge Definition",
@@ -75,6 +107,217 @@ export const badgeDefinition = defineType({
       title: "Active",
       type: "boolean",
       initialValue: true,
+    }),
+    defineField({
+      name: "awardMode",
+      title: "Award mode",
+      type: "string",
+      initialValue: "manual",
+      options: {
+        list: [
+          { title: "Manual", value: "manual" },
+          { title: "Automatic", value: "automatic" },
+        ],
+        layout: "radio",
+      },
+      validation: (rule) => rule.required(),
+    }),
+    defineField({
+      name: "autoAwardEnabled",
+      title: "Auto-award enabled",
+      type: "boolean",
+      initialValue: true,
+      hidden: ({ parent }) =>
+        !parent ||
+        typeof parent !== "object" ||
+        (parent as { awardMode?: unknown }).awardMode !== "automatic",
+    }),
+    defineField({
+      name: "autoQualificationMode",
+      title: "Automatic qualification mode",
+      type: "string",
+      options: {
+        list: AUTO_QUALIFICATION_MODE_OPTIONS.map((option) => ({
+          title: option.title,
+          value: option.value,
+        })),
+      },
+      hidden: ({ parent }) =>
+        !parent ||
+        typeof parent !== "object" ||
+        (parent as { awardMode?: unknown }).awardMode !== "automatic",
+      validation: (rule) =>
+        rule.custom((value, context) => {
+          const parent = context.parent;
+          if (
+            parent &&
+            typeof parent === "object" &&
+            (parent as { awardMode?: unknown }).awardMode === "automatic" &&
+            (typeof value !== "string" || !value.trim())
+          ) {
+            return "Automatic badges require an automatic qualification mode.";
+          }
+
+          return true;
+        }),
+    }),
+    defineField({
+      name: "recordingId",
+      title: "Recording ID",
+      type: "string",
+      hidden: ({ parent }) =>
+        !parent ||
+        typeof parent !== "object" ||
+        ![
+          "recording_minutes_streamed",
+          "recording_play_count",
+          "recording_complete_count",
+        ].includes(
+          String(
+            (parent as { autoQualificationMode?: unknown })
+              .autoQualificationMode ?? "",
+          ),
+        ),
+    }),
+    defineField({
+      name: "minMinutes",
+      title: "Minimum minutes",
+      type: "number",
+      validation: (rule) => rule.min(0),
+      hidden: ({ parent }) =>
+        !parent ||
+        typeof parent !== "object" ||
+        !["minutes_streamed", "recording_minutes_streamed"].includes(
+          String(
+            (parent as { autoQualificationMode?: unknown })
+              .autoQualificationMode ?? "",
+          ),
+        ),
+    }),
+    defineField({
+      name: "minPlayCount",
+      title: "Minimum play count",
+      type: "number",
+      validation: (rule) => rule.min(0),
+      hidden: ({ parent }) =>
+        !parent ||
+        typeof parent !== "object" ||
+        ![
+          "play_count",
+          "recording_play_count",
+          "active_within_window",
+        ].includes(
+          String(
+            (parent as { autoQualificationMode?: unknown })
+              .autoQualificationMode ?? "",
+          ),
+        ),
+    }),
+    defineField({
+      name: "minCompletedCount",
+      title: "Minimum complete count",
+      type: "number",
+      validation: (rule) => rule.min(0),
+      hidden: ({ parent }) =>
+        !parent ||
+        typeof parent !== "object" ||
+        ![
+          "complete_count",
+          "recording_complete_count",
+          "active_within_window",
+        ].includes(
+          String(
+            (parent as { autoQualificationMode?: unknown })
+              .autoQualificationMode ?? "",
+          ),
+        ),
+    }),
+    defineField({
+      name: "minProgressCount",
+      title: "Minimum progress count",
+      type: "number",
+      validation: (rule) => rule.min(0),
+      hidden: ({ parent }) =>
+        !parent ||
+        typeof parent !== "object" ||
+        String(
+          (parent as { autoQualificationMode?: unknown })
+            .autoQualificationMode ?? "",
+        ) !== "active_within_window",
+    }),
+    defineField({
+      name: "minContributionCount",
+      title: "Minimum contribution count",
+      type: "number",
+      validation: (rule) => rule.min(0),
+      hidden: ({ parent }) =>
+        !parent ||
+        typeof parent !== "object" ||
+        String(
+          (parent as { autoQualificationMode?: unknown })
+            .autoQualificationMode ?? "",
+        ) !== "exegesis_contribution_count",
+    }),
+    defineField({
+      name: "minVoteCount",
+      title: "Minimum vote count",
+      type: "number",
+      validation: (rule) => rule.min(0),
+      hidden: ({ parent }) =>
+        !parent ||
+        typeof parent !== "object" ||
+        String(
+          (parent as { autoQualificationMode?: unknown })
+            .autoQualificationMode ?? "",
+        ) !== "exegesis_vote_tally",
+    }),
+    defineField({
+      name: "joinedOnOrAfter",
+      title: "Joined on or after",
+      type: "datetime",
+      hidden: ({ parent }) =>
+        !parent ||
+        typeof parent !== "object" ||
+        String(
+          (parent as { autoQualificationMode?: unknown })
+            .autoQualificationMode ?? "",
+        ) !== "joined_within_window",
+    }),
+    defineField({
+      name: "joinedBefore",
+      title: "Joined before",
+      type: "datetime",
+      hidden: ({ parent }) =>
+        !parent ||
+        typeof parent !== "object" ||
+        String(
+          (parent as { autoQualificationMode?: unknown })
+            .autoQualificationMode ?? "",
+        ) !== "joined_within_window",
+    }),
+    defineField({
+      name: "activeOnOrAfter",
+      title: "Active on or after",
+      type: "datetime",
+      hidden: ({ parent }) =>
+        !parent ||
+        typeof parent !== "object" ||
+        String(
+          (parent as { autoQualificationMode?: unknown })
+            .autoQualificationMode ?? "",
+        ) !== "active_within_window",
+    }),
+    defineField({
+      name: "activeBefore",
+      title: "Active before",
+      type: "datetime",
+      hidden: ({ parent }) =>
+        !parent ||
+        typeof parent !== "object" ||
+        String(
+          (parent as { autoQualificationMode?: unknown })
+            .autoQualificationMode ?? "",
+        ) !== "active_within_window",
     }),
     defineField({
       name: "internalNote",

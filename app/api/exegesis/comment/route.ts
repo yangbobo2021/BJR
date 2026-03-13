@@ -14,6 +14,10 @@ import {
   ensureMemberIdentity,
 } from "@/lib/memberIdentityServer";
 import { ENTITLEMENTS } from "@/lib/vocab";
+import {
+  runAutoBadgeAwardsForMember,
+  type NewlyAwardedBadge,
+} from "@/lib/badgeAutoAward";
 
 import { resolveGroupKeyForAnchor } from "@/lib/exegesis/resolveGroupKey";
 import { validateAndSanitizeTipTapDoc } from "@/lib/exegesis/richText";
@@ -33,6 +37,7 @@ type ApiOk = {
   comment: CommentDTO;
   meta: ThreadMetaDTO;
   identities: Record<string, IdentityDTO>;
+  newlyAwardedBadges: NewlyAwardedBadge[];
 };
 
 type ApiErr = { ok: false; error: string; gate?: GatePayload };
@@ -727,6 +732,17 @@ limit 1
       },
     };
 
+    const newlyAwardedBadges = await runAutoBadgeAwardsForMember({
+      memberId,
+      trigger:
+        row.ident_public_name_unlocked_at != null
+          ? "public_name_unlocked"
+          : "exegesis_contribution_created",
+      recordingId,
+      grantedBy: "system",
+      correlationId,
+    });
+
     return jsonOk<ApiOk>(
       {
         ok: true,
@@ -735,6 +751,7 @@ limit 1
         comment,
         meta,
         identities,
+        newlyAwardedBadges,
       },
       { correlationId },
     );
