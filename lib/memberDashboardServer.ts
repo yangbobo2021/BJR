@@ -94,7 +94,7 @@ async function getDashboardFavouriteTrack(
 }
 
 type SortableDashboardBadge = MemberDashboardBadge & {
-  displayOrder: number;
+  editorialOrder: number;
 };
 
 async function getDashboardBadges(
@@ -128,6 +128,7 @@ async function getDashboardBadges(
     const existingTime = existing.grantedAt
       ? new Date(existing.grantedAt).getTime()
       : Number.POSITIVE_INFINITY;
+
     const candidateTime = entitlement.grantedAt
       ? new Date(entitlement.grantedAt).getTime()
       : Number.POSITIVE_INFINITY;
@@ -158,13 +159,13 @@ async function getDashboardBadges(
       undisclosed: definition.undisclosed,
       unlocked,
       unlockedAt: owned?.grantedAt ?? null,
-      displayOrder: definition.displayOrder,
+      editorialOrder: definition.displayOrder,
     });
   }
 
   badges.sort((a, b) => {
-    if (a.displayOrder !== b.displayOrder) {
-      return a.displayOrder - b.displayOrder;
+    if (a.editorialOrder !== b.editorialOrder) {
+      return a.editorialOrder - b.editorialOrder;
     }
 
     return a.label.localeCompare(b.label);
@@ -179,6 +180,7 @@ async function getDashboardBadges(
     undisclosed: badge.undisclosed,
     unlocked: badge.unlocked,
     unlockedAt: badge.unlockedAt,
+    editorialOrder: badge.editorialOrder,
   }));
 }
 

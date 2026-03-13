@@ -1,0 +1,611 @@
+// web/app/home/modules/badges/BadgeCabinet.tsx
+"use client";
+
+import React from "react";
+import type { MemberDashboardBadge } from "@/lib/memberDashboard";
+import BadgeCabinetGrid from "./BadgeCabinetGrid";
+import BadgeCabinetItem from "./BadgeCabinetItem";
+import { buildBadgeCabinetItems } from "./badgeCabinetViewModel";
+import { useFlipGridAnimation } from "./useFlipGridAnimation";
+import { usePrefersReducedMotion } from "./usePrefersReducedMotion";
+
+type Props = {
+  badges: MemberDashboardBadge[];
+};
+
+const NEWLY_UNLOCKED_HIGHLIGHT_MS = 3200;
+
+export default function BadgeCabinet(props: Props) {
+  const { badges } = props;
+  const [expanded, setExpanded] = React.useState(false);
+  const [newlyUnlockedKeys, setNewlyUnlockedKeys] = React.useState<Set<string>>(
+    () => new Set(),
+  );
+  const [liveAnnouncement, setLiveAnnouncement] = React.useState("");
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  const items = React.useMemo(() => buildBadgeCabinetItems(badges), [badges]);
+  const itemKeys = React.useMemo(() => items.map((item) => item.key), [items]);
+
+  const { registerItemRef } = useFlipGridAnimation({
+    keys: itemKeys,
+    disabled: prefersReducedMotion,
+    durationMs: 360,
+  });
+
+  const previousUnlockedKeysRef = React.useRef<Set<string> | null>(null);
+
+  React.useEffect(() => {
+    const nextUnlockedKeys = new Set(
+      items.filter((item) => item.unlocked).map((item) => item.key),
+    );
+
+    const previousUnlockedKeys = previousUnlockedKeysRef.current;
+    previousUnlockedKeysRef.current = nextUnlockedKeys;
+
+    if (!previousUnlockedKeys) {
+      return;
+    }
+
+    const freshUnlocks = items.filter(
+      (item) => item.unlocked && !previousUnlockedKeys.has(item.key),
+    );
+
+    if (freshUnlocks.length === 0) {
+      return;
+    }
+
+    const freshUnlockKeySet = new Set(freshUnlocks.map((item) => item.key));
+    const liveText = freshUnlocks
+      .map((item) => `New badge unlocked: ${item.label}`)
+      .join(". ");
+
+    setNewlyUnlockedKeys(freshUnlockKeySet);
+    setLiveAnnouncement(liveText);
+
+    const timeoutId = window.setTimeout(() => {
+      setNewlyUnlockedKeys(new Set());
+    }, NEWLY_UNLOCKED_HIGHLIGHT_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [items]);
+
+  if (items.length === 0) return null;
+
+  return (
+    <>
+      <style jsx>{`
+        :global(:root) {
+          --portal-badge-columns-collapsed: 8;
+          --portal-badge-columns-expanded: 5;
+          --portal-badge-gap-collapsed: 14px;
+          --portal-badge-gap-expanded: 18px;
+          --portal-badge-art-scale-collapsed: 0.82;
+          --portal-badge-art-scale-expanded: 1;
+          --portal-badge-caption-offset: -3px;
+          --portal-badge-caption-row-gap-collapsed: 10px;
+          --portal-badge-caption-row-gap-expanded: 16px;
+        }
+
+        @media (max-width: 640px) {
+          :global(:root) {
+            --portal-badge-gap-collapsed: 10px;
+            --portal-badge-gap-expanded: 12px;
+            --portal-badge-art-scale-collapsed: 0.84;
+            --portal-badge-caption-row-gap-collapsed: 8px;
+            --portal-badge-caption-row-gap-expanded: 12px;
+          }
+        }
+
+        @media (max-width: 420px) {
+          :global(:root) {
+            --portal-badge-gap-collapsed: 8px;
+            --portal-badge-gap-expanded: 10px;
+            --portal-badge-art-scale-collapsed: 0.86;
+            --portal-badge-caption-row-gap-collapsed: 6px;
+            --portal-badge-caption-row-gap-expanded: 10px;
+          }
+        }
+
+        @keyframes portalBadgeLockedPulse {
+          0%,
+          100% {
+            transform: scale(1);
+            opacity: 0.92;
+          }
+          50% {
+            transform: scale(1.035);
+            opacity: 1;
+          }
+        }
+
+        @keyframes portalBadgeUnlockedIdleGlow {
+          0%,
+          100% {
+            transform: scale(1);
+            opacity: 0.16;
+          }
+          50% {
+            transform: scale(1.025);
+            opacity: 0.24;
+          }
+        }
+
+        @keyframes portalBadgeEmberRiseA {
+          0% {
+            transform: translate3d(0, 0, 0) scale(0.72);
+            opacity: 0;
+          }
+          18% {
+            transform: translate3d(-1px, -4px, 0) scale(0.82);
+            opacity: 0.46;
+          }
+          42% {
+            transform: translate3d(1px, -10px, 0) scale(0.92);
+            opacity: 0.34;
+          }
+          68% {
+            transform: translate3d(-2px, -15px, 0) scale(1);
+            opacity: 0.2;
+          }
+          100% {
+            transform: translate3d(1px, -20px, 0) scale(1.08);
+            opacity: 0;
+          }
+        }
+
+        @keyframes portalBadgeEmberRiseB {
+          0% {
+            transform: translate3d(0, 0, 0) scale(0.68);
+            opacity: 0;
+          }
+          20% {
+            transform: translate3d(1px, -5px, 0) scale(0.78);
+            opacity: 0.38;
+          }
+          46% {
+            transform: translate3d(-1px, -12px, 0) scale(0.88);
+            opacity: 0.28;
+          }
+          74% {
+            transform: translate3d(2px, -18px, 0) scale(0.96);
+            opacity: 0.16;
+          }
+          100% {
+            transform: translate3d(-1px, -24px, 0) scale(1);
+            opacity: 0;
+          }
+        }
+
+        @keyframes portalBadgeEmberRiseC {
+          0% {
+            transform: translate3d(0, 0, 0) scale(0.75);
+            opacity: 0;
+          }
+          22% {
+            transform: translate3d(1px, -4px, 0) scale(0.82);
+            opacity: 0.34;
+          }
+          48% {
+            transform: translate3d(-2px, -9px, 0) scale(0.88);
+            opacity: 0.24;
+          }
+          70% {
+            transform: translate3d(0px, -14px, 0) scale(0.92);
+            opacity: 0.14;
+          }
+          100% {
+            transform: translate3d(2px, -18px, 0) scale(0.96);
+            opacity: 0;
+          }
+        }
+
+        @keyframes portalBadgeEmberBurstA {
+          0% {
+            transform: translate3d(0, 0, 0) scale(0.74);
+            opacity: 0;
+          }
+          14% {
+            transform: translate3d(-1px, -5px, 0) scale(0.84);
+            opacity: 0.65;
+          }
+          38% {
+            transform: translate3d(2px, -14px, 0) scale(0.98);
+            opacity: 0.42;
+          }
+          66% {
+            transform: translate3d(-3px, -24px, 0) scale(1.08);
+            opacity: 0.2;
+          }
+          100% {
+            transform: translate3d(2px, -32px, 0) scale(1.18);
+            opacity: 0;
+          }
+        }
+
+        @keyframes portalBadgeEmberBurstB {
+          0% {
+            transform: translate3d(0, 0, 0) scale(0.66);
+            opacity: 0;
+          }
+          16% {
+            transform: translate3d(1px, -6px, 0) scale(0.76);
+            opacity: 0.54;
+          }
+          40% {
+            transform: translate3d(-2px, -16px, 0) scale(0.88);
+            opacity: 0.36;
+          }
+          68% {
+            transform: translate3d(4px, -27px, 0) scale(0.98);
+            opacity: 0.16;
+          }
+          100% {
+            transform: translate3d(-2px, -36px, 0) scale(1.08);
+            opacity: 0;
+          }
+        }
+
+        @keyframes portalBadgeEmberBurstC {
+          0% {
+            transform: translate3d(0, 0, 0) scale(0.7);
+            opacity: 0;
+          }
+          18% {
+            transform: translate3d(-1px, -5px, 0) scale(0.8);
+            opacity: 0.48;
+          }
+          42% {
+            transform: translate3d(2px, -13px, 0) scale(0.9);
+            opacity: 0.3;
+          }
+          72% {
+            transform: translate3d(-2px, -22px, 0) scale(0.98);
+            opacity: 0.14;
+          }
+          100% {
+            transform: translate3d(1px, -30px, 0) scale(1.04);
+            opacity: 0;
+          }
+        }
+
+        @keyframes portalBadgeNewUnlockRing {
+          0% {
+            transform: scale(0.86);
+            opacity: 0;
+          }
+          18% {
+            opacity: 0.72;
+          }
+          100% {
+            transform: scale(1.16);
+            opacity: 0;
+          }
+        }
+
+        .portal-member-badge-grid {
+          display: grid;
+          width: 100%;
+          min-width: 0;
+          grid-template-columns: repeat(
+            var(--portal-badge-columns-collapsed),
+            minmax(0, 1fr)
+          );
+          column-gap: var(--portal-badge-gap-collapsed);
+          row-gap: var(--portal-badge-caption-row-gap-collapsed);
+          align-items: start;
+          transition:
+            grid-template-columns 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            column-gap 220ms ease,
+            row-gap 220ms ease;
+        }
+
+        .portal-member-badge-grid.portal-member-badges--expanded {
+          grid-template-columns: repeat(
+            var(--portal-badge-columns-expanded),
+            minmax(0, 1fr)
+          );
+          column-gap: var(--portal-badge-gap-expanded);
+          row-gap: var(--portal-badge-caption-row-gap-expanded);
+        }
+
+        .portal-member-badge-shell {
+          display: grid;
+          justify-items: center;
+          align-self: start;
+          gap: 0;
+          min-width: 0;
+          width: 100%;
+          transform: translate(0px, 0px);
+        }
+
+        .portal-member-badge-visual {
+          position: relative;
+          width: 100%;
+          aspect-ratio: 1 / 1;
+          overflow: visible;
+          outline: none;
+        }
+
+        .portal-member-badge-visual-inner {
+          position: absolute;
+          inset: 0;
+          transform: scale(var(--portal-badge-art-scale-collapsed));
+          transform-origin: center center;
+          transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+          will-change: transform;
+        }
+
+        .portal-member-badge-grid.portal-member-badges--expanded
+          .portal-member-badge-visual-inner {
+          transform: scale(var(--portal-badge-art-scale-expanded));
+        }
+
+        .portal-member-badge-core--locked {
+          animation: portalBadgeLockedPulse 2400ms ease-in-out infinite;
+          transform-origin: center;
+          will-change: transform, opacity;
+        }
+
+        .portal-member-badge-idle-glow {
+          animation: portalBadgeUnlockedIdleGlow 3200ms ease-in-out infinite;
+          will-change: transform, opacity;
+        }
+
+        .portal-member-badge-wrap:hover .portal-member-badge-idle-glow,
+        .portal-member-badge-wrap:focus-within .portal-member-badge-idle-glow {
+          opacity: 0.42;
+          transform: scale(1.06);
+        }
+
+        .portal-member-badge-embers {
+          opacity: 0.34;
+          transition:
+            opacity 180ms ease,
+            transform 180ms ease;
+          pointer-events: none;
+        }
+
+        .portal-member-badge-wrap:hover .portal-member-badge-embers,
+        .portal-member-badge-wrap:focus-within .portal-member-badge-embers {
+          opacity: 0.92;
+          transform: translateY(-1px);
+        }
+
+        .portal-member-badge-spark-a {
+          opacity: 0;
+          animation: portalBadgeEmberRiseA 1300ms
+            cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+        }
+
+        .portal-member-badge-spark-b {
+          opacity: 0;
+          animation: portalBadgeEmberRiseB 1600ms
+            cubic-bezier(0.19, 0.72, 0.32, 1) infinite 160ms;
+        }
+
+        .portal-member-badge-spark-c {
+          opacity: 0;
+          animation: portalBadgeEmberRiseC 1450ms
+            cubic-bezier(0.25, 0.68, 0.3, 1) infinite 320ms;
+        }
+
+        .portal-member-badge-wrap:hover .portal-member-badge-spark-a,
+        .portal-member-badge-wrap:focus-within .portal-member-badge-spark-a {
+          animation: portalBadgeEmberBurstA 950ms
+            cubic-bezier(0.2, 0.72, 0.28, 1) infinite;
+        }
+
+        .portal-member-badge-wrap:hover .portal-member-badge-spark-b,
+        .portal-member-badge-wrap:focus-within .portal-member-badge-spark-b {
+          animation: portalBadgeEmberBurstB 1100ms
+            cubic-bezier(0.18, 0.75, 0.3, 1) infinite 120ms;
+        }
+
+        .portal-member-badge-wrap:hover .portal-member-badge-spark-c,
+        .portal-member-badge-wrap:focus-within .portal-member-badge-spark-c {
+          animation: portalBadgeEmberBurstC 1000ms
+            cubic-bezier(0.24, 0.7, 0.3, 1) infinite 220ms;
+        }
+
+        .portal-member-badge-burst-a,
+        .portal-member-badge-burst-b,
+        .portal-member-badge-burst-c {
+          opacity: 0;
+        }
+
+        .portal-member-badge-wrap:hover .portal-member-badge-burst-a,
+        .portal-member-badge-wrap:focus-within .portal-member-badge-burst-a {
+          animation: portalBadgeEmberBurstA 820ms
+            cubic-bezier(0.2, 0.74, 0.28, 1) infinite 40ms;
+        }
+
+        .portal-member-badge-wrap:hover .portal-member-badge-burst-b,
+        .portal-member-badge-wrap:focus-within .portal-member-badge-burst-b {
+          animation: portalBadgeEmberBurstB 900ms
+            cubic-bezier(0.18, 0.76, 0.3, 1) infinite 180ms;
+        }
+
+        .portal-member-badge-wrap:hover .portal-member-badge-burst-c,
+        .portal-member-badge-wrap:focus-within .portal-member-badge-burst-c {
+          animation: portalBadgeEmberBurstC 860ms
+            cubic-bezier(0.22, 0.72, 0.3, 1) infinite 300ms;
+        }
+
+        .portal-member-badge-unlock-ring {
+          animation: portalBadgeNewUnlockRing 1200ms cubic-bezier(0.22, 1, 0.36, 1)
+            2;
+        }
+
+        .portal-member-badge-meta {
+          width: 100%;
+          max-width: 100%;
+          display: grid;
+          grid-template-rows: 0fr;
+          margin-top: 0;
+          opacity: 0;
+          transform: translateY(-4px);
+          pointer-events: none;
+          transition:
+            grid-template-rows 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            opacity 180ms ease,
+            transform 220ms ease,
+            margin-top 220ms ease;
+          transition-delay: 0ms, 0ms, 0ms, 0ms;
+          text-align: center;
+        }
+
+        .portal-member-badge-grid.portal-member-badges--expanded
+          .portal-member-badge-meta {
+          grid-template-rows: 1fr;
+          margin-top: 10px;
+          opacity: 1;
+          transform: translateY(0);
+          pointer-events: auto;
+          transition-delay: 0ms, 110ms, 110ms, 0ms;
+        }
+
+        .portal-member-badge-meta-inner {
+          overflow: hidden;
+          min-height: 0;
+          opacity: 0;
+          transform: translateY(var(--portal-badge-caption-offset));
+          transition:
+            opacity 180ms ease,
+            transform 220ms ease;
+          transition-delay: 0ms, 0ms;
+        }
+
+        .portal-member-badge-grid.portal-member-badges--expanded
+          .portal-member-badge-meta-inner {
+          opacity: 1;
+          transform: translateY(0);
+          transition-delay: 140ms, 140ms;
+        }
+
+        .portal-member-badge-live-region {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border: 0;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .portal-member-badge-core--locked,
+          .portal-member-badge-idle-glow,
+          .portal-member-badge-spark-a,
+          .portal-member-badge-spark-b,
+          .portal-member-badge-spark-c,
+          .portal-member-badge-burst-a,
+          .portal-member-badge-burst-b,
+          .portal-member-badge-burst-c,
+          .portal-member-badge-unlock-ring {
+            animation: none !important;
+          }
+
+          .portal-member-badge-embers {
+            opacity: 0 !important;
+          }
+
+          .portal-member-badge-grid,
+          .portal-member-badge-shell,
+          .portal-member-badge-visual-inner,
+          .portal-member-badge-meta,
+          .portal-member-badge-meta-inner {
+            transition: none !important;
+            transition-delay: 0ms !important;
+          }
+
+          .portal-member-badge-meta {
+            grid-template-rows: none !important;
+          }
+        }
+      `}</style>
+
+      <div
+        style={{
+          display: "grid",
+          gap: 10,
+          minWidth: 0,
+        }}
+      >
+        <div
+          aria-live="polite"
+          aria-atomic="true"
+          className="portal-member-badge-live-region"
+        >
+          {liveAnnouncement}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setExpanded((current) => !current)}
+          aria-expanded={expanded}
+          style={{
+            appearance: "none",
+            border: "none",
+            background: "transparent",
+            padding: 0,
+            margin: 0,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "flex-start",
+            gap: 8,
+            minWidth: 0,
+            width: "fit-content",
+            color: "inherit",
+            cursor: "pointer",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 10,
+              letterSpacing: 0.3,
+              textTransform: "uppercase",
+              lineHeight: 1.2,
+              opacity: 0.5,
+            }}
+          >
+            Badges
+          </span>
+
+          <span
+            aria-hidden="true"
+            style={{
+              display: "inline-block",
+              fontSize: 12,
+              lineHeight: 1,
+              opacity: 0.5,
+              transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
+              transformOrigin: "50% 50%",
+              transition: prefersReducedMotion
+                ? undefined
+                : "transform 220ms ease, opacity 180ms ease",
+            }}
+          >
+            &gt;
+          </span>
+        </button>
+
+        <BadgeCabinetGrid expanded={expanded}>
+          {items.map((item) => (
+            <BadgeCabinetItem
+              key={item.key}
+              item={item}
+              expanded={expanded}
+              isNewlyUnlocked={newlyUnlockedKeys.has(item.key)}
+              itemRef={registerItemRef(item.key)}
+            />
+          ))}
+        </BadgeCabinetGrid>
+      </div>
+    </>
+  );
+}

@@ -10,6 +10,7 @@ export type MemberDashboardBadge = {
   undisclosed?: boolean;
   unlocked: boolean;
   unlockedAt?: string | null;
+  editorialOrder?: number | null;
 };
 
 export type PortalMemberFavouriteTrack = {
