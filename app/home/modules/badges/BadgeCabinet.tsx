@@ -2,6 +2,7 @@
 "use client";
 
 import React from "react";
+import { flushSync } from "react-dom";
 import type { MemberDashboardBadge } from "@/lib/memberDashboard";
 import BadgeCabinetGrid from "./BadgeCabinetGrid";
 import BadgeCabinetItem from "./BadgeCabinetItem";
@@ -83,6 +84,7 @@ export default function BadgeCabinet(props: Props) {
   const unlockReleaseTimeoutRef = React.useRef<number | null>(null);
   const unlockCleanupTimeoutRef = React.useRef<number | null>(null);
   const unlockReleaseRafRef = React.useRef<number | null>(null);
+  const unlockReleasePaintRafRef = React.useRef<number | null>(null);
   const [previousStableItems, setPreviousStableItems] = React.useState<
     ReturnType<typeof buildBadgeCabinetItems>
   >([]);
@@ -204,6 +206,11 @@ export default function BadgeCabinet(props: Props) {
         window.cancelAnimationFrame(unlockReleaseRafRef.current);
         unlockReleaseRafRef.current = null;
       }
+
+      if (unlockReleasePaintRafRef.current !== null) {
+        window.cancelAnimationFrame(unlockReleasePaintRafRef.current);
+        unlockReleasePaintRafRef.current = null;
+      }
     };
   }, []);
 
@@ -277,6 +284,11 @@ export default function BadgeCabinet(props: Props) {
       unlockReleaseRafRef.current = null;
     }
 
+    if (unlockReleasePaintRafRef.current !== null) {
+      window.cancelAnimationFrame(unlockReleasePaintRafRef.current);
+      unlockReleasePaintRafRef.current = null;
+    }
+
     setDebugUnlockedKey(null);
     setPendingUnlockKeys(new Set());
     setNewlyUnlockedKeys(new Set());
@@ -330,19 +342,32 @@ export default function BadgeCabinet(props: Props) {
     setLiveAnnouncement(liveText);
 
     unlockReleaseTimeoutRef.current = window.setTimeout(() => {
-      setUnlockPhase("move");
-      setPendingUnlockKeys(new Set());
-      setIsFlipSuspended(false);
-      setFlipBaselineToken((current) => current + 1);
       unlockReleaseTimeoutRef.current = null;
+
+      flushSync(() => {
+        setUnlockPhase("move");
+        setPendingUnlockKeys(new Set());
+        setIsFlipSuspended(false);
+        setFlipBaselineToken((current) => current + 1);
+      });
 
       if (unlockReleaseRafRef.current !== null) {
         window.cancelAnimationFrame(unlockReleaseRafRef.current);
+        unlockReleaseRafRef.current = null;
+      }
+
+      if (unlockReleasePaintRafRef.current !== null) {
+        window.cancelAnimationFrame(unlockReleasePaintRafRef.current);
+        unlockReleasePaintRafRef.current = null;
       }
 
       unlockReleaseRafRef.current = window.requestAnimationFrame(() => {
-        setDisplayItemsOverride(null);
         unlockReleaseRafRef.current = null;
+
+        unlockReleasePaintRafRef.current = window.requestAnimationFrame(() => {
+          unlockReleasePaintRafRef.current = null;
+          setDisplayItemsOverride(null);
+        });
       });
     }, UNLOCK_REVEAL_MS);
 
@@ -372,6 +397,11 @@ export default function BadgeCabinet(props: Props) {
       if (unlockReleaseRafRef.current !== null) {
         window.cancelAnimationFrame(unlockReleaseRafRef.current);
         unlockReleaseRafRef.current = null;
+      }
+
+      if (unlockReleasePaintRafRef.current !== null) {
+        window.cancelAnimationFrame(unlockReleasePaintRafRef.current);
+        unlockReleasePaintRafRef.current = null;
       }
     };
   }, [items, previousStableItems]);

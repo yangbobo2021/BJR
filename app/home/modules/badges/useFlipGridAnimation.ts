@@ -165,7 +165,13 @@ export function useFlipGridAnimation(options: Options): {
     }
 
     if (captureBaselineChanged) {
-      previousRectsRef.current = nextRects;
+      for (const key of keys) {
+        const node = nodeByKeyRef.current.get(key);
+        if (!node) continue;
+        resetNodeTransform(node);
+      }
+
+      previousRectsRef.current = snapshotRects(keys, nodeByKeyRef.current);
       animateFromCapturedBaselineRef.current = true;
       return;
     }
