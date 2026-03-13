@@ -43,6 +43,7 @@ export function useFlipGridAnimation(options: Options): {
   const previousRectsRef = React.useRef<RectMap>(new Map());
   const cleanupByKeyRef = React.useRef<Map<string, () => void>>(new Map());
   const rafIdRef = React.useRef<number | null>(null);
+  const hasMeasuredInitialLayoutRef = React.useRef(false);
 
   const registerItemRef = React.useCallback<RegisterItemRef>(
     (key: string) => (node: HTMLDivElement | null) => {
@@ -82,6 +83,12 @@ export function useFlipGridAnimation(options: Options): {
 
   React.useLayoutEffect(() => {
     const nextRects = snapshotRects(keys, nodeByKeyRef.current);
+
+    if (!hasMeasuredInitialLayoutRef.current) {
+      hasMeasuredInitialLayoutRef.current = true;
+      previousRectsRef.current = nextRects;
+      return;
+    }
 
     if (disabled) {
       previousRectsRef.current = nextRects;
