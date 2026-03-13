@@ -31,6 +31,7 @@ export default function BadgeCabinet(props: Props) {
     keys: itemKeys,
     disabled: prefersReducedMotion,
     durationMs: 360,
+    layoutDependency: expanded,
   });
 
   const previousUnlockedKeysRef = React.useRef<Set<string> | null>(null);
@@ -296,10 +297,6 @@ export default function BadgeCabinet(props: Props) {
           column-gap: var(--portal-badge-gap-collapsed);
           row-gap: var(--portal-badge-caption-row-gap-collapsed);
           align-items: start;
-          transition:
-            grid-template-columns 260ms cubic-bezier(0.22, 1, 0.36, 1),
-            column-gap 220ms ease,
-            row-gap 220ms ease;
         }
 
         .portal-member-badge-grid.portal-member-badges--expanded {

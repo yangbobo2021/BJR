@@ -10,6 +10,7 @@ type Options = {
   disabled?: boolean;
   durationMs?: number;
   easing?: string;
+  layoutDependency?: string | number | boolean | null;
 };
 
 type RectMap = Map<string, DOMRect>;
@@ -37,6 +38,7 @@ export function useFlipGridAnimation(options: Options): {
     disabled = false,
     durationMs = 320,
     easing = "cubic-bezier(0.22, 1, 0.36, 1)",
+    layoutDependency = null,
   } = options;
 
   const nodeByKeyRef = React.useRef<Map<string, HTMLDivElement>>(new Map());
@@ -170,7 +172,7 @@ export function useFlipGridAnimation(options: Options): {
     }
 
     previousRectsRef.current = nextRects;
-  }, [keys, disabled, durationMs, easing]);
+  }, [keys, disabled, durationMs, easing, layoutDependency]);
 
   return { registerItemRef };
 }
