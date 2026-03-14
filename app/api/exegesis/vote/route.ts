@@ -18,6 +18,7 @@ import {
   runAutoBadgeAwardsForMember,
   type NewlyAwardedBadge,
 } from "@/lib/badgeAutoAward";
+import { markOverlayAnnouncedForAwardedBadges } from "@/lib/badgeAwardAnnouncementServer";
 
 export const runtime = "nodejs";
 
@@ -277,6 +278,13 @@ export async function POST(req: NextRequest) {
             correlationId,
           })
         : [];
+
+    if (row.author_member_id && isUuid(row.author_member_id)) {
+      await markOverlayAnnouncedForAwardedBadges({
+        memberId: row.author_member_id,
+        badges: newlyAwardedBadges,
+      });
+    }
 
     return jsonOk<ApiOk>(
       {

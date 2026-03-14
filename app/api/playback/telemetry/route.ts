@@ -15,6 +15,7 @@ import {
   runAutoBadgeAwardsForMember,
   type NewlyAwardedBadge,
 } from "@/lib/badgeAutoAward";
+import { markOverlayAnnouncedForAwardedBadges } from "@/lib/badgeAwardAnnouncementServer";
 
 type PlaybackTelemetryEvent = "play" | "progress" | "complete";
 
@@ -696,6 +697,13 @@ export async function POST(req: NextRequest) {
         },
       });
     }
+  }
+
+  if (memberId && newlyAwardedBadges.length > 0) {
+    await markOverlayAnnouncedForAwardedBadges({
+      memberId,
+      badges: newlyAwardedBadges,
+    });
   }
 
   const res = NextResponse.json({ ok: true, newlyAwardedBadges });

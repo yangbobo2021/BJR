@@ -11,6 +11,7 @@ export type MemberDashboardBadge = {
   unlocked: boolean;
   unlockedAt?: string | null;
   editorialOrder?: number | null;
+  cabinetRevealPending?: boolean;
 };
 
 export type PortalMemberFavouriteTrack = {

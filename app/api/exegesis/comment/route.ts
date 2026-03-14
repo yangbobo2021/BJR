@@ -18,6 +18,7 @@ import {
   runAutoBadgeAwardsForMember,
   type NewlyAwardedBadge,
 } from "@/lib/badgeAutoAward";
+import { markOverlayAnnouncedForAwardedBadges } from "@/lib/badgeAwardAnnouncementServer";
 
 import { resolveGroupKeyForAnchor } from "@/lib/exegesis/resolveGroupKey";
 import { validateAndSanitizeTipTapDoc } from "@/lib/exegesis/richText";
@@ -741,6 +742,11 @@ limit 1
       recordingId,
       grantedBy: "system",
       correlationId,
+    });
+
+    await markOverlayAnnouncedForAwardedBadges({
+      memberId,
+      badges: newlyAwardedBadges,
     });
 
     return jsonOk<ApiOk>(
