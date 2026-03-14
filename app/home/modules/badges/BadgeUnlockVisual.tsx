@@ -303,35 +303,48 @@ export default function BadgeUnlockVisual(props: Props) {
 
               {!isUnlocking ? (
                 <>
-                  <Image
-                    src={imageUrl}
-                    alt={label}
-                    fill
-                    sizes="(max-width: 420px) 22vw, (max-width: 640px) 16vw, 96px"
+                  <div
+                    className="portal-badge-final-art-shell"
                     style={{
-                      objectFit: "contain",
-                      display: "block",
-                      filter: unlocked
-                        ? "drop-shadow(0 0 6px rgba(255,255,255,0.1))"
-                        : "grayscale(1) saturate(0) brightness(0.60) contrast(0.85) blur(0.2px)",
-                      opacity: unlocked ? 1 : 0.35,
+                      position: "absolute",
+                      inset: 0,
                     }}
-                  />
-
-                  {unlocked ? (
-                    <div
-                      className={`portal-badge-final-shimmer${
-                        isNewlyUnlocked
-                          ? " portal-badge-final-shimmer--celebrating"
-                          : ""
-                      }`}
+                  >
+                    <Image
+                      src={imageUrl}
+                      alt={label}
+                      fill
+                      sizes="(max-width: 420px) 22vw, (max-width: 640px) 16vw, 96px"
+                      className="portal-badge-final-art-image"
                       style={{
-                        position: "absolute",
-                        inset: "-18%",
-                        pointerEvents: "none",
+                        objectFit: "contain",
+                        display: "block",
+                        filter: unlocked
+                          ? "drop-shadow(0 0 6px rgba(255,255,255,0.1))"
+                          : "grayscale(1) saturate(0) brightness(0.60) contrast(0.85) blur(0.2px)",
+                        opacity: unlocked ? 1 : 0.35,
                       }}
                     />
-                  ) : null}
+
+                    {isNewlyUnlocked ? (
+                      <div
+                        className="portal-badge-final-shimmer portal-badge-final-shimmer--celebrating"
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          pointerEvents: "none",
+                          WebkitMaskImage: `url(${imageUrl})`,
+                          maskImage: `url(${imageUrl})`,
+                          WebkitMaskRepeat: "no-repeat",
+                          maskRepeat: "no-repeat",
+                          WebkitMaskPosition: "center",
+                          maskPosition: "center",
+                          WebkitMaskSize: "contain",
+                          maskSize: "contain",
+                        }}
+                      />
+                    ) : null}
+                  </div>
                 </>
               ) : null}
             </>

@@ -1,5 +1,4 @@
 // web/app/home/modules/badges/useFlipGridAnimation.ts
-// web/app/home/modules/badges/useFlipGridAnimation.ts
 "use client";
 
 import React from "react";
