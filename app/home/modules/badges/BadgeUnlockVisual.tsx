@@ -1,7 +1,6 @@
 // web/app/home/modules/badges/BadgeUnlockVisual.tsx
 "use client";
 
-import Image from "next/image";
 import React from "react";
 
 type Props = {
@@ -33,6 +32,198 @@ function BadgeFallbackArt(props: { unlocked: boolean; label: string }) {
     >
       ✦
     </div>
+  );
+}
+
+function BadgeRevealSvg(props: {
+  imageUrl: string;
+  label: string;
+  celebrating: boolean;
+}) {
+  const { imageUrl, label, celebrating } = props;
+  const reactId = React.useId();
+  const safeId = React.useMemo(
+    () => reactId.replace(/[^a-zA-Z0-9_-]/g, ""),
+    [reactId],
+  );
+
+  const maskId = `portalBadgeRevealMask-${safeId}`;
+  const filterId = `portalBadgeRevealFilter-${safeId}`;
+
+  return (
+    <svg
+      aria-label={label}
+      viewBox="0 0 100 100"
+      preserveAspectRatio="xMidYMid meet"
+      className={`portal-badge-reveal-svg${
+        celebrating ? " portal-badge-reveal-svg--celebrating" : ""
+      }`}
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        overflow: "visible",
+        pointerEvents: "none",
+      }}
+    >
+      <defs>
+        <filter
+          id={filterId}
+          x="-24%"
+          y="-24%"
+          width="148%"
+          height="148%"
+          colorInterpolationFilters="sRGB"
+        >
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.075"
+            numOctaves="2"
+            seed="7"
+            result="noise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="7"
+            xChannelSelector="R"
+            yChannelSelector="G"
+            result="displaced"
+          />
+          <feGaussianBlur in="displaced" stdDeviation="1.25" result="blurred" />
+          <feColorMatrix
+            in="blurred"
+            type="matrix"
+            values="
+              1 0 0 0 0
+              0 1 0 0 0
+              0 0 1 0 0
+              0 0 0 24 -9
+            "
+          />
+        </filter>
+
+        <mask
+          id={maskId}
+          maskUnits="userSpaceOnUse"
+          x="0"
+          y="0"
+          width="100"
+          height="100"
+        >
+          <rect x="0" y="0" width="100" height="100" fill="black" />
+          <g
+            className="portal-badge-reveal-mask-cloud"
+            filter={`url(#${filterId})`}
+          >
+            <circle
+              cx="50"
+              cy="50"
+              r="7"
+              fill="white"
+              className="portal-badge-reveal-blob portal-badge-reveal-blob--core"
+            />
+            <ellipse
+              cx="50"
+              cy="50"
+              rx="6"
+              ry="5"
+              fill="white"
+              className="portal-badge-reveal-blob portal-badge-reveal-blob--a"
+            />
+            <ellipse
+              cx="50"
+              cy="50"
+              rx="5.5"
+              ry="4.8"
+              fill="white"
+              className="portal-badge-reveal-blob portal-badge-reveal-blob--b"
+            />
+            <ellipse
+              cx="50"
+              cy="50"
+              rx="5.4"
+              ry="5.8"
+              fill="white"
+              className="portal-badge-reveal-blob portal-badge-reveal-blob--c"
+            />
+            <ellipse
+              cx="50"
+              cy="50"
+              rx="4.8"
+              ry="4.8"
+              fill="white"
+              className="portal-badge-reveal-blob portal-badge-reveal-blob--d"
+            />
+            <ellipse
+              cx="50"
+              cy="50"
+              rx="4.4"
+              ry="5.2"
+              fill="white"
+              className="portal-badge-reveal-blob portal-badge-reveal-blob--e"
+            />
+            <ellipse
+              cx="50"
+              cy="50"
+              rx="4.6"
+              ry="4.2"
+              fill="white"
+              className="portal-badge-reveal-blob portal-badge-reveal-blob--f"
+            />
+            <ellipse
+              cx="50"
+              cy="50"
+              rx="4.1"
+              ry="4.8"
+              fill="white"
+              className="portal-badge-reveal-blob portal-badge-reveal-blob--g"
+            />
+          </g>
+        </mask>
+      </defs>
+
+      <image
+        href={imageUrl}
+        x="0"
+        y="0"
+        width="100"
+        height="100"
+        preserveAspectRatio="xMidYMid meet"
+        mask={`url(#${maskId})`}
+        className="portal-badge-reveal-colour-image"
+      />
+    </svg>
+  );
+}
+
+function BadgeArtImage(props: {
+  imageUrl: string;
+  alt: string;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const { imageUrl, alt, className, style } = props;
+
+  return (
+    <img
+      src={imageUrl}
+      alt={alt}
+      draggable="false"
+      className={className}
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        objectFit: "contain",
+        display: "block",
+        userSelect: "none",
+        pointerEvents: "none",
+        ...style,
+      }}
+    />
   );
 }
 
@@ -192,297 +383,143 @@ export default function BadgeUnlockVisual(props: Props) {
         ) : null}
 
         <div
-          className={`portal-badge-art-spin${
-            isUnlocking ? " portal-badge-art-spin--unlocking" : ""
+          className={`portal-badge-spin-stage-1${
+            isUnlocking ? " portal-badge-spin-stage-1--unlocking" : ""
           }`}
           style={{
             position: "absolute",
             inset: 0,
           }}
         >
-          {imageUrl ? (
-            <>
-              {!unlocked || isUnlocking ? (
-                <Image
-                  src={imageUrl}
-                  alt=""
-                  aria-hidden="true"
-                  fill
-                  sizes="(max-width: 420px) 22vw, (max-width: 640px) 16vw, 96px"
-                  className="portal-badge-art-base-greyscale"
-                  style={{
-                    objectFit: "contain",
-                    display: "block",
-                    opacity: isUnlocking ? 0.38 : 0.3,
-                    filter:
-                      "grayscale(1) saturate(0) brightness(0.96) contrast(0.94) blur(2px)",
-                    transform: "scale(1.035)",
-                    pointerEvents: "none",
-                  }}
-                />
-              ) : null}
-
-              {isUnlocking ? (
-                <>
-                  <div
-                    className="portal-badge-colour-reveal portal-badge-colour-reveal--primary"
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      overflow: "hidden",
-                      WebkitMaskImage: `url(${imageUrl})`,
-                      maskImage: `url(${imageUrl})`,
-                      WebkitMaskRepeat: "no-repeat",
-                      maskRepeat: "no-repeat",
-                      WebkitMaskPosition: "center",
-                      maskPosition: "center",
-                      WebkitMaskSize: "contain",
-                      maskSize: "contain",
-                    }}
-                  >
-                    <div className="portal-badge-colour-island portal-badge-colour-island--core">
-                      <Image
-                        src={imageUrl}
+          <div
+            className={`portal-badge-spin-stage-2${
+              isUnlocking ? " portal-badge-spin-stage-2--unlocking" : ""
+            }`}
+            style={{
+              position: "absolute",
+              inset: 0,
+            }}
+          >
+            <div
+              className={`portal-badge-spin-stage-3${
+                isUnlocking ? " portal-badge-spin-stage-3--unlocking" : ""
+              }`}
+              style={{
+                position: "absolute",
+                inset: 0,
+              }}
+            >
+              <div
+                className={`portal-badge-art-shell${
+                  isUnlocking ? " portal-badge-art-shell--unlocking" : ""
+                }`}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                }}
+              >
+                {imageUrl ? (
+                  <>
+                    {!unlocked || isUnlocking ? (
+                      <BadgeArtImage
+                        imageUrl={imageUrl}
                         alt=""
-                        aria-hidden="true"
-                        fill
-                        sizes="(max-width: 420px) 22vw, (max-width: 640px) 16vw, 96px"
+                        className="portal-badge-art-base-greyscale"
                         style={{
-                          objectFit: "contain",
-                          display: "block",
+                          opacity: isUnlocking ? 0.4 : 0.32,
                           filter:
-                            "saturate(1.05) brightness(1.02) drop-shadow(0 0 10px rgba(255,255,255,0.14))",
-                          opacity: 1,
-                          pointerEvents: "none",
-                        }}
-                      />
-                    </div>
-
-                    <div className="portal-badge-colour-island portal-badge-colour-island--a">
-                      <Image
-                        src={imageUrl}
-                        alt=""
-                        aria-hidden="true"
-                        fill
-                        sizes="(max-width: 420px) 22vw, (max-width: 640px) 16vw, 96px"
-                        style={{
-                          objectFit: "contain",
-                          display: "block",
-                          filter:
-                            "saturate(1.06) brightness(1.02) drop-shadow(0 0 10px rgba(255,255,255,0.14))",
-                          opacity: 1,
-                          pointerEvents: "none",
-                        }}
-                      />
-                    </div>
-
-                    <div className="portal-badge-colour-island portal-badge-colour-island--b">
-                      <Image
-                        src={imageUrl}
-                        alt=""
-                        aria-hidden="true"
-                        fill
-                        sizes="(max-width: 420px) 22vw, (max-width: 640px) 16vw, 96px"
-                        style={{
-                          objectFit: "contain",
-                          display: "block",
-                          filter:
-                            "saturate(1.06) brightness(1.02) drop-shadow(0 0 10px rgba(255,255,255,0.14))",
-                          opacity: 1,
-                          pointerEvents: "none",
-                        }}
-                      />
-                    </div>
-
-                    <div className="portal-badge-colour-island portal-badge-colour-island--c">
-                      <Image
-                        src={imageUrl}
-                        alt=""
-                        aria-hidden="true"
-                        fill
-                        sizes="(max-width: 420px) 22vw, (max-width: 640px) 16vw, 96px"
-                        style={{
-                          objectFit: "contain",
-                          display: "block",
-                          filter:
-                            "saturate(1.06) brightness(1.02) drop-shadow(0 0 10px rgba(255,255,255,0.14))",
-                          opacity: 1,
-                          pointerEvents: "none",
-                        }}
-                      />
-                    </div>
-
-                    <div className="portal-badge-colour-island portal-badge-colour-island--d">
-                      <Image
-                        src={imageUrl}
-                        alt=""
-                        aria-hidden="true"
-                        fill
-                        sizes="(max-width: 420px) 22vw, (max-width: 640px) 16vw, 96px"
-                        style={{
-                          objectFit: "contain",
-                          display: "block",
-                          filter:
-                            "saturate(1.06) brightness(1.02) drop-shadow(0 0 10px rgba(255,255,255,0.14))",
-                          opacity: 1,
-                          pointerEvents: "none",
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div
-                    className="portal-badge-colour-reveal portal-badge-colour-reveal--secondary"
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      overflow: "hidden",
-                      WebkitMaskImage: `url(${imageUrl})`,
-                      maskImage: `url(${imageUrl})`,
-                      WebkitMaskRepeat: "no-repeat",
-                      maskRepeat: "no-repeat",
-                      WebkitMaskPosition: "center",
-                      maskPosition: "center",
-                      WebkitMaskSize: "contain",
-                      maskSize: "contain",
-                    }}
-                  >
-                    <div className="portal-badge-colour-island portal-badge-colour-island--e">
-                      <Image
-                        src={imageUrl}
-                        alt=""
-                        aria-hidden="true"
-                        fill
-                        sizes="(max-width: 420px) 22vw, (max-width: 640px) 16vw, 96px"
-                        style={{
-                          objectFit: "contain",
-                          display: "block",
-                          filter:
-                            "saturate(1.14) brightness(1.05) drop-shadow(0 0 12px rgba(255,255,255,0.16))",
-                          opacity: 0.96,
-                          pointerEvents: "none",
-                        }}
-                      />
-                    </div>
-
-                    <div className="portal-badge-colour-island portal-badge-colour-island--f">
-                      <Image
-                        src={imageUrl}
-                        alt=""
-                        aria-hidden="true"
-                        fill
-                        sizes="(max-width: 420px) 22vw, (max-width: 640px) 16vw, 96px"
-                        style={{
-                          objectFit: "contain",
-                          display: "block",
-                          filter:
-                            "saturate(1.14) brightness(1.05) drop-shadow(0 0 12px rgba(255,255,255,0.16))",
-                          opacity: 0.96,
-                          pointerEvents: "none",
-                        }}
-                      />
-                    </div>
-
-                    <div className="portal-badge-colour-island portal-badge-colour-island--g">
-                      <Image
-                        src={imageUrl}
-                        alt=""
-                        aria-hidden="true"
-                        fill
-                        sizes="(max-width: 420px) 22vw, (max-width: 640px) 16vw, 96px"
-                        style={{
-                          objectFit: "contain",
-                          display: "block",
-                          filter:
-                            "saturate(1.14) brightness(1.05) drop-shadow(0 0 12px rgba(255,255,255,0.16))",
-                          opacity: 0.96,
-                          pointerEvents: "none",
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div
-                    className="portal-badge-unlock-energy-flare"
-                    style={{
-                      position: "absolute",
-                      inset: "-8%",
-                      borderRadius: "50%",
-                      pointerEvents: "none",
-                    }}
-                  />
-                </>
-              ) : null}
-
-              {!isUnlocking ? (
-                <>
-                  <div
-                    className="portal-badge-final-art-shell"
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                    }}
-                  >
-                    <Image
-                      src={imageUrl}
-                      alt={label}
-                      fill
-                      sizes="(max-width: 420px) 22vw, (max-width: 640px) 16vw, 96px"
-                      className="portal-badge-final-art-image"
-                      style={{
-                        objectFit: "contain",
-                        display: "block",
-                        filter: unlocked
-                          ? "drop-shadow(0 0 6px rgba(255,255,255,0.1))"
-                          : "grayscale(1) saturate(0) brightness(0.60) contrast(0.85) blur(0.2px)",
-                        opacity: unlocked ? 1 : 0.35,
-                      }}
-                    />
-
-                    {isNewlyUnlocked ? (
-                      <div
-                        className="portal-badge-final-shimmer portal-badge-final-shimmer--celebrating"
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          pointerEvents: "none",
-                          WebkitMaskImage: `url(${imageUrl})`,
-                          maskImage: `url(${imageUrl})`,
-                          WebkitMaskRepeat: "no-repeat",
-                          maskRepeat: "no-repeat",
-                          WebkitMaskPosition: "center",
-                          maskPosition: "center",
-                          WebkitMaskSize: "contain",
-                          maskSize: "contain",
+                            "grayscale(1) saturate(0) brightness(0.96) contrast(0.94) blur(1.75px)",
+                          transform: "scale(1.03)",
                         }}
                       />
                     ) : null}
-                  </div>
-                </>
-              ) : null}
-            </>
-          ) : (
-            <BadgeFallbackArt unlocked={unlocked} label={label} />
-          )}
 
-          {unlocked ? (
-            <div
-              className="portal-badge-centre-radiance"
-              style={{
-                position: "absolute",
-                left: "50%",
-                top: "50%",
-                width: "50%",
-                height: "50%",
-                transform: "translate(-50%, -50%)",
-                borderRadius: "50%",
-                background:
-                  "radial-gradient(circle, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.045) 42%, rgba(255,255,255,0.00) 76%)",
-                filter: "blur(4px)",
-                pointerEvents: "none",
-              }}
-            />
-          ) : null}
+                    {isUnlocking ? (
+                      <>
+                        <BadgeRevealSvg
+                          imageUrl={imageUrl}
+                          label={label}
+                          celebrating={true}
+                        />
+
+                        <div
+                          className="portal-badge-unlock-energy-flare"
+                          style={{
+                            position: "absolute",
+                            inset: "-8%",
+                            borderRadius: "50%",
+                            pointerEvents: "none",
+                          }}
+                        />
+                      </>
+                    ) : null}
+
+                    {!isUnlocking ? (
+                      <div
+                        className="portal-badge-final-art-shell"
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                        }}
+                      >
+                        <BadgeArtImage
+                          imageUrl={imageUrl}
+                          alt={label}
+                          className="portal-badge-final-art-image"
+                          style={{
+                            filter: unlocked
+                              ? "drop-shadow(0 0 6px rgba(255,255,255,0.1))"
+                              : "grayscale(1) saturate(0) brightness(0.60) contrast(0.85) blur(0.2px)",
+                            opacity: unlocked ? 1 : 0.35,
+                          }}
+                        />
+
+                        {isNewlyUnlocked ? (
+                          <div
+                            className="portal-badge-final-shimmer portal-badge-final-shimmer--celebrating"
+                            style={{
+                              position: "absolute",
+                              inset: 0,
+                              pointerEvents: "none",
+                              WebkitMaskImage: `url(${imageUrl})`,
+                              maskImage: `url(${imageUrl})`,
+                              WebkitMaskRepeat: "no-repeat",
+                              maskRepeat: "no-repeat",
+                              WebkitMaskPosition: "center",
+                              maskPosition: "center",
+                              WebkitMaskSize: "contain",
+                              maskSize: "contain",
+                            }}
+                          />
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <BadgeFallbackArt unlocked={unlocked} label={label} />
+                )}
+
+                {unlocked ? (
+                  <div
+                    className="portal-badge-centre-radiance"
+                    style={{
+                      position: "absolute",
+                      left: "50%",
+                      top: "50%",
+                      width: "50%",
+                      height: "50%",
+                      transform: "translate(-50%, -50%)",
+                      borderRadius: "50%",
+                      background:
+                        "radial-gradient(circle, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.045) 42%, rgba(255,255,255,0.00) 76%)",
+                      filter: "blur(4px)",
+                      pointerEvents: "none",
+                    }}
+                  />
+                ) : null}
+              </div>
+            </div>
+          </div>
         </div>
 
         {showUnlockEvent ? (
