@@ -51,7 +51,7 @@ export default function BadgeCabinet(props: Props) {
   );
 
   const prefersReducedMotion = usePrefersReducedMotion();
-  const { announceBadge } = useBadgeAwardOverlay();
+  const { announceBadge, resetOverlayDebugState } = useBadgeAwardOverlay();
   const debugReplayTimeoutRef = React.useRef<number | null>(null);
 
   const sourceItems = React.useMemo(
@@ -233,7 +233,8 @@ export default function BadgeCabinet(props: Props) {
 
     setDebugUnlockedKey(null);
     resetUnlockSequence();
-  }, [resetUnlockSequence]);
+    resetOverlayDebugState();
+  }, [resetOverlayDebugState, resetUnlockSequence]);
 
   if (items.length === 0) return null;
 

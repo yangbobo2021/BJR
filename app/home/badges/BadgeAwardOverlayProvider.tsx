@@ -8,6 +8,7 @@ import type { BadgeAwardNotice } from "./badgeAwardTypes";
 type BadgeAwardOverlayContextValue = {
   announceBadge: (badge: BadgeAwardNotice) => void;
   announceBadges: (badges: BadgeAwardNotice[]) => void;
+  resetOverlayDebugState: () => void;
 };
 
 const BadgeAwardOverlayContext =
@@ -107,6 +108,14 @@ export function BadgeAwardOverlayProvider(props: ProviderProps) {
     [announceBadges],
   );
 
+  const resetOverlayDebugState = React.useCallback(() => {
+    clearTimers();
+    recentSeenRef.current.clear();
+    setQueue([]);
+    setVisible(false);
+    setActiveBadge(null);
+  }, [clearTimers]);
+
   React.useEffect(() => {
     if (activeBadge !== null) return;
     if (queue.length === 0) return;
@@ -137,8 +146,9 @@ export function BadgeAwardOverlayProvider(props: ProviderProps) {
     () => ({
       announceBadge,
       announceBadges,
+      resetOverlayDebugState,
     }),
-    [announceBadge, announceBadges],
+    [announceBadge, announceBadges, resetOverlayDebugState],
   );
 
   return (
