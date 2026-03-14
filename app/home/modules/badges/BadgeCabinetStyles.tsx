@@ -7,8 +7,8 @@ export default function BadgeCabinetStyles() {
   return (
     <style jsx global>{`
       :global(:root) {
-        --portal-badge-columns-collapsed: 8;
-        --portal-badge-columns-expanded: 5;
+        --portal-badge-columns-collapsed: 6;
+        --portal-badge-columns-expanded: 3;
         --portal-badge-gap-collapsed: 14px;
         --portal-badge-gap-expanded: 18px;
         --portal-badge-art-scale-collapsed: 0.82;
