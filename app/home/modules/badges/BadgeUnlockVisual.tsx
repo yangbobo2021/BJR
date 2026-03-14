@@ -232,6 +232,24 @@ export default function BadgeUnlockVisual(props: Props) {
                       overflow: "hidden",
                     }}
                   >
+                    <div className="portal-badge-colour-reveal-image-shell">
+                      <Image
+                        src={imageUrl}
+                        alt=""
+                        aria-hidden="true"
+                        fill
+                        sizes="(max-width: 420px) 22vw, (max-width: 640px) 16vw, 96px"
+                        style={{
+                          objectFit: "contain",
+                          display: "block",
+                          filter:
+                            "saturate(1.06) brightness(1.02) drop-shadow(0 0 10px rgba(255,255,255,0.14))",
+                          opacity: 1,
+                          pointerEvents: "none",
+                        }}
+                      />
+                    </div>
+
                     <div className="portal-badge-colour-reveal-mask">
                       <div className="portal-badge-colour-reveal-mask-core" />
                       <div className="portal-badge-colour-reveal-mask-blob portal-badge-colour-reveal-mask-blob--a" />
@@ -239,22 +257,6 @@ export default function BadgeUnlockVisual(props: Props) {
                       <div className="portal-badge-colour-reveal-mask-blob portal-badge-colour-reveal-mask-blob--c" />
                       <div className="portal-badge-colour-reveal-mask-blob portal-badge-colour-reveal-mask-blob--d" />
                     </div>
-
-                    <Image
-                      src={imageUrl}
-                      alt=""
-                      aria-hidden="true"
-                      fill
-                      sizes="(max-width: 420px) 22vw, (max-width: 640px) 16vw, 96px"
-                      style={{
-                        objectFit: "contain",
-                        display: "block",
-                        filter:
-                          "saturate(1.06) brightness(1.02) drop-shadow(0 0 10px rgba(255,255,255,0.14))",
-                        opacity: 1,
-                        pointerEvents: "none",
-                      }}
-                    />
                   </div>
 
                   <div
@@ -265,28 +267,30 @@ export default function BadgeUnlockVisual(props: Props) {
                       overflow: "hidden",
                     }}
                   >
+                    <div className="portal-badge-colour-reveal-image-shell portal-badge-colour-reveal-image-shell--secondary">
+                      <Image
+                        src={imageUrl}
+                        alt=""
+                        aria-hidden="true"
+                        fill
+                        sizes="(max-width: 420px) 22vw, (max-width: 640px) 16vw, 96px"
+                        style={{
+                          objectFit: "contain",
+                          display: "block",
+                          filter:
+                            "saturate(1.16) brightness(1.05) drop-shadow(0 0 12px rgba(255,255,255,0.16))",
+                          opacity: 0.96,
+                          pointerEvents: "none",
+                        }}
+                      />
+                    </div>
+
                     <div className="portal-badge-colour-reveal-mask portal-badge-colour-reveal-mask--secondary">
                       <div className="portal-badge-colour-reveal-mask-core" />
                       <div className="portal-badge-colour-reveal-mask-blob portal-badge-colour-reveal-mask-blob--e" />
                       <div className="portal-badge-colour-reveal-mask-blob portal-badge-colour-reveal-mask-blob--f" />
                       <div className="portal-badge-colour-reveal-mask-blob portal-badge-colour-reveal-mask-blob--g" />
                     </div>
-
-                    <Image
-                      src={imageUrl}
-                      alt=""
-                      aria-hidden="true"
-                      fill
-                      sizes="(max-width: 420px) 22vw, (max-width: 640px) 16vw, 96px"
-                      style={{
-                        objectFit: "contain",
-                        display: "block",
-                        filter:
-                          "saturate(1.16) brightness(1.05) drop-shadow(0 0 12px rgba(255,255,255,0.16))",
-                        opacity: 0.96,
-                        pointerEvents: "none",
-                      }}
-                    />
                   </div>
 
                   <div

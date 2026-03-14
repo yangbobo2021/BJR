@@ -194,34 +194,31 @@ export default function BadgeUnlockVisualStyles() {
 
       @keyframes portalBadgeUnlockSpinTriple {
         0% {
-          transform: rotateY(0deg) rotateZ(-1.2deg) scale(1);
+          transform: rotateY(0deg) rotateZ(-1deg);
         }
-        10% {
-          transform: rotateY(42deg) rotateZ(-1deg) scale(1);
+        8% {
+          transform: rotateY(24deg) rotateZ(-0.9deg);
         }
-        28% {
-          transform: rotateY(360deg) rotateZ(0.2deg) scale(1);
+        30% {
+          transform: rotateY(360deg) rotateZ(0.15deg);
         }
-        44% {
-          transform: rotateY(520deg) rotateZ(0.7deg) scale(1);
+        48% {
+          transform: rotateY(432deg) rotateZ(0.35deg);
         }
-        62% {
-          transform: rotateY(720deg) rotateZ(-0.45deg) scale(1);
+        66% {
+          transform: rotateY(720deg) rotateZ(-0.2deg);
         }
-        76% {
-          transform: rotateY(900deg) rotateZ(0.85deg) scale(1);
+        80% {
+          transform: rotateY(820deg) rotateZ(0.5deg);
         }
-        88% {
-          transform: rotateY(1080deg) rotateZ(-0.55deg) scale(1);
+        92% {
+          transform: rotateY(1080deg) rotateZ(-0.3deg);
         }
-        93% {
-          transform: rotateY(1080deg) rotateZ(0.38deg) scale(1);
-        }
-        97% {
-          transform: rotateY(1080deg) rotateZ(-0.15deg) scale(1);
+        96% {
+          transform: rotateY(1080deg) rotateZ(0.22deg);
         }
         100% {
-          transform: rotateY(1080deg) rotateZ(0deg) scale(1);
+          transform: rotateY(1080deg) rotateZ(0deg);
         }
       }
 
@@ -555,12 +552,11 @@ export default function BadgeUnlockVisualStyles() {
 
       .portal-badge-art-spin {
         transform-style: preserve-3d;
-        backface-visibility: hidden;
         will-change: transform;
       }
 
       .portal-badge-art-spin--unlocking {
-        animation: portalBadgeUnlockSpinTriple 4200ms both;
+        animation: portalBadgeUnlockSpinTriple 4600ms both;
       }
 
       .portal-badge-art-base-greyscale {
@@ -572,6 +568,24 @@ export default function BadgeUnlockVisualStyles() {
         position: absolute;
         inset: 0;
         opacity: 0;
+      }
+
+      .portal-badge-colour-reveal-image-shell {
+        position: absolute;
+        inset: 0;
+        background: #000;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+      }
+
+      .portal-badge-colour-reveal-image-shell > span,
+      .portal-badge-colour-reveal-image-shell img {
+        position: absolute !important;
+        inset: 0;
       }
 
       .portal-badge-colour-reveal--primary {
@@ -588,62 +602,11 @@ export default function BadgeUnlockVisualStyles() {
         position: absolute;
         inset: 0;
         transform-origin: 50% 50%;
-        filter: blur(5px);
-        -webkit-mask-image:
-          radial-gradient(
-            circle at 50% 50%,
-            rgba(0, 0, 0, 1) 0 14%,
-            transparent 30%
-          ),
-          radial-gradient(
-            circle at 42% 44%,
-            rgba(0, 0, 0, 0.98) 0 18%,
-            transparent 36%
-          ),
-          radial-gradient(
-            circle at 59% 42%,
-            rgba(0, 0, 0, 0.94) 0 15%,
-            transparent 32%
-          ),
-          radial-gradient(
-            circle at 44% 60%,
-            rgba(0, 0, 0, 0.9) 0 16%,
-            transparent 34%
-          ),
-          radial-gradient(
-            circle at 61% 60%,
-            rgba(0, 0, 0, 0.86) 0 13%,
-            transparent 29%
-          );
-        mask-image:
-          radial-gradient(
-            circle at 50% 50%,
-            rgba(0, 0, 0, 1) 0 14%,
-            transparent 30%
-          ),
-          radial-gradient(
-            circle at 42% 44%,
-            rgba(0, 0, 0, 0.98) 0 18%,
-            transparent 36%
-          ),
-          radial-gradient(
-            circle at 59% 42%,
-            rgba(0, 0, 0, 0.94) 0 15%,
-            transparent 32%
-          ),
-          radial-gradient(
-            circle at 44% 60%,
-            rgba(0, 0, 0, 0.9) 0 16%,
-            transparent 34%
-          ),
-          radial-gradient(
-            circle at 61% 60%,
-            rgba(0, 0, 0, 0.86) 0 13%,
-            transparent 29%
-          );
-        -webkit-mask-repeat: no-repeat;
-        mask-repeat: no-repeat;
+        filter: blur(4px);
+        background: #fff;
+        mix-blend-mode: destination-in;
         overflow: visible;
+        isolation: isolate;
       }
 
       .portal-badge-colour-reveal-mask--secondary {
@@ -703,8 +666,8 @@ export default function BadgeUnlockVisualStyles() {
       }
 
       .portal-badge-colour-reveal-mask-core {
-        width: 28%;
-        height: 28%;
+        width: 18%;
+        height: 18%;
         transform: translate(-50%, -50%);
       }
 
@@ -713,52 +676,59 @@ export default function BadgeUnlockVisualStyles() {
       }
 
       .portal-badge-colour-reveal-mask-blob--a {
-        width: 24%;
-        height: 24%;
-        animation: portalBadgeColourRevealBlobA 1320ms
+        width: 16%;
+        height: 22%;
+        border-radius: 58% 42% 61% 39% / 43% 57% 41% 59%;
+        animation: portalBadgeColourRevealBlobA 1600ms
           cubic-bezier(0.18, 0.92, 0.24, 1) both;
       }
 
       .portal-badge-colour-reveal-mask-blob--b {
-        width: 21%;
-        height: 21%;
-        animation: portalBadgeColourRevealBlobB 1260ms
-          cubic-bezier(0.18, 0.92, 0.24, 1) 90ms both;
+        width: 20%;
+        height: 15%;
+        border-radius: 43% 57% 38% 62% / 60% 42% 58% 40%;
+        animation: portalBadgeColourRevealBlobB 1480ms
+          cubic-bezier(0.18, 0.92, 0.24, 1) 140ms both;
       }
 
       .portal-badge-colour-reveal-mask-blob--c {
-        width: 22%;
-        height: 22%;
-        animation: portalBadgeColourRevealBlobC 1380ms
-          cubic-bezier(0.18, 0.92, 0.24, 1) 160ms both;
+        width: 15%;
+        height: 19%;
+        border-radius: 61% 39% 52% 48% / 36% 64% 44% 56%;
+        animation: portalBadgeColourRevealBlobC 1700ms
+          cubic-bezier(0.18, 0.92, 0.24, 1) 260ms both;
       }
 
       .portal-badge-colour-reveal-mask-blob--d {
-        width: 18%;
-        height: 18%;
-        animation: portalBadgeColourRevealBlobD 1300ms
-          cubic-bezier(0.18, 0.92, 0.24, 1) 120ms both;
+        width: 14%;
+        height: 14%;
+        border-radius: 47% 53% 63% 37% / 54% 46% 38% 62%;
+        animation: portalBadgeColourRevealBlobD 1560ms
+          cubic-bezier(0.18, 0.92, 0.24, 1) 200ms both;
       }
 
       .portal-badge-colour-reveal-mask-blob--e {
-        width: 30%;
-        height: 30%;
-        animation: portalBadgeColourRevealBlobE 1180ms
-          cubic-bezier(0.16, 0.9, 0.22, 1) 180ms both;
+        width: 17%;
+        height: 20%;
+        border-radius: 55% 45% 37% 63% / 48% 52% 61% 39%;
+        animation: portalBadgeColourRevealBlobE 1840ms
+          cubic-bezier(0.16, 0.9, 0.22, 1) 520ms both;
       }
 
       .portal-badge-colour-reveal-mask-blob--f {
-        width: 26%;
-        height: 26%;
-        animation: portalBadgeColourRevealBlobF 1140ms
-          cubic-bezier(0.16, 0.9, 0.22, 1) 220ms both;
+        width: 15%;
+        height: 17%;
+        border-radius: 41% 59% 56% 44% / 58% 42% 47% 53%;
+        animation: portalBadgeColourRevealBlobF 1760ms
+          cubic-bezier(0.16, 0.9, 0.22, 1) 700ms both;
       }
 
       .portal-badge-colour-reveal-mask-blob--g {
-        width: 26%;
-        height: 26%;
-        animation: portalBadgeColourRevealBlobG 1100ms
-          cubic-bezier(0.16, 0.9, 0.22, 1) 240ms both;
+        width: 14%;
+        height: 16%;
+        border-radius: 63% 37% 49% 51% / 40% 60% 52% 48%;
+        animation: portalBadgeColourRevealBlobG 1720ms
+          cubic-bezier(0.16, 0.9, 0.22, 1) 840ms both;
       }
 
       .portal-badge-unlock-energy-flare {
