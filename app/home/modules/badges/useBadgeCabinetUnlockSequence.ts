@@ -5,10 +5,24 @@ import React from "react";
 import { flushSync } from "react-dom";
 import type { BadgeCabinetItemModel } from "./badgeCabinetTypes";
 
-const UNLOCK_REVEAL_MS = 1680;
 const DEFAULT_FLIP_DURATION_MS = 420;
 const UNLOCK_FLIP_DURATION_MS = 1320;
 const UNLOCK_SETTLE_MS = 640;
+
+/**
+ * These timings must stay aligned with BadgeUnlockVisualStyles.tsx.
+ *
+ * Current visual ceremony:
+ * - spin stage 1: 1480ms
+ * - spin stage 2: 900ms, delayed by 1480ms
+ * - spin stage 3: 560ms, delayed by 2380ms
+ * - shell settle / impact alignment: 3060ms total
+ *
+ * We treat the unlock ceremony as complete only once the full unlocking
+ * visual has finished, and only then do we allow cabinet reordering + FLIP.
+ */
+const UNLOCK_VISUAL_DURATION_MS = 3060;
+const UNLOCK_CEREMONY_HOLD_MS = UNLOCK_VISUAL_DURATION_MS;
 
 function sortBadgeCabinetItems(
   items: BadgeCabinetItemModel[],
@@ -210,7 +224,7 @@ export function useBadgeCabinetUnlockSequence(options: Options): Result {
           setDisplayItemsOverride(null);
         });
       });
-    }, UNLOCK_REVEAL_MS);
+    }, UNLOCK_CEREMONY_HOLD_MS);
 
     unlockCleanupTimeoutRef.current = window.setTimeout(
       () => {
@@ -222,7 +236,7 @@ export function useBadgeCabinetUnlockSequence(options: Options): Result {
         setLiveAnnouncement("");
         unlockCleanupTimeoutRef.current = null;
       },
-      UNLOCK_REVEAL_MS + UNLOCK_FLIP_DURATION_MS + UNLOCK_SETTLE_MS,
+      UNLOCK_CEREMONY_HOLD_MS + UNLOCK_FLIP_DURATION_MS + UNLOCK_SETTLE_MS,
     );
   }, [clearSequenceTimers, items]);
 
