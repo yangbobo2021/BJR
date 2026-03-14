@@ -1,3 +1,4 @@
+// web/app/home/badges/BadgeAwardOverlay.tsx
 "use client";
 
 import React from "react";

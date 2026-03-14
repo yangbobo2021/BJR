@@ -3,11 +3,14 @@
 
 import React from "react";
 import type { MemberDashboardBadge } from "@/lib/memberDashboard";
+import type { BadgeAwardNotice } from "@/app/home/badges/badgeAwardTypes";
+import { useBadgeAwardOverlay } from "@/app/home/badges/BadgeAwardOverlayProvider";
 import BadgeCabinetGrid from "./BadgeCabinetGrid";
 import BadgeCabinetItem from "./BadgeCabinetItem";
 import BadgeCabinetStyles from "./BadgeCabinetStyles";
 import BadgeUnlockVisualStyles from "./BadgeUnlockVisualStyles";
 import { buildBadgeCabinetItems } from "./badgeCabinetViewModel";
+import type { BadgeCabinetItemModel } from "./badgeCabinetTypes";
 import { useBadgeCabinetUnlockSequence } from "./useBadgeCabinetUnlockSequence";
 import { useFlipGridAnimation } from "./useFlipGridAnimation";
 import { usePrefersReducedMotion } from "./usePrefersReducedMotion";
@@ -24,6 +27,17 @@ function pickRandomItem<T>(items: T[]): T | null {
   return items[index] ?? null;
 }
 
+function toBadgeAwardNotice(item: BadgeCabinetItemModel): BadgeAwardNotice {
+  return {
+    entitlementKey: item.key,
+    title: item.label,
+    description: item.description ?? null,
+    imageUrl: item.imageUrl ?? null,
+    shareable: item.shareable,
+    unlockedAt: item.unlockedAt ?? "",
+  };
+}
+
 export default function BadgeCabinet(props: Props) {
   const { badges } = props;
 
@@ -37,6 +51,7 @@ export default function BadgeCabinet(props: Props) {
   );
 
   const prefersReducedMotion = usePrefersReducedMotion();
+  const { announceBadge } = useBadgeAwardOverlay();
   const debugReplayTimeoutRef = React.useRef<number | null>(null);
 
   const sourceItems = React.useMemo(
@@ -48,6 +63,10 @@ export default function BadgeCabinet(props: Props) {
     () => sourceItems.filter((item) => !item.unlocked),
     [sourceItems],
   );
+
+  const debugCandidateByKey = React.useMemo(() => {
+    return new Map(debugCandidateItems.map((item) => [item.key, item]));
+  }, [debugCandidateItems]);
 
   const effectiveBadges = React.useMemo(() => {
     if (!debugUnlockedKey) return badges;
@@ -170,6 +189,18 @@ export default function BadgeCabinet(props: Props) {
     }, DEBUG_REPLAY_RESET_MS);
   }, []);
 
+  const announceDebugOverlay = React.useCallback(
+    (badgeKey: string | null) => {
+      if (!badgeKey) return;
+
+      const item = debugCandidateByKey.get(badgeKey);
+      if (!item) return;
+
+      announceBadge(toBadgeAwardNotice(item));
+    },
+    [announceBadge, debugCandidateByKey],
+  );
+
   const handleReplaySelected = React.useCallback(() => {
     replayDebugUnlock(debugSelectedKey);
   }, [debugSelectedKey, replayDebugUnlock]);
@@ -181,6 +212,18 @@ export default function BadgeCabinet(props: Props) {
     setDebugSelectedKey(randomItem.key);
     replayDebugUnlock(randomItem.key);
   }, [debugCandidateItems, replayDebugUnlock]);
+
+  const handleCelebrateSelected = React.useCallback(() => {
+    announceDebugOverlay(debugSelectedKey);
+  }, [announceDebugOverlay, debugSelectedKey]);
+
+  const handleCelebrateRandom = React.useCallback(() => {
+    const randomItem = pickRandomItem(debugCandidateItems);
+    if (!randomItem) return;
+
+    setDebugSelectedKey(randomItem.key);
+    announceBadge(toBadgeAwardNotice(randomItem));
+  }, [announceBadge, debugCandidateItems]);
 
   const handleResetDebug = React.useCallback(() => {
     if (debugReplayTimeoutRef.current !== null) {
@@ -379,6 +422,55 @@ export default function BadgeCabinet(props: Props) {
                     }}
                   >
                     Replay random
+                  </button>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 8,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={handleCelebrateSelected}
+                    disabled={!debugSelectedKey}
+                    style={{
+                      appearance: "none",
+                      borderRadius: 999,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(255,255,255,0.05)",
+                      color: "inherit",
+                      padding: "7px 10px",
+                      fontSize: 12,
+                      lineHeight: 1.2,
+                      cursor: debugSelectedKey ? "pointer" : "default",
+                      opacity: debugSelectedKey ? 0.9 : 0.5,
+                    }}
+                  >
+                    Celebrate selected
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleCelebrateRandom}
+                    disabled={debugCandidateItems.length === 0}
+                    style={{
+                      appearance: "none",
+                      borderRadius: 999,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(255,255,255,0.05)",
+                      color: "inherit",
+                      padding: "7px 10px",
+                      fontSize: 12,
+                      lineHeight: 1.2,
+                      cursor:
+                        debugCandidateItems.length > 0 ? "pointer" : "default",
+                      opacity: debugCandidateItems.length > 0 ? 0.9 : 0.5,
+                    }}
+                  >
+                    Celebrate random
                   </button>
 
                   <button

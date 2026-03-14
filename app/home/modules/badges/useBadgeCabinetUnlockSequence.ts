@@ -5,10 +5,10 @@ import React from "react";
 import { flushSync } from "react-dom";
 import type { BadgeCabinetItemModel } from "./badgeCabinetTypes";
 
-const UNLOCK_REVEAL_MS = 1680;
-const DEFAULT_FLIP_DURATION_MS = 420;
-const UNLOCK_FLIP_DURATION_MS = 1320;
-const UNLOCK_SETTLE_MS = 640;
+const UNLOCK_REVEAL_MS = 2680;
+const DEFAULT_FLIP_DURATION_MS = 820;
+const UNLOCK_FLIP_DURATION_MS = 2320;
+const UNLOCK_SETTLE_MS = 1240;
 
 function sortBadgeCabinetItems(
   items: BadgeCabinetItemModel[],

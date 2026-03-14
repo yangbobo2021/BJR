@@ -1,3 +1,4 @@
+// web/app/home/badges/BadgeAwardOverlayProvider.tsx
 "use client";
 
 import React from "react";
@@ -5,6 +6,7 @@ import BadgeAwardOverlay from "./BadgeAwardOverlay";
 import type { BadgeAwardNotice } from "./badgeAwardTypes";
 
 type BadgeAwardOverlayContextValue = {
+  announceBadge: (badge: BadgeAwardNotice) => void;
   announceBadges: (badges: BadgeAwardNotice[]) => void;
 };
 
@@ -98,6 +100,13 @@ export function BadgeAwardOverlayProvider(props: ProviderProps) {
     });
   }, []);
 
+  const announceBadge = React.useCallback(
+    (badge: BadgeAwardNotice) => {
+      announceBadges([badge]);
+    },
+    [announceBadges],
+  );
+
   React.useEffect(() => {
     if (activeBadge !== null) return;
     if (queue.length === 0) return;
@@ -126,9 +135,10 @@ export function BadgeAwardOverlayProvider(props: ProviderProps) {
 
   const contextValue = React.useMemo<BadgeAwardOverlayContextValue>(
     () => ({
+      announceBadge,
       announceBadges,
     }),
-    [announceBadges],
+    [announceBadge, announceBadges],
   );
 
   return (
