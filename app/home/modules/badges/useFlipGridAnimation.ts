@@ -1,4 +1,5 @@
 // web/app/home/modules/badges/useFlipGridAnimation.ts
+// web/app/home/modules/badges/useFlipGridAnimation.ts
 "use client";
 
 import React from "react";
@@ -14,9 +15,45 @@ type Options = {
   captureBaselineToken?: string | number | boolean | null;
 };
 
-type RectMap = Map<string, DOMRect>;
+type LayoutRect = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+type RectMap = Map<string, LayoutRect>;
 
 type CleanupFn = () => void;
+
+function resetNodeTransform(node: HTMLDivElement): void {
+  node.style.transform = "";
+  node.style.transition = "";
+  node.style.willChange = "";
+}
+
+function getRelativeRect(node: HTMLDivElement): LayoutRect {
+  const nodeRect = node.getBoundingClientRect();
+  const parent = node.parentElement;
+
+  if (!parent) {
+    return {
+      left: nodeRect.left,
+      top: nodeRect.top,
+      width: nodeRect.width,
+      height: nodeRect.height,
+    };
+  }
+
+  const parentRect = parent.getBoundingClientRect();
+
+  return {
+    left: nodeRect.left - parentRect.left,
+    top: nodeRect.top - parentRect.top,
+    width: nodeRect.width,
+    height: nodeRect.height,
+  };
+}
 
 function snapshotRects(
   keys: string[],
@@ -26,23 +63,17 @@ function snapshotRects(
 
   for (const key of keys) {
     const node = nodeByKey.get(key);
-    if (!node) continue;
-    rects.set(key, node.getBoundingClientRect());
+    if (!node || !node.isConnected) continue;
+    rects.set(key, getRelativeRect(node));
   }
 
   return rects;
 }
 
-function resetNodeTransform(node: HTMLDivElement): void {
-  node.style.transform = "";
-  node.style.transition = "";
-  node.style.willChange = "";
-}
-
 function isReasonableDelta(
   deltaX: number,
   deltaY: number,
-  rect: DOMRect,
+  rect: LayoutRect,
 ): boolean {
   if (typeof window === "undefined") return true;
 
@@ -70,12 +101,78 @@ export function useFlipGridAnimation(options: Options): {
   const nodeByKeyRef = React.useRef<Map<string, HTMLDivElement>>(new Map());
   const previousRectsRef = React.useRef<RectMap>(new Map());
   const cleanupByKeyRef = React.useRef<Map<string, CleanupFn>>(new Map());
-  const rafIdRef = React.useRef<number | null>(null);
+
+  const playRafIdRef = React.useRef<number | null>(null);
   const settleRafIdRef = React.useRef<number | null>(null);
-  const hasMeasuredInitialLayoutRef = React.useRef(false);
+  const baselineRafARef = React.useRef<number | null>(null);
+  const baselineRafBRef = React.useRef<number | null>(null);
+
+  const hasStableBaselineRef = React.useRef(false);
   const lastCaptureBaselineTokenRef = React.useRef<
     string | number | boolean | null
   >(captureBaselineToken);
+
+  const cancelScheduledAnimationFrames = React.useCallback((): void => {
+    if (playRafIdRef.current !== null) {
+      window.cancelAnimationFrame(playRafIdRef.current);
+      playRafIdRef.current = null;
+    }
+
+    if (settleRafIdRef.current !== null) {
+      window.cancelAnimationFrame(settleRafIdRef.current);
+      settleRafIdRef.current = null;
+    }
+
+    if (baselineRafARef.current !== null) {
+      window.cancelAnimationFrame(baselineRafARef.current);
+      baselineRafARef.current = null;
+    }
+
+    if (baselineRafBRef.current !== null) {
+      window.cancelAnimationFrame(baselineRafBRef.current);
+      baselineRafBRef.current = null;
+    }
+  }, []);
+
+  const clearActiveAnimations = React.useCallback((): void => {
+    for (const cleanup of cleanupByKeyRef.current.values()) {
+      cleanup();
+    }
+    cleanupByKeyRef.current.clear();
+  }, []);
+
+  const resetTrackedNodeStyles = React.useCallback(
+    (trackedKeys: string[]): void => {
+      for (const key of trackedKeys) {
+        const node = nodeByKeyRef.current.get(key);
+        if (!node) continue;
+        resetNodeTransform(node);
+      }
+    },
+    [],
+  );
+
+  const scheduleBaselineCapture = React.useCallback(
+    (trackedKeys: string[]): void => {
+      cancelScheduledAnimationFrames();
+
+      baselineRafARef.current = window.requestAnimationFrame(() => {
+        baselineRafARef.current = null;
+
+        baselineRafBRef.current = window.requestAnimationFrame(() => {
+          baselineRafBRef.current = null;
+
+          resetTrackedNodeStyles(trackedKeys);
+          previousRectsRef.current = snapshotRects(
+            trackedKeys,
+            nodeByKeyRef.current,
+          );
+          hasStableBaselineRef.current = true;
+        });
+      });
+    },
+    [cancelScheduledAnimationFrames, resetTrackedNodeStyles],
+  );
 
   const registerItemRef = React.useCallback<RegisterItemRef>(
     (key: string) => (node: HTMLDivElement | null) => {
@@ -108,71 +205,34 @@ export function useFlipGridAnimation(options: Options): {
   );
 
   React.useEffect(() => {
-    const cleanupByKey = cleanupByKeyRef.current;
-
     return () => {
-      if (rafIdRef.current !== null) {
-        window.cancelAnimationFrame(rafIdRef.current);
-        rafIdRef.current = null;
-      }
-
-      if (settleRafIdRef.current !== null) {
-        window.cancelAnimationFrame(settleRafIdRef.current);
-        settleRafIdRef.current = null;
-      }
-
-      for (const cleanup of cleanupByKey.values()) {
-        cleanup();
-      }
-
-      cleanupByKey.clear();
+      cancelScheduledAnimationFrames();
+      clearActiveAnimations();
     };
-  }, []);
+  }, [cancelScheduledAnimationFrames, clearActiveAnimations]);
 
   React.useLayoutEffect(() => {
-    if (rafIdRef.current !== null) {
-      window.cancelAnimationFrame(rafIdRef.current);
-      rafIdRef.current = null;
-    }
+    cancelScheduledAnimationFrames();
+    clearActiveAnimations();
+    resetTrackedNodeStyles(keys);
 
-    if (settleRafIdRef.current !== null) {
-      window.cancelAnimationFrame(settleRafIdRef.current);
-      settleRafIdRef.current = null;
-    }
-
-    for (const cleanup of cleanupByKeyRef.current.values()) {
-      cleanup();
-    }
-    cleanupByKeyRef.current.clear();
-
-    for (const key of keys) {
-      const node = nodeByKeyRef.current.get(key);
-      if (!node) continue;
-      resetNodeTransform(node);
-    }
-
-    const nextRects = snapshotRects(keys, nodeByKeyRef.current);
     const captureBaselineChanged =
       captureBaselineToken !== lastCaptureBaselineTokenRef.current;
 
     lastCaptureBaselineTokenRef.current = captureBaselineToken;
 
-    if (!hasMeasuredInitialLayoutRef.current) {
-      hasMeasuredInitialLayoutRef.current = true;
-      previousRectsRef.current = nextRects;
+    if (!hasStableBaselineRef.current) {
+      scheduleBaselineCapture(keys);
       return;
     }
 
     if (captureBaselineChanged) {
-      for (const key of keys) {
-        const node = nodeByKeyRef.current.get(key);
-        if (!node) continue;
-        resetNodeTransform(node);
-      }
-
-      previousRectsRef.current = snapshotRects(keys, nodeByKeyRef.current);
+      hasStableBaselineRef.current = false;
+      scheduleBaselineCapture(keys);
       return;
     }
+
+    const nextRects = snapshotRects(keys, nodeByKeyRef.current);
 
     if (disabled) {
       previousRectsRef.current = nextRects;
@@ -191,7 +251,7 @@ export function useFlipGridAnimation(options: Options): {
       const previousRect = previousRectsRef.current.get(key);
       const nextRect = nextRects.get(key);
 
-      if (!node || !previousRect || !nextRect) continue;
+      if (!node || !node.isConnected || !previousRect || !nextRect) continue;
 
       const deltaX = previousRect.left - nextRect.left;
       const deltaY = previousRect.top - nextRect.top;
@@ -223,10 +283,12 @@ export function useFlipGridAnimation(options: Options): {
 
       const cleanup = () => {
         node.removeEventListener("transitionend", handleTransitionEnd);
+
         if (timeoutId !== null) {
           window.clearTimeout(timeoutId);
           timeoutId = null;
         }
+
         resetNodeTransform(node);
         cleanupByKeyRef.current.delete(key);
       };
@@ -246,8 +308,8 @@ export function useFlipGridAnimation(options: Options): {
       cleanupByKeyRef.current.set(key, cleanup);
     }
 
-    rafIdRef.current = window.requestAnimationFrame(() => {
-      rafIdRef.current = null;
+    playRafIdRef.current = window.requestAnimationFrame(() => {
+      playRafIdRef.current = null;
 
       settleRafIdRef.current = window.requestAnimationFrame(() => {
         settleRafIdRef.current = null;
@@ -268,6 +330,10 @@ export function useFlipGridAnimation(options: Options): {
     easing,
     layoutDependency,
     captureBaselineToken,
+    cancelScheduledAnimationFrames,
+    clearActiveAnimations,
+    resetTrackedNodeStyles,
+    scheduleBaselineCapture,
   ]);
 
   return { registerItemRef };
