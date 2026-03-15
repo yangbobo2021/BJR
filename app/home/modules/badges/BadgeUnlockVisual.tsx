@@ -142,11 +142,8 @@ export default function BadgeUnlockVisual(props: Props) {
                   position: "absolute",
                   left: "14%",
                   bottom: "5%",
-                  width: "6.2%",
-                  height: "6.2%",
-                  borderRadius: "50%",
-                  background: "rgba(255,255,255,0.82)",
-                  boxShadow: "0 0 10px rgba(255,255,255,0.18)",
+                  width: "7.4%",
+                  height: "12.8%",
                 }}
               />
 
@@ -156,11 +153,8 @@ export default function BadgeUnlockVisual(props: Props) {
                   position: "absolute",
                   left: "44%",
                   bottom: "1%",
-                  width: "4.8%",
-                  height: "4.8%",
-                  borderRadius: "50%",
-                  background: "rgba(255,255,255,0.76)",
-                  boxShadow: "0 0 8px rgba(255,255,255,0.16)",
+                  width: "6.2%",
+                  height: "10.8%",
                 }}
               />
 
@@ -170,11 +164,8 @@ export default function BadgeUnlockVisual(props: Props) {
                   position: "absolute",
                   left: "72%",
                   bottom: "6%",
-                  width: "4.6%",
-                  height: "4.6%",
-                  borderRadius: "50%",
-                  background: "rgba(255,255,255,0.72)",
-                  boxShadow: "0 0 7px rgba(255,255,255,0.14)",
+                  width: "5.8%",
+                  height: "10.2%",
                 }}
               />
 
@@ -184,11 +175,8 @@ export default function BadgeUnlockVisual(props: Props) {
                   position: "absolute",
                   left: "28%",
                   bottom: "2%",
-                  width: "3.9%",
-                  height: "3.9%",
-                  borderRadius: "50%",
-                  background: "rgba(255,255,255,0.88)",
-                  boxShadow: "0 0 10px rgba(255,255,255,0.24)",
+                  width: "5.2%",
+                  height: "9.8%",
                 }}
               />
 
@@ -198,11 +186,8 @@ export default function BadgeUnlockVisual(props: Props) {
                   position: "absolute",
                   left: "55%",
                   bottom: "4%",
-                  width: "3.9%",
-                  height: "3.9%",
-                  borderRadius: "50%",
-                  background: "rgba(255,255,255,0.82)",
-                  boxShadow: "0 0 8px rgba(255,255,255,0.2)",
+                  width: "5.2%",
+                  height: "9.6%",
                 }}
               />
 
@@ -212,11 +197,8 @@ export default function BadgeUnlockVisual(props: Props) {
                   position: "absolute",
                   left: "80%",
                   bottom: "2%",
-                  width: "2.9%",
-                  height: "2.9%",
-                  borderRadius: "50%",
-                  background: "rgba(255,255,255,0.78)",
-                  boxShadow: "0 0 7px rgba(255,255,255,0.18)",
+                  width: "4.2%",
+                  height: "8.2%",
                 }}
               />
             </div>

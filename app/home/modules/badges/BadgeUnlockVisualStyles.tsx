@@ -56,138 +56,138 @@ export default function BadgeUnlockVisualStyles() {
 
       @keyframes portalBadgeEmberRiseA {
         0% {
-          transform: translate3d(0, 0, 0) scale(0.72);
+          transform: translate3d(0, 4px, 0) rotate(-10deg) scale(0.64, 0.72);
           opacity: 0;
         }
-        18% {
-          transform: translate3d(-1px, -4px, 0) scale(0.82);
-          opacity: 0.46;
+        16% {
+          transform: translate3d(-2px, -2px, 0) rotate(-16deg) scale(0.84, 0.96);
+          opacity: 0.48;
         }
-        42% {
-          transform: translate3d(1px, -10px, 0) scale(0.92);
+        44% {
+          transform: translate3d(2px, -12px, 0) rotate(-6deg) scale(0.98, 1.12);
           opacity: 0.34;
         }
-        68% {
-          transform: translate3d(-2px, -15px, 0) scale(1);
-          opacity: 0.2;
+        72% {
+          transform: translate3d(-3px, -21px, 0) rotate(4deg) scale(1.02, 1.2);
+          opacity: 0.18;
         }
         100% {
-          transform: translate3d(1px, -20px, 0) scale(1.08);
+          transform: translate3d(2px, -30px, 0) rotate(8deg) scale(0.94, 1.28);
           opacity: 0;
         }
       }
 
       @keyframes portalBadgeEmberRiseB {
         0% {
-          transform: translate3d(0, 0, 0) scale(0.68);
+          transform: translate3d(0, 5px, 0) rotate(8deg) scale(0.6, 0.7);
           opacity: 0;
         }
-        20% {
-          transform: translate3d(1px, -5px, 0) scale(0.78);
-          opacity: 0.38;
+        18% {
+          transform: translate3d(2px, -2px, 0) rotate(14deg) scale(0.8, 0.94);
+          opacity: 0.4;
         }
         46% {
-          transform: translate3d(-1px, -12px, 0) scale(0.88);
+          transform: translate3d(-2px, -13px, 0) rotate(6deg) scale(0.92, 1.08);
           opacity: 0.28;
         }
         74% {
-          transform: translate3d(2px, -18px, 0) scale(0.96);
-          opacity: 0.16;
+          transform: translate3d(3px, -23px, 0) rotate(-4deg) scale(0.96, 1.18);
+          opacity: 0.14;
         }
         100% {
-          transform: translate3d(-1px, -24px, 0) scale(1);
+          transform: translate3d(-2px, -32px, 0) rotate(-8deg) scale(0.88, 1.26);
           opacity: 0;
         }
       }
 
       @keyframes portalBadgeEmberRiseC {
         0% {
-          transform: translate3d(0, 0, 0) scale(0.75);
+          transform: translate3d(0, 4px, 0) rotate(-6deg) scale(0.62, 0.74);
           opacity: 0;
         }
-        22% {
-          transform: translate3d(1px, -4px, 0) scale(0.82);
-          opacity: 0.34;
+        20% {
+          transform: translate3d(2px, -1px, 0) rotate(-12deg) scale(0.8, 0.94);
+          opacity: 0.36;
         }
         48% {
-          transform: translate3d(-2px, -9px, 0) scale(0.88);
+          transform: translate3d(-3px, -10px, 0) rotate(-2deg) scale(0.9, 1.04);
           opacity: 0.24;
         }
-        70% {
-          transform: translate3d(0px, -14px, 0) scale(0.92);
-          opacity: 0.14;
+        72% {
+          transform: translate3d(1px, -18px, 0) rotate(6deg) scale(0.94, 1.14);
+          opacity: 0.12;
         }
         100% {
-          transform: translate3d(2px, -18px, 0) scale(0.96);
+          transform: translate3d(3px, -26px, 0) rotate(10deg) scale(0.86, 1.2);
           opacity: 0;
         }
       }
 
       @keyframes portalBadgeEmberBurstA {
         0% {
-          transform: translate3d(0, 0, 0) scale(0.74);
+          transform: translate3d(0, 3px, 0) rotate(-14deg) scale(0.68, 0.78);
           opacity: 0;
         }
         14% {
-          transform: translate3d(-1px, -5px, 0) scale(0.84);
-          opacity: 0.65;
+          transform: translate3d(-2px, -5px, 0) rotate(-20deg) scale(0.96, 1.08);
+          opacity: 0.68;
         }
         38% {
-          transform: translate3d(2px, -14px, 0) scale(0.98);
+          transform: translate3d(3px, -18px, 0) rotate(-8deg) scale(1.08, 1.28);
           opacity: 0.42;
         }
         66% {
-          transform: translate3d(-3px, -24px, 0) scale(1.08);
+          transform: translate3d(-4px, -30px, 0) rotate(7deg) scale(1.02, 1.42);
           opacity: 0.2;
         }
         100% {
-          transform: translate3d(2px, -32px, 0) scale(1.18);
+          transform: translate3d(3px, -42px, 0) rotate(12deg) scale(0.92, 1.54);
           opacity: 0;
         }
       }
 
       @keyframes portalBadgeEmberBurstB {
         0% {
-          transform: translate3d(0, 0, 0) scale(0.66);
+          transform: translate3d(0, 4px, 0) rotate(12deg) scale(0.64, 0.76);
           opacity: 0;
         }
         16% {
-          transform: translate3d(1px, -6px, 0) scale(0.76);
-          opacity: 0.54;
+          transform: translate3d(2px, -6px, 0) rotate(18deg) scale(0.88, 1.04);
+          opacity: 0.58;
         }
         40% {
-          transform: translate3d(-2px, -16px, 0) scale(0.88);
+          transform: translate3d(-3px, -20px, 0) rotate(8deg) scale(0.98, 1.24);
           opacity: 0.36;
         }
         68% {
-          transform: translate3d(4px, -27px, 0) scale(0.98);
+          transform: translate3d(5px, -33px, 0) rotate(-6deg) scale(0.94, 1.38);
           opacity: 0.16;
         }
         100% {
-          transform: translate3d(-2px, -36px, 0) scale(1.08);
+          transform: translate3d(-3px, -46px, 0) rotate(-12deg) scale(0.84, 1.5);
           opacity: 0;
         }
       }
 
       @keyframes portalBadgeEmberBurstC {
         0% {
-          transform: translate3d(0, 0, 0) scale(0.7);
+          transform: translate3d(0, 3px, 0) rotate(-10deg) scale(0.66, 0.76);
           opacity: 0;
         }
         18% {
-          transform: translate3d(-1px, -5px, 0) scale(0.8);
-          opacity: 0.48;
+          transform: translate3d(-2px, -5px, 0) rotate(-16deg) scale(0.86, 1);
+          opacity: 0.5;
         }
         42% {
-          transform: translate3d(2px, -13px, 0) scale(0.9);
+          transform: translate3d(3px, -16px, 0) rotate(-5deg) scale(0.94, 1.16);
           opacity: 0.3;
         }
         72% {
-          transform: translate3d(-2px, -22px, 0) scale(0.98);
+          transform: translate3d(-3px, -27px, 0) rotate(6deg) scale(0.9, 1.3);
           opacity: 0.14;
         }
         100% {
-          transform: translate3d(1px, -30px, 0) scale(1.04);
+          transform: translate3d(2px, -38px, 0) rotate(11deg) scale(0.82, 1.4);
           opacity: 0;
         }
       }
@@ -687,20 +687,81 @@ export default function BadgeUnlockVisualStyles() {
         transform: translateY(-1px);
       }
 
-      .portal-badge-spark-a {
+      .portal-badge-spark-a,
+      .portal-badge-spark-b,
+      .portal-badge-spark-c,
+      .portal-badge-burst-a,
+      .portal-badge-burst-b,
+      .portal-badge-burst-c {
         opacity: 0;
+        transform-origin: 50% 100%;
+        border-radius: 999px 999px 70% 70%;
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.98) 0%,
+          rgba(255, 255, 255, 0.72) 20%,
+          rgba(255, 255, 255, 0.2) 62%,
+          rgba(255, 255, 255, 0) 100%
+        );
+        filter: blur(0.3px) drop-shadow(0 0 6px rgba(255, 255, 255, 0.24))
+          drop-shadow(0 0 12px rgba(255, 255, 255, 0.12));
+        will-change: transform, opacity, filter;
+      }
+
+      .portal-badge-spark-a::before,
+      .portal-badge-spark-b::before,
+      .portal-badge-spark-c::before,
+      .portal-badge-burst-a::before,
+      .portal-badge-burst-b::before,
+      .portal-badge-burst-c::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        bottom: 6%;
+        width: 34%;
+        height: 76%;
+        transform: translateX(-50%);
+        border-radius: 999px;
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 1) 0%,
+          rgba(255, 255, 255, 0.78) 36%,
+          rgba(255, 255, 255, 0.04) 100%
+        );
+        filter: blur(0.5px);
+      }
+
+      .portal-badge-spark-a::after,
+      .portal-badge-spark-b::after,
+      .portal-badge-spark-c::after,
+      .portal-badge-burst-a::after,
+      .portal-badge-burst-b::after,
+      .portal-badge-burst-c::after {
+        content: "";
+        position: absolute;
+        inset: 10% 4% 0 4%;
+        border-radius: 999px 999px 60% 60%;
+        background: radial-gradient(
+          ellipse at 50% 24%,
+          rgba(255, 255, 255, 0.74) 0%,
+          rgba(255, 255, 255, 0.24) 34%,
+          rgba(255, 255, 255, 0) 74%
+        );
+        filter: blur(1.2px);
+        opacity: 0.82;
+      }
+
+      .portal-badge-spark-a {
         animation: portalBadgeEmberRiseA 1300ms
           cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
       }
 
       .portal-badge-spark-b {
-        opacity: 0;
         animation: portalBadgeEmberRiseB 1600ms
           cubic-bezier(0.19, 0.72, 0.32, 1) infinite 160ms;
       }
 
       .portal-badge-spark-c {
-        opacity: 0;
         animation: portalBadgeEmberRiseC 1450ms cubic-bezier(0.25, 0.68, 0.3, 1)
           infinite 320ms;
       }
@@ -721,12 +782,6 @@ export default function BadgeUnlockVisualStyles() {
       .portal-badge-unlock-host:focus-within .portal-badge-spark-c {
         animation: portalBadgeEmberBurstC 1000ms cubic-bezier(0.24, 0.7, 0.3, 1)
           infinite 220ms;
-      }
-
-      .portal-badge-burst-a,
-      .portal-badge-burst-b,
-      .portal-badge-burst-c {
-        opacity: 0;
       }
 
       .portal-badge-unlock-host:hover .portal-badge-burst-a,
