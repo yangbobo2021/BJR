@@ -232,6 +232,10 @@ export default function BadgeUnlockVisual(props: Props) {
             inset: 0,
           }}
         >
+          {isUnlocking ? (
+            <div className="portal-badge-quarter-glint portal-badge-quarter-glint--stage-1" />
+          ) : null}
+
           <div
             className={`portal-badge-spin-stage-2${
               isUnlocking ? " portal-badge-spin-stage-2--unlocking" : ""
@@ -241,6 +245,10 @@ export default function BadgeUnlockVisual(props: Props) {
               inset: 0,
             }}
           >
+            {isUnlocking ? (
+              <div className="portal-badge-quarter-glint portal-badge-quarter-glint--stage-2" />
+            ) : null}
+
             <div
               className={`portal-badge-spin-stage-3${
                 isUnlocking ? " portal-badge-spin-stage-3--unlocking" : ""
@@ -250,6 +258,9 @@ export default function BadgeUnlockVisual(props: Props) {
                 inset: 0,
               }}
             >
+              {isUnlocking ? (
+                <div className="portal-badge-quarter-glint portal-badge-quarter-glint--stage-3" />
+              ) : null}
               <div
                 className={`portal-badge-art-shell${
                   isUnlocking ? " portal-badge-art-shell--unlocking" : ""

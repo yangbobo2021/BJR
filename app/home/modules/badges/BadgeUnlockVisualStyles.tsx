@@ -196,44 +196,43 @@ export default function BadgeUnlockVisualStyles() {
         0% {
           transform: rotateY(0deg);
         }
-        24% {
-          transform: rotateY(70deg);
+        26% {
+          transform: rotateY(78deg);
         }
-        29% {
-          transform: rotateY(112deg);
+        29.5% {
+          transform: rotateY(108deg);
         }
         50% {
           transform: rotateY(180deg);
         }
-        71% {
-          transform: rotateY(248deg);
+        70.5% {
+          transform: rotateY(252deg);
         }
-        76% {
-          transform: rotateY(290deg);
+        74% {
+          transform: rotateY(282deg);
         }
         100% {
           transform: rotateY(360deg);
         }
       }
-
       @keyframes portalBadgeSpinFaster {
         0% {
           transform: rotateY(0deg);
         }
-        26% {
-          transform: rotateY(74deg);
+        27% {
+          transform: rotateY(80deg);
         }
-        31% {
-          transform: rotateY(114deg);
+        30.5% {
+          transform: rotateY(108deg);
         }
         50% {
           transform: rotateY(180deg);
         }
-        69% {
-          transform: rotateY(246deg);
+        69.5% {
+          transform: rotateY(252deg);
         }
-        74% {
-          transform: rotateY(286deg);
+        73% {
+          transform: rotateY(280deg);
         }
         100% {
           transform: rotateY(360deg);
@@ -244,20 +243,20 @@ export default function BadgeUnlockVisualStyles() {
         0% {
           transform: rotateY(0deg);
         }
-        20% {
-          transform: rotateY(104deg);
+        18% {
+          transform: rotateY(102deg);
         }
-        48% {
+        44% {
           transform: rotateY(246deg);
         }
-        72% {
-          transform: rotateY(326deg);
+        68% {
+          transform: rotateY(328deg);
         }
-        89% {
+        88.5% {
           transform: rotateY(353deg);
         }
-        97.5% {
-          transform: rotateY(359deg);
+        97.8% {
+          transform: rotateY(359.1deg);
         }
         100% {
           transform: rotateY(360deg);
@@ -357,6 +356,63 @@ export default function BadgeUnlockVisualStyles() {
         100% {
           opacity: 0.48;
           filter: blur(0.62px) brightness(1.02);
+        }
+      }
+
+      @keyframes portalBadgeQuarterGlintStage1 {
+        0%,
+        21%,
+        29%,
+        71%,
+        79%,
+        100% {
+          opacity: 0;
+          transform: translate(-50%, -50%) scaleX(0.55);
+          filter: blur(1.4px);
+        }
+        25%,
+        75% {
+          opacity: 0.72;
+          transform: translate(-50%, -50%) scaleX(1);
+          filter: blur(0.45px);
+        }
+      }
+
+      @keyframes portalBadgeQuarterGlintStage2 {
+        0%,
+        21%,
+        29%,
+        71%,
+        79%,
+        100% {
+          opacity: 0;
+          transform: translate(-50%, -50%) scaleX(0.55);
+          filter: blur(1.2px);
+        }
+        25%,
+        75% {
+          opacity: 0.9;
+          transform: translate(-50%, -50%) scaleX(1);
+          filter: blur(0.32px);
+        }
+      }
+
+      @keyframes portalBadgeQuarterGlintStage3 {
+        0%,
+        21%,
+        29%,
+        71%,
+        79%,
+        100% {
+          opacity: 0;
+          transform: translate(-50%, -50%) scaleX(0.55);
+          filter: blur(1px);
+        }
+        25%,
+        75% {
+          opacity: 1;
+          transform: translate(-50%, -50%) scaleX(1);
+          filter: blur(0.22px);
         }
       }
 
@@ -605,8 +661,43 @@ export default function BadgeUnlockVisualStyles() {
       }
 
       .portal-badge-reveal-canvas-layer--unlocking {
-        animation: portalBadgeRevealLayerActivation 920ms
-          cubic-bezier(0.18, 0.88, 0.24, 1) 1080ms both;
+        animation: portalBadgeRevealLayerActivation 600ms
+          cubic-bezier(0.18, 0.88, 0.24, 1) 1210ms both;
+      }
+
+      .portal-badge-quarter-glint {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 3.2%;
+        height: 84%;
+        border-radius: 999px;
+        pointer-events: none;
+        background: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0) 0%,
+          rgba(255, 255, 255, 0.86) 34%,
+          rgba(255, 255, 255, 1) 50%,
+          rgba(255, 255, 255, 0.86) 66%,
+          rgba(255, 255, 255, 0) 100%
+        );
+        box-shadow:
+          0 0 8px rgba(255, 255, 255, 0.34),
+          0 0 16px rgba(255, 255, 255, 0.14);
+        opacity: 0;
+        z-index: 3;
+      }
+
+      .portal-badge-quarter-glint--stage-1 {
+        animation: portalBadgeQuarterGlintStage1 1480ms linear both;
+      }
+
+      .portal-badge-quarter-glint--stage-2 {
+        animation: portalBadgeQuarterGlintStage2 900ms linear 1480ms both;
+      }
+
+      .portal-badge-quarter-glint--stage-3 {
+        animation: portalBadgeQuarterGlintStage3 560ms linear 2380ms both;
       }
 
       .portal-badge-edge-spine {
