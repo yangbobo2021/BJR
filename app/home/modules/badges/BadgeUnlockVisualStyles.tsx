@@ -572,25 +572,25 @@ export default function BadgeUnlockVisualStyles() {
         -webkit-backface-visibility: hidden;
         background: linear-gradient(
           90deg,
-          rgba(255, 255, 255, 0) 0%,
-          rgba(255, 255, 255, 0.2) 18%,
-          rgba(255, 255, 255, 0.92) 50%,
-          rgba(255, 255, 255, 0.2) 82%,
-          rgba(255, 255, 255, 0) 100%
+          rgba(255, 255, 255, 0.04) 0%,
+          rgba(255, 255, 255, 0.34) 20%,
+          rgba(255, 255, 255, 0.98) 50%,
+          rgba(255, 255, 255, 0.34) 80%,
+          rgba(255, 255, 255, 0.04) 100%
         );
         box-shadow:
-          0 0 8px rgba(255, 255, 255, 0.14),
-          0 0 18px rgba(255, 255, 255, 0.06);
+          0 0 6px rgba(255, 255, 255, 0.16),
+          0 0 14px rgba(255, 255, 255, 0.08);
         mix-blend-mode: screen;
-        opacity: 0.22;
+        opacity: 0.34;
       }
 
       .portal-badge-edge-spine--left {
-        transform: translate(-50%, -50%) rotateY(90deg) translateZ(0.9px);
+        transform: translate(-50%, -50%) rotateY(90deg) translateZ(1.6px);
       }
 
       .portal-badge-edge-spine--right {
-        transform: translate(-50%, -50%) rotateY(-90deg) translateZ(0.9px);
+        transform: translate(-50%, -50%) rotateY(-90deg) translateZ(1.6px);
       }
 
       .portal-badge-edge-spine--left,

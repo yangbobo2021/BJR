@@ -351,9 +351,8 @@ export default function BadgeUnlockVisual(props: Props) {
                         position: "absolute",
                         left: "50%",
                         top: "50%",
-                        width: "3.2%",
+                        width: "2.2%",
                         height: "86%",
-                        transform: "translate(-50%, -50%)",
                         borderRadius: 999,
                         pointerEvents: "none",
                       }}
@@ -365,9 +364,8 @@ export default function BadgeUnlockVisual(props: Props) {
                         position: "absolute",
                         left: "50%",
                         top: "50%",
-                        width: "3.2%",
+                        width: "2.2%",
                         height: "86%",
-                        transform: "translate(-50%, -50%)",
                         borderRadius: 999,
                         pointerEvents: "none",
                       }}
