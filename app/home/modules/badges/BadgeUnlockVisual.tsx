@@ -408,55 +408,15 @@ export default function BadgeUnlockVisual(props: Props) {
         </div>
 
         {showUnlockEvent ? (
-          <>
-            <div
-              className="portal-badge-unlock-ring-a"
-              style={{
-                position: "absolute",
-                inset: "-10%",
-                borderRadius: "50%",
-                border: "1px solid rgba(255,255,255,0.34)",
-                pointerEvents: "none",
-              }}
-            />
-
-            <div
-              className="portal-badge-unlock-ring-b"
-              style={{
-                position: "absolute",
-                inset: "-10%",
-                borderRadius: "50%",
-                border: "1px solid rgba(255,255,255,0.22)",
-                pointerEvents: "none",
-              }}
-            />
-
-            <div
-              className="portal-badge-impact-flash"
-              style={{
-                position: "absolute",
-                inset: "-6%",
-                borderRadius: "50%",
-                pointerEvents: "none",
-              }}
-            />
-
-            <div
-              className="portal-badge-impact-particles"
-              style={{
-                position: "absolute",
-                inset: "-12%",
-                pointerEvents: "none",
-              }}
-            >
-              <div className="portal-badge-impact-particle portal-badge-impact-particle--a" />
-              <div className="portal-badge-impact-particle portal-badge-impact-particle--b" />
-              <div className="portal-badge-impact-particle portal-badge-impact-particle--c" />
-              <div className="portal-badge-impact-particle portal-badge-impact-particle--d" />
-              <div className="portal-badge-impact-particle portal-badge-impact-particle--e" />
-              <div className="portal-badge-impact-particle portal-badge-impact-particle--f" />
-            </div>
-          </>
+          <div
+            className="portal-badge-impact-flash"
+            style={{
+              position: "absolute",
+              inset: "-8%",
+              borderRadius: "50%",
+              pointerEvents: "none",
+            }}
+          />
         ) : null}
       </div>
     </div>

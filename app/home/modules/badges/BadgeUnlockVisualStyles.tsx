@@ -265,35 +265,49 @@ export default function BadgeUnlockVisualStyles() {
 
       @keyframes portalBadgeSpinSettle {
         0% {
-          transform: rotateZ(-1.45deg) scale(0.885);
+          transform: translate3d(0, 0, 0) rotateZ(-1.6deg) scale(0.882);
           filter: brightness(0.97);
         }
         18% {
-          transform: rotateZ(-0.62deg) scale(0.955);
+          transform: translate3d(0, 0, 0) rotateZ(-0.7deg) scale(0.952);
           filter: brightness(1);
         }
         52% {
-          transform: rotateZ(0.92deg) scale(1.055);
+          transform: translate3d(0, 0, 0) rotateZ(0.96deg) scale(1.058);
           filter: brightness(1.08);
         }
-        66% {
-          transform: rotateZ(-0.48deg) scale(0.992);
-          filter: brightness(1.02);
+        72% {
+          transform: translate3d(0, 0, 0) rotateZ(-0.32deg) scale(1.012);
+          filter: brightness(1.03);
         }
-        78% {
-          transform: rotateZ(0.26deg) scale(1.018);
-          filter: brightness(1.04);
-        }
-        88% {
-          transform: rotateZ(-0.12deg) scale(0.996);
+        82% {
+          transform: translate3d(0, 0, 0) rotateZ(0.14deg) scale(1.004);
           filter: brightness(1.01);
         }
-        94% {
-          transform: rotateZ(0.05deg) scale(1.004);
-          filter: brightness(1.005);
+        86% {
+          transform: translate3d(-1.8px, 0.8px, 0) rotateZ(-0.55deg)
+            scale(1.026);
+          filter: brightness(1.12);
+        }
+        88.5% {
+          transform: translate3d(2.2px, -1.1px, 0) rotateZ(0.48deg) scale(0.996);
+          filter: brightness(1.08);
+        }
+        91% {
+          transform: translate3d(-1.5px, 0.9px, 0) rotateZ(-0.34deg)
+            scale(1.012);
+          filter: brightness(1.05);
+        }
+        93.5% {
+          transform: translate3d(1px, -0.6px, 0) rotateZ(0.22deg) scale(0.998);
+          filter: brightness(1.03);
+        }
+        96% {
+          transform: translate3d(-0.5px, 0.3px, 0) rotateZ(-0.1deg) scale(1.003);
+          filter: brightness(1.015);
         }
         100% {
-          transform: rotateZ(0deg) scale(1);
+          transform: translate3d(0, 0, 0) rotateZ(0deg) scale(1);
           filter: brightness(1);
         }
       }
@@ -416,173 +430,54 @@ export default function BadgeUnlockVisualStyles() {
         }
       }
 
-      @keyframes portalBadgeUnlockRingA {
-        0% {
-          transform: scale(0.72);
-          opacity: 0;
-        }
-        12% {
-          opacity: 0.86;
-        }
-        58% {
-          opacity: 0.2;
-        }
-        100% {
-          transform: scale(1.28);
-          opacity: 0;
-        }
-      }
-
-      @keyframes portalBadgeUnlockRingB {
-        0% {
-          transform: scale(0.84);
-          opacity: 0;
-        }
-        18% {
-          opacity: 0.56;
-        }
-        60% {
-          opacity: 0.18;
-        }
-        100% {
-          transform: scale(1.42);
-          opacity: 0;
-        }
-      }
-
       @keyframes portalBadgeImpactFlash {
         0%,
         84% {
           opacity: 0;
-          transform: scale(0.82);
+          transform: scale(0.9);
           filter: blur(12px);
         }
-        89% {
-          opacity: 0.96;
+        88% {
+          opacity: 0.28;
+          transform: scale(0.98);
+          filter: blur(8px);
+        }
+        90.5% {
+          opacity: 1;
+          transform: scale(1.02);
+          filter: blur(3px);
+        }
+        93.5% {
+          opacity: 0.42;
           transform: scale(1.01);
-          filter: blur(5px);
-        }
-        94% {
-          opacity: 0.38;
-          transform: scale(1.07);
-          filter: blur(9px);
+          filter: blur(6px);
         }
         100% {
           opacity: 0;
-          transform: scale(1.16);
-          filter: blur(14px);
-        }
-      }
-
-      @keyframes portalBadgeImpactParticleA {
-        0%,
-        84% {
-          transform: translate(0, 0) scale(0.2);
-          opacity: 0;
-        }
-        88% {
-          opacity: 1;
-        }
-        100% {
-          transform: translate(-16px, -6px) scale(1);
-          opacity: 0;
-        }
-      }
-
-      @keyframes portalBadgeImpactParticleB {
-        0%,
-        84% {
-          transform: translate(0, 0) scale(0.2);
-          opacity: 0;
-        }
-        88% {
-          opacity: 1;
-        }
-        100% {
-          transform: translate(14px, -8px) scale(1);
-          opacity: 0;
-        }
-      }
-
-      @keyframes portalBadgeImpactParticleC {
-        0%,
-        84% {
-          transform: translate(0, 0) scale(0.2);
-          opacity: 0;
-        }
-        88% {
-          opacity: 1;
-        }
-        100% {
-          transform: translate(-10px, 13px) scale(1);
-          opacity: 0;
-        }
-      }
-
-      @keyframes portalBadgeImpactParticleD {
-        0%,
-        84% {
-          transform: translate(0, 0) scale(0.2);
-          opacity: 0;
-        }
-        88% {
-          opacity: 1;
-        }
-        100% {
-          transform: translate(12px, 14px) scale(1);
-          opacity: 0;
-        }
-      }
-
-      @keyframes portalBadgeImpactParticleE {
-        0%,
-        84% {
-          transform: translate(0, 0) scale(0.2);
-          opacity: 0;
-        }
-        88% {
-          opacity: 1;
-        }
-        100% {
-          transform: translate(0px, -18px) scale(1);
-          opacity: 0;
-        }
-      }
-
-      @keyframes portalBadgeImpactParticleF {
-        0%,
-        84% {
-          transform: translate(0, 0) scale(0.2);
-          opacity: 0;
-        }
-        88% {
-          opacity: 1;
-        }
-        100% {
-          transform: translate(0px, 18px) scale(1);
-          opacity: 0;
+          transform: scale(1.06);
+          filter: blur(12px);
         }
       }
 
       @keyframes portalBadgeFinalShimmerCelebrating {
         0%,
-        58% {
+        62% {
           opacity: 0;
-          transform: translateX(-132%) rotate(18deg);
+          transform: translate3d(-168%, 0, 0) rotate(24deg);
         }
         70% {
-          opacity: 0.12;
+          opacity: 0.2;
         }
         78% {
           opacity: 1;
         }
-        90% {
-          opacity: 0.14;
-          transform: translateX(136%) rotate(18deg);
+        88% {
+          opacity: 0.32;
+          transform: translate3d(148%, 0, 0) rotate(24deg);
         }
         100% {
           opacity: 0;
-          transform: translateX(136%) rotate(18deg);
+          transform: translate3d(148%, 0, 0) rotate(24deg);
         }
       }
 
@@ -749,74 +644,6 @@ export default function BadgeUnlockVisualStyles() {
           cubic-bezier(0.18, 0.88, 0.24, 1) 1120ms both;
       }
 
-      .portal-badge-unlock-ring-a,
-      .portal-badge-unlock-ring-b {
-        opacity: 0;
-      }
-
-      .portal-badge-unlock-ring-a {
-        animation: portalBadgeUnlockRingA 920ms cubic-bezier(0.2, 0.84, 0.24, 1)
-          both;
-      }
-
-      .portal-badge-unlock-ring-b {
-        animation: portalBadgeUnlockRingB 1160ms
-          cubic-bezier(0.18, 0.86, 0.24, 1) 90ms both;
-      }
-
-      .portal-badge-impact-flash {
-        background: radial-gradient(
-          circle,
-          rgba(255, 255, 255, 0.56) 0%,
-          rgba(255, 255, 255, 0.18) 24%,
-          rgba(255, 255, 255, 0) 62%
-        );
-        opacity: 0;
-        animation: portalBadgeImpactFlash 3060ms linear both;
-      }
-
-      .portal-badge-impact-particles {
-        overflow: visible;
-      }
-
-      .portal-badge-impact-particle {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        width: 8%;
-        height: 8%;
-        margin-left: -4%;
-        margin-top: -4%;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.94);
-        box-shadow: 0 0 10px rgba(255, 255, 255, 0.24);
-        opacity: 0;
-      }
-
-      .portal-badge-impact-particle--a {
-        animation: portalBadgeImpactParticleA 3060ms linear both;
-      }
-
-      .portal-badge-impact-particle--b {
-        animation: portalBadgeImpactParticleB 3060ms linear both;
-      }
-
-      .portal-badge-impact-particle--c {
-        animation: portalBadgeImpactParticleC 3060ms linear both;
-      }
-
-      .portal-badge-impact-particle--d {
-        animation: portalBadgeImpactParticleD 3060ms linear both;
-      }
-
-      .portal-badge-impact-particle--e {
-        animation: portalBadgeImpactParticleE 3060ms linear both;
-      }
-
-      .portal-badge-impact-particle--f {
-        animation: portalBadgeImpactParticleF 3060ms linear both;
-      }
-
       .portal-badge-core--locked {
         animation: portalBadgeLockedPulse 2400ms ease-in-out infinite;
         transform-origin: center;
@@ -934,19 +761,21 @@ export default function BadgeUnlockVisualStyles() {
       .portal-badge-final-shimmer::before {
         content: "";
         position: absolute;
-        inset: -28% -44%;
+        inset: -42% -62%;
         background: linear-gradient(
           90deg,
           rgba(255, 255, 255, 0) 0%,
-          rgba(255, 255, 255, 0.05) 32%,
-          rgba(255, 255, 255, 0.98) 48%,
-          rgba(255, 255, 255, 0.24) 56%,
+          rgba(255, 255, 255, 0.04) 34%,
+          rgba(255, 255, 255, 0.18) 42%,
+          rgba(255, 255, 255, 0.98) 49%,
+          rgba(255, 255, 255, 0.5) 53%,
+          rgba(255, 255, 255, 0.12) 60%,
           rgba(255, 255, 255, 0) 72%
         );
-        filter: blur(8px);
+        filter: blur(5px);
         mix-blend-mode: screen;
         opacity: 0;
-        transform: translateX(-132%) rotate(18deg);
+        transform: translate3d(-168%, 0, 0) rotate(24deg);
       }
 
       .portal-badge-final-shimmer--celebrating::before {
@@ -971,8 +800,6 @@ export default function BadgeUnlockVisualStyles() {
         .portal-badge-art-shell--unlocking,
         .portal-badge-reveal-canvas-layer--unlocking,
         .portal-badge-unlock-energy-flare,
-        .portal-badge-unlock-ring-a,
-        .portal-badge-unlock-ring-b,
         .portal-badge-impact-flash,
         .portal-badge-impact-particle,
         .portal-badge-final-shimmer::before {
