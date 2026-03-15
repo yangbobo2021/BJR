@@ -36,7 +36,6 @@ export default function BadgeCabinetItem(props: Props) {
     >
       <div
         tabIndex={0}
-        title={accessibleTitle}
         aria-label={accessibleTitle}
         className="portal-member-badge-visual"
         style={{
@@ -76,8 +75,6 @@ export default function BadgeCabinetItem(props: Props) {
                 opacity: 0.3,
                 fontWeight: 300,
                 textAlign: "center",
-                fontFamily:
-                  'Iowan Old Style, "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif',
               }}
             >
               ?

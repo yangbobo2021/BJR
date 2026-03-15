@@ -943,16 +943,26 @@ export default function BadgeUnlockVisualStyles() {
 
       .portal-member-badge-meta-inner {
         position: relative;
-        min-height: 24px;
+        min-height: 28px;
       }
 
       .portal-member-badge-question-mark {
         position: relative;
         z-index: 1;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        min-height: 28px;
         will-change: transform, opacity, filter;
       }
 
       .portal-member-badge-question-mark--dissolving {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
         animation: portalBadgeMetaQuestionDissolve 300ms
           cubic-bezier(0.32, 1, 0.68, 1) 2640ms both;
       }
@@ -961,10 +971,11 @@ export default function BadgeUnlockVisualStyles() {
         position: relative;
         z-index: 2;
       }
-      .portal-badge-unlock-host[data-badge-meta-revealing="true"][data-badge-unlocked="false"]
-        .portal-member-badge-question-mark {
-        animation: portalBadgeMetaQuestionDissolve 300ms
-          cubic-bezier(0.32, 1, 0.68, 1) 2640ms both;
+
+      .portal-member-badge-meta-revealed--revealing {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
       }
 
       .portal-member-badge-title,
