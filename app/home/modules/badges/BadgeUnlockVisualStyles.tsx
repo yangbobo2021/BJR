@@ -540,7 +540,7 @@ export default function BadgeUnlockVisualStyles() {
 
       .portal-badge-art-shell img,
       .portal-badge-art-shell span,
-      .portal-badge-art-shell div {
+      .portal-badge-art-shell div:not(.portal-badge-edge-spine) {
         backface-visibility: hidden;
         -webkit-backface-visibility: hidden;
         transform: translateZ(0.01px);
@@ -586,11 +586,11 @@ export default function BadgeUnlockVisualStyles() {
       }
 
       .portal-badge-edge-spine--left {
-        transform: translate(-50%, -50%) rotateY(90deg) translateZ(1.4px);
+        transform: translate(-50%, -50%) rotateY(90deg) translateZ(0.9px);
       }
 
       .portal-badge-edge-spine--right {
-        transform: translate(-50%, -50%) rotateY(-90deg) translateZ(1.4px);
+        transform: translate(-50%, -50%) rotateY(-90deg) translateZ(0.9px);
       }
 
       .portal-badge-edge-spine--left,
