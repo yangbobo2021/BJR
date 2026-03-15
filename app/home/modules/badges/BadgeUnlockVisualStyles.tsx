@@ -382,24 +382,21 @@ export default function BadgeUnlockVisualStyles() {
         }
       }
 
-      @keyframes portalBadgeRevealGlow {
+      @keyframes portalBadgeRevealColourLayer {
         0% {
           opacity: 0;
-          transform: scale(0.48);
-          filter: blur(12px);
+          filter: saturate(1.02) brightness(1.01);
         }
         18% {
-          opacity: 0.22;
+          opacity: 0.18;
         }
-        42% {
-          opacity: 0.36;
-          transform: scale(0.84);
-          filter: blur(10px);
+        52% {
+          opacity: 0.78;
+          filter: saturate(1.08) brightness(1.03);
         }
         100% {
-          opacity: 0;
-          transform: scale(1.2);
-          filter: blur(14px);
+          opacity: 1;
+          filter: saturate(1.08) brightness(1.03);
         }
       }
 
@@ -668,6 +665,13 @@ export default function BadgeUnlockVisualStyles() {
         -webkit-backface-visibility: hidden;
       }
 
+      .portal-badge-reveal-layer {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        isolation: isolate;
+      }
+
       .portal-badge-reveal-svg {
         overflow: visible;
       }
@@ -678,10 +682,10 @@ export default function BadgeUnlockVisualStyles() {
 
       .portal-badge-reveal-colour-image {
         transform-origin: 50% 50%;
-        animation: portalBadgeRevealGlow 1180ms
-          cubic-bezier(0.18, 0.88, 0.24, 1) both;
+        opacity: 0;
+        animation: portalBadgeRevealColourLayer 820ms
+          cubic-bezier(0.18, 0.88, 0.24, 1) 1120ms both;
       }
-
       .portal-badge-reveal-mask-cloud {
         transform-origin: 50% 50%;
       }
@@ -693,43 +697,43 @@ export default function BadgeUnlockVisualStyles() {
       }
 
       .portal-badge-reveal-blob--core {
-        animation: portalBadgeRevealCore 1260ms cubic-bezier(0.18, 0.9, 0.22, 1)
-          both;
+        animation: portalBadgeRevealCore 760ms cubic-bezier(0.18, 0.9, 0.22, 1)
+          1080ms both;
       }
 
       .portal-badge-reveal-blob--a {
-        animation: portalBadgeRevealBlobA 1420ms
-          cubic-bezier(0.18, 0.9, 0.22, 1) both;
+        animation: portalBadgeRevealBlobA 860ms cubic-bezier(0.18, 0.9, 0.22, 1)
+          1120ms both;
       }
 
       .portal-badge-reveal-blob--b {
-        animation: portalBadgeRevealBlobB 1380ms
-          cubic-bezier(0.18, 0.9, 0.22, 1) 80ms both;
+        animation: portalBadgeRevealBlobB 840ms cubic-bezier(0.18, 0.9, 0.22, 1)
+          1180ms both;
       }
 
       .portal-badge-reveal-blob--c {
-        animation: portalBadgeRevealBlobC 1480ms
-          cubic-bezier(0.18, 0.9, 0.22, 1) 140ms both;
+        animation: portalBadgeRevealBlobC 900ms cubic-bezier(0.18, 0.9, 0.22, 1)
+          1240ms both;
       }
 
       .portal-badge-reveal-blob--d {
-        animation: portalBadgeRevealBlobD 1440ms
-          cubic-bezier(0.18, 0.9, 0.22, 1) 200ms both;
+        animation: portalBadgeRevealBlobD 860ms cubic-bezier(0.18, 0.9, 0.22, 1)
+          1290ms both;
       }
 
       .portal-badge-reveal-blob--e {
-        animation: portalBadgeRevealBlobE 1560ms
-          cubic-bezier(0.18, 0.9, 0.22, 1) 360ms both;
+        animation: portalBadgeRevealBlobE 920ms cubic-bezier(0.18, 0.9, 0.22, 1)
+          1360ms both;
       }
 
       .portal-badge-reveal-blob--f {
-        animation: portalBadgeRevealBlobF 1540ms
-          cubic-bezier(0.18, 0.9, 0.22, 1) 460ms both;
+        animation: portalBadgeRevealBlobF 900ms cubic-bezier(0.18, 0.9, 0.22, 1)
+          1430ms both;
       }
 
       .portal-badge-reveal-blob--g {
-        animation: portalBadgeRevealBlobG 1520ms
-          cubic-bezier(0.18, 0.9, 0.22, 1) 540ms both;
+        animation: portalBadgeRevealBlobG 900ms cubic-bezier(0.18, 0.9, 0.22, 1)
+          1490ms both;
       }
 
       .portal-badge-unlock-energy-flare {
@@ -745,8 +749,8 @@ export default function BadgeUnlockVisualStyles() {
             rgba(255, 255, 255, 0.08) 0%,
             rgba(255, 255, 255, 0) 74%
           );
-        animation: portalBadgeUnlockEnergyFlare 1180ms
-          cubic-bezier(0.18, 0.88, 0.24, 1) both;
+        animation: portalBadgeUnlockEnergyFlare 920ms
+          cubic-bezier(0.18, 0.88, 0.24, 1) 1140ms both;
       }
 
       .portal-badge-unlock-ring-a,

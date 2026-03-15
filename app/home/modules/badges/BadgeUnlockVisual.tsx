@@ -436,11 +436,20 @@ export default function BadgeUnlockVisual(props: Props) {
 
                     {isUnlocking ? (
                       <>
-                        <BadgeRevealSvg
-                          imageUrl={imageUrl}
-                          label={label}
-                          celebrating={true}
-                        />
+                        <div
+                          className="portal-badge-reveal-layer"
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            pointerEvents: "none",
+                          }}
+                        >
+                          <BadgeRevealSvg
+                            imageUrl={imageUrl}
+                            label={label}
+                            celebrating={true}
+                          />
+                        </div>
 
                         <div
                           className="portal-badge-unlock-energy-flare"

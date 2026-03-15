@@ -5,24 +5,49 @@ import React from "react";
 import { flushSync } from "react-dom";
 import type { BadgeCabinetItemModel } from "./badgeCabinetTypes";
 
-const DEFAULT_FLIP_DURATION_MS = 420;
-const UNLOCK_FLIP_DURATION_MS = 1320;
-const UNLOCK_SETTLE_MS = 640;
+const BADGE_UNLOCK_TIMELINE_MS = {
+  /**
+   * Visual ceremony timing.
+   *
+   * Keep these aligned with BadgeUnlockVisualStyles.tsx.
+   *
+   * Current intent:
+   * - spin 1 is heavy and slow
+   * - colour reveal should become most legible at the end of spin 1 and into spin 2
+   * - spin 2 accelerates
+   * - spin 3 is fastest and resolves into the hard stop
+   */
+  spinStage1: 1480,
+  spinStage2: 900,
+  spinStage2Delay: 1480,
+  spinStage3: 560,
+  spinStage3Delay: 2380,
+  shellSettleTotal: 3060,
 
-/**
- * These timings must stay aligned with BadgeUnlockVisualStyles.tsx.
- *
- * Current visual ceremony:
- * - spin stage 1: 1480ms
- * - spin stage 2: 900ms, delayed by 1480ms
- * - spin stage 3: 560ms, delayed by 2380ms
- * - shell settle / impact alignment: 3060ms total
- *
- * We treat the unlock ceremony as complete only once the full unlocking
- * visual has finished, and only then do we allow cabinet reordering + FLIP.
- */
-const UNLOCK_VISUAL_DURATION_MS = 3060;
-const UNLOCK_CEREMONY_HOLD_MS = UNLOCK_VISUAL_DURATION_MS;
+  /**
+   * Cabinet movement timing after the visual ceremony is complete.
+   */
+  cabinetFlip: 1320,
+  cabinetSettle: 640,
+
+  /**
+   * Default non-unlock FLIP duration.
+   */
+  defaultFlip: 420,
+} as const;
+
+function getUnlockVisualDurationMs(): number {
+  return Math.max(
+    BADGE_UNLOCK_TIMELINE_MS.shellSettleTotal,
+    BADGE_UNLOCK_TIMELINE_MS.spinStage1,
+    BADGE_UNLOCK_TIMELINE_MS.spinStage2Delay +
+      BADGE_UNLOCK_TIMELINE_MS.spinStage2,
+    BADGE_UNLOCK_TIMELINE_MS.spinStage3Delay +
+      BADGE_UNLOCK_TIMELINE_MS.spinStage3,
+  );
+}
+
+const UNLOCK_VISUAL_DURATION_MS = getUnlockVisualDurationMs();
 
 function sortBadgeCabinetItems(
   items: BadgeCabinetItemModel[],
@@ -114,8 +139,8 @@ export function useBadgeCabinetUnlockSequence(options: Options): Result {
     UnlockableBadgeItem[] | null
   >(null);
   const [isFlipSuspended, setIsFlipSuspended] = React.useState(false);
-  const [flipDurationMs, setFlipDurationMs] = React.useState(
-    DEFAULT_FLIP_DURATION_MS,
+  const [flipDurationMs, setFlipDurationMs] = React.useState<number>(
+    BADGE_UNLOCK_TIMELINE_MS.defaultFlip,
   );
   const [flipBaselineToken, setFlipBaselineToken] = React.useState(0);
   const [liveAnnouncement, setLiveAnnouncement] = React.useState("");
@@ -149,7 +174,7 @@ export function useBadgeCabinetUnlockSequence(options: Options): Result {
     setUnlockPhase("idle");
     setDisplayItemsOverride(null);
     setIsFlipSuspended(false);
-    setFlipDurationMs(DEFAULT_FLIP_DURATION_MS);
+    setFlipDurationMs(BADGE_UNLOCK_TIMELINE_MS.defaultFlip);
     setLiveAnnouncement("");
   }, [clearSequenceTimers]);
 
@@ -199,15 +224,31 @@ export function useBadgeCabinetUnlockSequence(options: Options): Result {
     setNewlyUnlockedKeys(freshUnlockKeySet);
     setPendingUnlockKeys(freshUnlockKeySet);
     setUnlockPhase("reveal");
-    setFlipDurationMs(UNLOCK_FLIP_DURATION_MS);
+    setFlipDurationMs(BADGE_UNLOCK_TIMELINE_MS.cabinetFlip);
     setLiveAnnouncement(
       freshUnlocks
         .map((item) => `New badge unlocked: ${item.label}`)
         .join(". "),
     );
 
+    if (process.env.NODE_ENV !== "production") {
+      console.debug("[useBadgeCabinetUnlockSequence] unlock started", {
+        freshUnlockKeys: Array.from(freshUnlockKeySet),
+        unlockVisualDurationMs: UNLOCK_VISUAL_DURATION_MS,
+        cabinetFlipMs: BADGE_UNLOCK_TIMELINE_MS.cabinetFlip,
+        cabinetSettleMs: BADGE_UNLOCK_TIMELINE_MS.cabinetSettle,
+        timeline: BADGE_UNLOCK_TIMELINE_MS,
+      });
+    }
+
     unlockReleaseTimeoutRef.current = window.setTimeout(() => {
       unlockReleaseTimeoutRef.current = null;
+
+      if (process.env.NODE_ENV !== "production") {
+        console.debug(
+          "[useBadgeCabinetUnlockSequence] unlock released to cabinet move",
+        );
+      }
 
       flushSync(() => {
         setUnlockPhase("move");
@@ -224,7 +265,7 @@ export function useBadgeCabinetUnlockSequence(options: Options): Result {
           setDisplayItemsOverride(null);
         });
       });
-    }, UNLOCK_CEREMONY_HOLD_MS);
+    }, UNLOCK_VISUAL_DURATION_MS);
 
     unlockCleanupTimeoutRef.current = window.setTimeout(
       () => {
@@ -232,11 +273,13 @@ export function useBadgeCabinetUnlockSequence(options: Options): Result {
         setUnlockPhase("idle");
         setDisplayItemsOverride(null);
         setIsFlipSuspended(false);
-        setFlipDurationMs(DEFAULT_FLIP_DURATION_MS);
+        setFlipDurationMs(BADGE_UNLOCK_TIMELINE_MS.defaultFlip);
         setLiveAnnouncement("");
         unlockCleanupTimeoutRef.current = null;
       },
-      UNLOCK_CEREMONY_HOLD_MS + UNLOCK_FLIP_DURATION_MS + UNLOCK_SETTLE_MS,
+      UNLOCK_VISUAL_DURATION_MS +
+        BADGE_UNLOCK_TIMELINE_MS.cabinetFlip +
+        BADGE_UNLOCK_TIMELINE_MS.cabinetSettle,
     );
   }, [clearSequenceTimers, items]);
 
