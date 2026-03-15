@@ -13,8 +13,8 @@ type Props = {
   variant: "cabinet" | "overlay";
 };
 
-const REVEAL_DELAY_MS = 1080;
-const REVEAL_DURATION_MS = 920;
+const REVEAL_DELAY_MS = 1110;
+const REVEAL_DURATION_MS = 600;
 
 function BadgeFallbackArt(props: { unlocked: boolean; label: string }) {
   const { unlocked, label } = props;

@@ -214,11 +214,14 @@ export default function BadgeUnlockVisualStyles() {
         0% {
           transform: rotateY(0deg);
         }
-        78% {
-          transform: rotateY(318deg);
+        72% {
+          transform: rotateY(322deg);
         }
-        90% {
-          transform: rotateY(351deg);
+        88% {
+          transform: rotateY(352deg);
+        }
+        96% {
+          transform: rotateY(358deg);
         }
         100% {
           transform: rotateY(360deg);
@@ -227,24 +230,32 @@ export default function BadgeUnlockVisualStyles() {
 
       @keyframes portalBadgeSpinSettle {
         0% {
-          transform: rotateZ(-1.2deg) scale(0.91);
-          filter: brightness(0.98);
+          transform: rotateZ(-1.45deg) scale(0.885);
+          filter: brightness(0.97);
         }
-        22% {
-          transform: rotateZ(-0.45deg) scale(0.965);
-          filter: brightness(1.01);
+        18% {
+          transform: rotateZ(-0.62deg) scale(0.955);
+          filter: brightness(1);
         }
-        56% {
-          transform: rotateZ(0.72deg) scale(1.04);
-          filter: brightness(1.06);
+        52% {
+          transform: rotateZ(0.92deg) scale(1.055);
+          filter: brightness(1.08);
+        }
+        66% {
+          transform: rotateZ(-0.48deg) scale(0.992);
+          filter: brightness(1.02);
         }
         78% {
-          transform: rotateZ(-0.22deg) scale(1.015);
-          filter: brightness(1.03);
+          transform: rotateZ(0.26deg) scale(1.018);
+          filter: brightness(1.04);
         }
-        90% {
-          transform: rotateZ(0.1deg) scale(0.998);
+        88% {
+          transform: rotateZ(-0.12deg) scale(0.996);
           filter: brightness(1.01);
+        }
+        94% {
+          transform: rotateZ(0.05deg) scale(1.004);
+          filter: brightness(1.005);
         }
         100% {
           transform: rotateZ(0deg) scale(1);
@@ -349,24 +360,24 @@ export default function BadgeUnlockVisualStyles() {
 
       @keyframes portalBadgeImpactFlash {
         0%,
-        82% {
+        84% {
           opacity: 0;
-          transform: scale(0.84);
+          transform: scale(0.82);
           filter: blur(12px);
         }
-        88% {
-          opacity: 0.84;
-          transform: scale(1.02);
-          filter: blur(6px);
+        89% {
+          opacity: 0.96;
+          transform: scale(1.01);
+          filter: blur(5px);
         }
         94% {
-          opacity: 0.34;
-          transform: scale(1.09);
-          filter: blur(10px);
+          opacity: 0.38;
+          transform: scale(1.07);
+          filter: blur(9px);
         }
         100% {
           opacity: 0;
-          transform: scale(1.18);
+          transform: scale(1.16);
           filter: blur(14px);
         }
       }
@@ -519,18 +530,15 @@ export default function BadgeUnlockVisualStyles() {
       }
 
       .portal-badge-spin-stage-1--unlocking {
-        animation: portalBadgeSpinHeavy 1480ms cubic-bezier(0.2, 0.62, 0.16, 1)
-          both;
+        animation: portalBadgeSpinHeavy 1480ms linear both;
       }
 
       .portal-badge-spin-stage-2--unlocking {
-        animation: portalBadgeSpinFaster 900ms cubic-bezier(0.18, 0.88, 0.22, 1)
-          1480ms both;
+        animation: portalBadgeSpinFaster 900ms linear 1480ms both;
       }
 
       .portal-badge-spin-stage-3--unlocking {
-        animation: portalBadgeSpinFastest 560ms cubic-bezier(0.1, 0.9, 0.16, 1)
-          2380ms both;
+        animation: portalBadgeSpinFastest 560ms linear 2380ms both;
       }
 
       .portal-badge-art-shell--unlocking {
