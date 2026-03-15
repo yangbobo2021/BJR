@@ -280,29 +280,32 @@ export default function BadgeUnlockVisualStyles() {
           transform: translate3d(0, 0, 0) rotateZ(-0.32deg) scale(1.012);
           filter: brightness(1.03);
         }
-        82% {
+        88% {
           transform: translate3d(0, 0, 0) rotateZ(0.14deg) scale(1.004);
           filter: brightness(1.01);
         }
-        86% {
-          transform: translate3d(-1.8px, 0.8px, 0) rotateZ(-0.55deg)
-            scale(1.026);
+        96% {
+          transform: translate3d(0, 0, 0) rotateZ(0deg) scale(1);
+          filter: brightness(1);
+        }
+        96.4% {
+          transform: translate3d(-2px, 0.9px, 0) rotateZ(-0.58deg) scale(1.026);
           filter: brightness(1.12);
         }
-        88.5% {
-          transform: translate3d(2.2px, -1.1px, 0) rotateZ(0.48deg) scale(0.996);
+        97.2% {
+          transform: translate3d(2.3px, -1.15px, 0) rotateZ(0.5deg) scale(0.996);
           filter: brightness(1.08);
         }
-        91% {
-          transform: translate3d(-1.5px, 0.9px, 0) rotateZ(-0.34deg)
+        98% {
+          transform: translate3d(-1.6px, 0.95px, 0) rotateZ(-0.34deg)
             scale(1.012);
           filter: brightness(1.05);
         }
-        93.5% {
+        98.8% {
           transform: translate3d(1px, -0.6px, 0) rotateZ(0.22deg) scale(0.998);
           filter: brightness(1.03);
         }
-        96% {
+        99.4% {
           transform: translate3d(-0.5px, 0.3px, 0) rotateZ(-0.1deg) scale(1.003);
           filter: brightness(1.015);
         }
@@ -432,22 +435,22 @@ export default function BadgeUnlockVisualStyles() {
 
       @keyframes portalBadgeImpactFlash {
         0%,
-        84% {
+        95.8% {
           opacity: 0;
           transform: scale(0.9);
           filter: blur(12px);
         }
-        88% {
+        96.8% {
           opacity: 0.28;
-          transform: scale(0.98);
+          transform: scale(0.985);
           filter: blur(8px);
         }
-        90.5% {
+        97.6% {
           opacity: 1;
           transform: scale(1.02);
           filter: blur(3px);
         }
-        93.5% {
+        98.8% {
           opacity: 0.42;
           transform: scale(1.01);
           filter: blur(6px);

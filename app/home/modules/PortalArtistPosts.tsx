@@ -521,6 +521,68 @@ function CopyToast(props: { visible: boolean; text: string }) {
   );
 }
 
+function useElementWidth<T extends HTMLElement>(): [
+  React.RefObject<T | null>,
+  number,
+] {
+  const ref = React.useRef<T | null>(null);
+  const [width, setWidth] = React.useState(0);
+
+  React.useEffect(() => {
+    const node = ref.current;
+    if (!node) return undefined;
+
+    const read = () => {
+      const next = Math.ceil(node.getBoundingClientRect().width);
+      setWidth((prev) => (prev === next ? prev : next));
+    };
+
+    read();
+
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(() => {
+        read();
+      });
+      ro.observe(node);
+      return () => ro.disconnect();
+    }
+
+    window.addEventListener("resize", read);
+    return () => window.removeEventListener("resize", read);
+  }, []);
+
+  return [ref, width];
+}
+
+function useMinWidth(minWidthPx: number): boolean {
+  const [matches, setMatches] = React.useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia(`(min-width: ${minWidthPx}px)`).matches;
+  });
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const mq = window.matchMedia(`(min-width: ${minWidthPx}px)`);
+
+    const onChange = (event: MediaQueryListEvent) => {
+      setMatches(event.matches);
+    };
+
+    setMatches(mq.matches);
+
+    if (typeof mq.addEventListener === "function") {
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    }
+
+    mq.addListener(onChange);
+    return () => mq.removeListener(onChange);
+  }, [minWidthPx]);
+
+  return matches;
+}
+
 function TermsModal(props: { open: boolean; onClose: () => void }) {
   const { open, onClose } = props;
 
@@ -1374,46 +1436,30 @@ export default function PortalArtistPosts(props: {
     setPostTypeFilter(next);
   }
 
+  const isWideToolbarViewport = useMinWidth(760);
+  const useOverlayToolbar = isWideToolbarViewport && !composerOpen;
+
+  const [overlayToolbarRef, overlayToolbarWidth] =
+    useElementWidth<HTMLDivElement>();
+
+  const firstPostHeaderInsetPx = useOverlayToolbar
+    ? Math.max(0, overlayToolbarWidth + 16)
+    : 0;
+
   return (
     <div style={{ minWidth: 0, position: "relative" }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 10,
-          marginTop: 2,
-        }}
-      >
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {cursor ? (
-            <button
-              type="button"
-              onClick={() => void fetchPage(cursor)}
-              disabled={loading}
-              style={{
-                border: "none",
-                background: "transparent",
-                color: "rgba(255,255,255,0.70)",
-                cursor: loading ? "default" : "pointer",
-                fontSize: 12,
-                textDecoration: "underline",
-                textUnderlineOffset: 3,
-                opacity: loading ? 0.5 : 0.85,
-                padding: 0,
-              }}
-            >
-              Load more
-            </button>
-          ) : null}
-        </div>
-
+      {useOverlayToolbar ? (
         <div
+          ref={overlayToolbarRef}
           style={{
-            flex: "0 0 auto",
+            position: "absolute",
+            top: 0,
+            right: 0,
+            zIndex: 3,
             display: "inline-flex",
             gap: 8,
             alignItems: "center",
+            maxWidth: "100%",
           }}
         >
           <select
@@ -1456,11 +1502,74 @@ export default function PortalArtistPosts(props: {
             }}
           />
         </div>
-      </div>
+      ) : (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            marginTop: 2,
+            marginBottom: 6,
+          }}
+        >
+          <div
+            style={{
+              flex: "0 1 auto",
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              flexWrap: "wrap",
+              justifyContent: "flex-end",
+            }}
+          >
+            <select
+              value={postTypeFilter}
+              onChange={(e) => onChangeFilter(e.target.value as "" | PostType)}
+              aria-label="Filter posts by type"
+              style={{
+                height: 28,
+                borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: "rgba(255,255,255,0.035)",
+                color:
+                  postTypeFilter === ""
+                    ? "rgba(255,255,255,0.5)"
+                    : "rgba(255,255,255,0.86)",
+                padding: "0 10px",
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: 0.2,
+                outline: "none",
+                cursor: "pointer",
+                maxWidth: "100%",
+              }}
+            >
+              <option value="" disabled>
+                Post type
+              </option>
+
+              {POST_TYPES.map((opt) => (
+                <option key={opt.label} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+
+            {!composerOpen ? (
+              <SubmitQuestionCTA
+                onOpenComposer={() => {
+                  setThanks(false);
+                  setSubmitErr(null);
+                  setComposerOpen(true);
+                }}
+              />
+            ) : null}
+          </div>
+        </div>
+      )}
 
       <div
         style={{
-          marginTop: 2,
+          marginTop: composerOpen ? 2 : 0,
           borderRadius: 18,
           border: "1px solid rgba(255,255,255,0.10)",
           background: "rgba(255,255,255,0.03)",
@@ -1624,7 +1733,12 @@ export default function PortalArtistPosts(props: {
         </div>
       ) : null}
 
-      <div style={{ marginTop: 6, position: "relative" }}>
+      <div
+        style={{
+          marginTop: composerOpen || thanks || !useOverlayToolbar ? 6 : 0,
+          position: "relative",
+        }}
+      >
         <div
           aria-hidden={inlineGateActive}
           style={{
@@ -1634,9 +1748,14 @@ export default function PortalArtistPosts(props: {
             transition: "filter 180ms ease, opacity 180ms ease",
           }}
         >
-          {posts.map((p) => {
+          {posts.map((p, index) => {
             const isDeep = deepSlug === p.slug;
             const isCopied = copiedSlug === p.slug;
+            const isFirstPost = index === 0;
+
+            const firstPostHeaderRightInsetPx = isFirstPost
+              ? firstPostHeaderInsetPx
+              : 0;
 
             return (
               <div
@@ -1664,7 +1783,12 @@ export default function PortalArtistPosts(props: {
                   }}
                 >
                   <div
-                    style={{ display: "flex", gap: 10, alignItems: "center" }}
+                    style={{
+                      display: "flex",
+                      gap: 10,
+                      alignItems: "center",
+                      paddingRight: firstPostHeaderRightInsetPx,
+                    }}
                   >
                     <Avatar
                       label={authorInitials}
@@ -1726,6 +1850,7 @@ export default function PortalArtistPosts(props: {
                         alignItems: "center",
                         gap: 8,
                         minWidth: 0,
+                        paddingRight: firstPostHeaderRightInsetPx,
                       }}
                     >
                       <TypeBadge t={p.postType ?? null} />
@@ -1868,6 +1993,29 @@ export default function PortalArtistPosts(props: {
         {!loading && !refreshing && posts.length === 0 ? (
           <div style={{ fontSize: 13, opacity: 0.75, padding: "12px 0" }}>
             No posts yet.
+          </div>
+        ) : null}
+
+        {!inlineGateActive && cursor ? (
+          <div style={{ paddingTop: 12 }}>
+            <button
+              type="button"
+              onClick={() => void fetchPage(cursor)}
+              disabled={loading}
+              style={{
+                border: "none",
+                background: "transparent",
+                color: "rgba(255,255,255,0.70)",
+                cursor: loading ? "default" : "pointer",
+                fontSize: 12,
+                textDecoration: "underline",
+                textUnderlineOffset: 3,
+                opacity: loading ? 0.5 : 0.85,
+                padding: 0,
+              }}
+            >
+              Load more
+            </button>
           </div>
         ) : null}
       </div>
