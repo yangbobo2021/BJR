@@ -19,6 +19,8 @@ export default function CancelSubscriptionButton({
   const [confirming, setConfirming] = React.useState(false);
   const confirmTimerRef = React.useRef<number | null>(null);
 
+  const LINK_BUTTON_HEIGHT = 28;
+
   function clearConfirmTimer() {
     if (confirmTimerRef.current) {
       window.clearTimeout(confirmTimerRef.current);
@@ -119,6 +121,8 @@ export default function CancelSubscriptionButton({
 
   const isDisabled = busy || !!disabled;
 
+  const linkConfirmText = "Confirm cancellation";
+
   return (
     <div
       style={{
@@ -186,92 +190,137 @@ export default function CancelSubscriptionButton({
           }
         }
       `}</style>
-      <button
-        onClick={onCancel}
-        disabled={isDisabled}
-        className={confirming ? "confirmPill" : undefined}
+      <div
         style={
-          confirming
+          variant === "link"
             ? {
-                // one “final stage” container (no “original cancel” styling shown here)
-                width: "max-content",
-                maxWidth: "min(92vw, 520px)",
-                justifySelf: "center",
-                padding: "8px 12px",
-                borderRadius: 14,
-                border: "1px solid rgba(255,90,90,0.35)",
-                background:
-                  "linear-gradient(180deg, rgba(255,80,80,0.26), rgba(255,35,35,0.18))",
-                color: "rgba(255,255,255,0.92)",
-                cursor: isDisabled ? "not-allowed" : "pointer",
-                fontSize: 12,
-                fontWeight: 650,
-                letterSpacing: "0.01em",
-                opacity: isDisabled ? 0.6 : 1,
                 position: "relative",
-                overflow: "hidden",
-                textAlign: "left",
-                boxShadow:
-                  "0 16px 44px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.12)",
+                display: "inline-grid",
+                alignItems: "center",
+                justifyItems: "start",
               }
-            : variant === "link"
-              ? {
-                  padding: 0,
-                  margin: 0,
-                  border: "none",
-                  background: "transparent",
-                  color:
-                    "color-mix(in srgb, var(--accent) 70%, rgba(255,255,255,0.88))",
-                  fontSize: 12,
-                  lineHeight: "16px",
-                  fontWeight: 600,
-                  cursor: isDisabled ? "not-allowed" : "pointer",
-                  opacity: isDisabled ? 0.6 : 0.95,
-                  textAlign: "left",
-                  justifySelf: "start",
-                }
-              : {
-                  padding: "11px 16px",
-                  borderRadius: 999,
-                  border: "1px solid rgba(255,255,255,0.22)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "rgba(255,255,255,0.90)",
-                  cursor: isDisabled ? "not-allowed" : "pointer",
-                  fontSize: 14,
-                  opacity: isDisabled ? 0.6 : 1,
-                }
+            : undefined
         }
-        onMouseDown={(e) => {
-          if (variant === "link") e.preventDefault();
-        }}
       >
-        {confirming ? (
-          <>
-            {/* timer visual: drain + shimmer runs for CONFIRM_MS then disappears */}
-            <span
-              aria-hidden
-              className="confirmDrain"
-              style={{ animationDuration: `${CONFIRM_MS}ms` }}
-            />
-            <span
-              aria-hidden
-              className="confirmSheen"
-              style={{ animationDuration: `${CONFIRM_MS}ms` }}
-            />
-            <span
-              style={{
-                position: "relative",
-                zIndex: 2,
-                whiteSpace: "nowrap",
-              }}
-            >
-              Confirm cancellation
-            </span>
-          </>
-        ) : (
-          text
-        )}
-      </button>
+        {variant === "link" ? (
+          <span
+            aria-hidden
+            style={{
+              visibility: "hidden",
+              whiteSpace: "nowrap",
+              gridArea: "1 / 1",
+              height: LINK_BUTTON_HEIGHT,
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "0 10px",
+              border: "1px solid transparent",
+              fontSize: 12,
+              fontWeight: 650,
+              letterSpacing: "0.01em",
+              boxSizing: "border-box",
+            }}
+          >
+            {linkConfirmText}
+          </span>
+        ) : null}
+
+        <button
+          onClick={onCancel}
+          disabled={isDisabled}
+          className={confirming ? "confirmPill" : undefined}
+          style={
+            confirming
+              ? {
+                  gridArea: variant === "link" ? "1 / 1" : undefined,
+                  width: variant === "link" ? "100%" : "max-content",
+                  maxWidth: "min(92vw, 520px)",
+                  justifySelf: variant === "link" ? "start" : "center",
+                  height: variant === "link" ? LINK_BUTTON_HEIGHT : undefined,
+                  padding: variant === "link" ? "0 10px" : "8px 12px",
+                  borderRadius: variant === "link" ? 999 : 14,
+                  border: "1px solid rgba(255,90,90,0.35)",
+                  background:
+                    "linear-gradient(180deg, rgba(255,80,80,0.26), rgba(255,35,35,0.18))",
+                  color: "rgba(255,255,255,0.92)",
+                  cursor: isDisabled ? "not-allowed" : "pointer",
+                  fontSize: 12,
+                  fontWeight: 650,
+                  letterSpacing: "0.01em",
+                  opacity: isDisabled ? 0.6 : 1,
+                  position: "relative",
+                  overflow: "hidden",
+                  textAlign: "left",
+                  boxSizing: "border-box",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow:
+                    "0 16px 44px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.12)",
+                }
+              : variant === "link"
+                ? {
+                    gridArea: "1 / 1",
+                    width: "100%",
+                    height: LINK_BUTTON_HEIGHT,
+                    padding: "0 10px",
+                    margin: 0,
+                    border: "1px solid transparent",
+                    background: "transparent",
+                    color:
+                      "color-mix(in srgb, var(--accent) 70%, rgba(255,255,255,0.88))",
+                    fontSize: 12,
+                    lineHeight: "16px",
+                    fontWeight: 600,
+                    cursor: isDisabled ? "not-allowed" : "pointer",
+                    opacity: isDisabled ? 0.6 : 0.95,
+                    textAlign: "left",
+                    justifySelf: "start",
+                    boxSizing: "border-box",
+                    display: "inline-flex",
+                    alignItems: "center",
+                  }
+                : {
+                    padding: "11px 16px",
+                    borderRadius: 999,
+                    border: "1px solid rgba(255,255,255,0.22)",
+                    background: "rgba(255,255,255,0.06)",
+                    color: "rgba(255,255,255,0.90)",
+                    cursor: isDisabled ? "not-allowed" : "pointer",
+                    fontSize: 14,
+                    opacity: isDisabled ? 0.6 : 1,
+                  }
+          }
+          onMouseDown={(e) => {
+            if (variant === "link") e.preventDefault();
+          }}
+        >
+          {confirming ? (
+            <>
+              <span
+                aria-hidden
+                className="confirmDrain"
+                style={{ animationDuration: `${CONFIRM_MS}ms` }}
+              />
+              <span
+                aria-hidden
+                className="confirmSheen"
+                style={{ animationDuration: `${CONFIRM_MS}ms` }}
+              />
+              <span
+                style={{
+                  position: "relative",
+                  zIndex: 2,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {linkConfirmText}
+              </span>
+            </>
+          ) : (
+            text
+          )}
+        </button>
+      </div>
 
       {msg ? (
         <div

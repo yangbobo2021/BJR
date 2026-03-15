@@ -69,11 +69,11 @@ export default function BadgeCabinetItem(props: Props) {
               }
               aria-hidden="true"
               style={{
-                fontSize: expanded ? 14 : 12,
+                fontSize: expanded ? 10 : 9,
                 lineHeight: 1.1,
                 letterSpacing: 0.12,
                 opacity: 0.3,
-                fontWeight: 300,
+                fontWeight: 400,
                 textAlign: "center",
               }}
             >
