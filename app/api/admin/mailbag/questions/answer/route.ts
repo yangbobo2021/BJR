@@ -281,7 +281,7 @@ export async function POST(req: NextRequest) {
 
     if (name) {
       children.push(span("\n")); // line break inside the same blockquote
-      children.push(span(`— ${name}`, ["em"])); // built-in decorator hook
+      children.push(span(`— ${name}`, ["mailbagAsker"]));
     }
 
     blocks.push({

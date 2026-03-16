@@ -260,13 +260,24 @@ export function buildPortalArtistPostPortableTextComponents(
         </span>
       ),
 
-      em: (props: { children?: React.ReactNode }) => (
-        <em
+      mailbagAsker: (props: { children?: React.ReactNode }) => (
+        <span
           style={{
+            display: "inline",
             fontStyle: "normal",
             fontSize: "0.92em",
             color: "rgba(255,255,255,0.62)",
             opacity: 1,
+          }}
+        >
+          {props.children}
+        </span>
+      ),
+
+      em: (props: { children?: React.ReactNode }) => (
+        <em
+          style={{
+            fontStyle: "italic",
           }}
         >
           {props.children}
