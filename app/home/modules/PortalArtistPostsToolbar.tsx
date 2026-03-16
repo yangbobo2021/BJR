@@ -304,7 +304,7 @@ function PostTypeMenu(props: PostTypeMenuProps) {
           top: "calc(100% + 8px)",
           right: 0,
           minWidth: "100%",
-          padding: 6,
+          padding: 5,
           borderRadius: 14,
           border: "1px solid rgba(255,255,255,0.12)",
           background: "rgba(10,10,14,0.94)",
@@ -325,6 +325,8 @@ function PostTypeMenu(props: PostTypeMenuProps) {
         {POST_TYPES.map((option, index) => {
           const active = option.value === value;
           const highlighted = index === highlightedIndex;
+          const isFirst = index === 0;
+          const isLast = index === POST_TYPES.length - 1;
 
           return (
             <button
@@ -344,12 +346,16 @@ function PostTypeMenu(props: PostTypeMenuProps) {
                 width: "100%",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "space-between",
+                justifyContent: "flex-start",
                 gap: 10,
                 height: 32,
                 padding: "0 10px",
                 border: "none",
-                borderRadius: 10,
+                borderRadius: isFirst
+                  ? "10px 10px 0 0"
+                  : isLast
+                    ? "0 0 10px 10px"
+                    : "0",
                 background: active
                   ? "rgba(255,255,255,0.10)"
                   : highlighted
@@ -366,25 +372,11 @@ function PostTypeMenu(props: PostTypeMenuProps) {
                 letterSpacing: 0.18,
                 textAlign: "left",
                 outline: "none",
-                boxShadow: highlighted
-                  ? "0 0 0 1px rgba(255,255,255,0.05) inset"
-                  : "none",
-                transition:
-                  "background 120ms ease, color 120ms ease, box-shadow 120ms ease",
+                boxShadow: "none",
+                transition: "background 120ms ease, color 120ms ease",
               }}
             >
               <span>{option.label}</span>
-              {active ? (
-                <span
-                  aria-hidden="true"
-                  style={{
-                    fontSize: 11,
-                    opacity: 0.72,
-                  }}
-                >
-                  ✓
-                </span>
-              ) : null}
             </button>
           );
         })}
@@ -427,8 +419,8 @@ export default function PortalArtistPostsToolbar(props: Props) {
           maxWidth: "100%",
         }}
       >
-        <PostTypeMenu value={postTypeFilter} onChange={onChangeFilter} />
         <SubmitQuestionCTA onOpenComposer={onOpenComposer} />
+        <PostTypeMenu value={postTypeFilter} onChange={onChangeFilter} />
       </div>
     );
   }
